@@ -1,0 +1,38 @@
+*** turbo with grid ***
+256 matches
+
+minimum distance = 0.000000 flux difference = 0.000000
+
+minimum test image centroid = (33.780020,40.523877) image flux = 86.820276
+[[  0.           0.           0.        ]
+ [  0.           9.09334564  10.00538445]
+ [  0.          32.24378967  35.4777565 ]]
+
+minimum reference image centroid = (33.780020,40.523877) image flux = 86.820276
+[[  0.           0.           0.        ]
+ [  0.           9.09334564  10.00538445]
+ [  0.          32.24378967  35.4777565 ]]
+
+median distance = 0.000000 flux difference = 0.000000
+
+median test image centroid = (566.940758,909.664671) image flux = 86.622038
+[[  0.           0.           0.        ]
+ [  0.           2.6160028    5.18532419]
+ [  0.          25.53556061  50.61546326]]
+
+median reference image centroid = (566.940758,909.664671) image flux = 86.622038
+[[  0.           0.           0.        ]
+ [  0.           2.6160028    5.18532419]
+ [  0.          25.53556061  50.61546326]]
+
+maximum distance = 0.000000 flux difference = 0.000000
+
+maximum test image centroid = (1097.695394,1126.956902) image flux = 87.364552
+[[  0.           0.           0.        ]
+ [  0.           2.17379475  23.41114044]
+ [  0.           4.96261072  53.44587708]]
+
+maximum reference image centroid = (1097.695394,1126.956902) image flux = 87.364552
+[[  0.           0.           0.        ]
+ [  0.           2.17379475  23.41114044]
+ [  0.           4.96261072  53.44587708]]
