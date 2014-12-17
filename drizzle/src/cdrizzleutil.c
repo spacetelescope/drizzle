@@ -178,6 +178,12 @@ static const char* interp_string_table[] = {
   NULL
 };
 
+static const char* bool_string_table[] = {
+  "FALSE",
+  "TRUE",
+  NULL
+};
+
 static int
 str2enum(const char* s, const char* table[], int* result, struct driz_error_t* error) {
   const char** it = table;
@@ -247,6 +253,11 @@ interp_enum2str(enum e_interp_t value) {
   assert(value >= 0 && value < interp_LAST);
 
   return interp_string_table[value];
+}
+
+const char*
+bool2str(bool_t value) {
+  return bool_string_table[value ? 1 : 0];
 }
 
 /*****************************************************************

@@ -9,9 +9,6 @@
 
 #include <numpy/arrayobject.h>
 
-#include "astropy_wcs_api.h"
-#include "astropy_wcs.h"
-
 #include "cdrizzleblot.h"
 #include "cdrizzlebox.h"
 #include "cdrizzlemap.h"
@@ -331,42 +328,42 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
  */
 
 static PyObject *
-test_cdrizzlepac(PyObject *self, PyObject *args)
+test_cdrizzle(PyObject *self, PyObject *args)
 {
   PyObject *data, *weights, *pixmap, *output_data, *output_counts, *output_context;
   PyArrayObject *dat, *wei, *map, *odat, *ocnt, *ocon;
 
   int argc = 1;
-  char *argv[] = {"utest_cdrizzlepac", NULL};
+  char *argv[] = {"utest_cdrizzle", NULL};
   
-  if (!PyArg_ParseTuple(args,"OOOOOO:test_cdrizzlepac", &data, &weights, &pixmap,
+  if (!PyArg_ParseTuple(args,"OOOOOO:test_cdrizzle", &data, &weights, &pixmap,
                                           &output_data, &output_counts, &output_context)) {
-    return PyErr_Format(gl_Error, "cdriz.test_cdrizzlepac: Invalid Parameters.");
+    return PyErr_Format(gl_Error, "cdriz.test_cdrizzle: Invalid Parameters.");
   }
 
   dat = (PyArrayObject *)PyArray_ContiguousFromAny(data, PyArray_FLOAT, 2, 2);
   if (! dat) {
-    return PyErr_Format(gl_Error, "cdriz.test_cdrizzlepac: Invalid Data Array.");
+    return PyErr_Format(gl_Error, "cdriz.test_cdrizzle: Invalid Data Array.");
   }
 
   wei = (PyArrayObject *)PyArray_ContiguousFromAny(weights, PyArray_FLOAT, 2, 2);
   if (! wei) {
-    return PyErr_Format(gl_Error, "cdriz.test_cdrizzlepac: Invalid Weghts Array.");
+    return PyErr_Format(gl_Error, "cdriz.test_cdrizzle: Invalid Weghts Array.");
   }
 
   map = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, PyArray_DOUBLE, 3, 3);
   if (! map) {
-    return PyErr_Format(gl_Error, "cdriz.test_cdrizzlepac: Invalid Pixmap.");
+    return PyErr_Format(gl_Error, "cdriz.test_cdrizzle: Invalid Pixmap.");
   }
   
   odat = (PyArrayObject *)PyArray_ContiguousFromAny(output_data, PyArray_FLOAT, 2, 2);
   if (! odat) {
-    return PyErr_Format(gl_Error, "cdriz.test_cdrizzlepac: Invalid Output Data Array.");
+    return PyErr_Format(gl_Error, "cdriz.test_cdrizzle: Invalid Output Data Array.");
   }
 
   ocnt = (PyArrayObject *)PyArray_ContiguousFromAny(output_counts, PyArray_FLOAT, 2, 2);
   if (! ocnt) {
-    return PyErr_Format(gl_Error, "cdriz.test_cdrizzlepac: Invalid Output Counts Array.");
+    return PyErr_Format(gl_Error, "cdriz.test_cdrizzle: Invalid Output Counts Array.");
   }
 
   ocon = (PyArrayObject *)PyArray_ContiguousFromAny(output_context, PyArray_INT32, 2, 2);
@@ -375,7 +372,7 @@ test_cdrizzlepac(PyObject *self, PyObject *args)
   }
 
   set_test_arrays(dat, wei, map, odat, ocnt, ocon);
-  utest_cdrizzlepac(argc, argv);
+  utest_cdrizzle(argc, argv);
   
   return Py_BuildValue("");
 }
@@ -390,8 +387,8 @@ static PyMethodDef cdriz_methods[] =
     "tdriz(image, weight, output, outweight, context, uniqid,  xmin, ymin, scale, pfract, kernel, inun, expin, wtscl, fill, nmiss, nskip, pixmap)"},
     {"tblot",  (PyCFunction)tblot, METH_VARARGS|METH_KEYWORDS,
     "tblot(image, output, xmin, xmax, ymin, ymax, scale, kscale, interp, ef, misval, sinscl, pixmap)"},
-    {"test_cdrizzlepac", test_cdrizzlepac, METH_VARARGS,
-    "test_cdrizzlepac(data, weights, pixmap, output_data, output_counts)"},
+    {"test_cdrizzle", test_cdrizzle, METH_VARARGS,
+    "test_cdrizzle(data, weights, pixmap, output_data, output_counts)"},
     {0, 0, 0, 0}                             /* sentinel */
   };
 
@@ -407,5 +404,4 @@ void initcdriz(void)
     return;
 
   import_array();
-  import_astropy_wcs();
 }

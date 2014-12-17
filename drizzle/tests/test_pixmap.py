@@ -17,7 +17,7 @@ PROJECT_DIR = os.path.abspath(os.path.join(TEST_DIR, ".."))
 sys.path.append(TEST_DIR)
 sys.path.append(PROJECT_DIR)
 
-from drizzlepac.calc_pixmap import calc_pixmap
+from drizzle.calc_pixmap import calc_pixmap
 
 class TestPixmap(object):
 

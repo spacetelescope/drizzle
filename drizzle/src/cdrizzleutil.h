@@ -268,6 +268,9 @@ unit_enum2str(enum e_unit_t value);
 const char*
 interp_enum2str(enum e_interp_t value);
 
+const char*
+bool2str(bool_t value);
+
 /*****************************************************************
  NUMERICAL UTILITIES
 */
