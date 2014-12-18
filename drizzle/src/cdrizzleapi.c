@@ -338,32 +338,32 @@ test_cdrizzle(PyObject *self, PyObject *args)
   
   if (!PyArg_ParseTuple(args,"OOOOOO:test_cdrizzle", &data, &weights, &pixmap,
                                           &output_data, &output_counts, &output_context)) {
-    return PyErr_Format(gl_Error, "cdriz.test_cdrizzle: Invalid Parameters.");
+    return NULL;
   }
 
   dat = (PyArrayObject *)PyArray_ContiguousFromAny(data, PyArray_FLOAT, 2, 2);
   if (! dat) {
-    return PyErr_Format(gl_Error, "cdriz.test_cdrizzle: Invalid Data Array.");
+    return PyErr_Format(gl_Error, "Invalid data array.");
   }
 
   wei = (PyArrayObject *)PyArray_ContiguousFromAny(weights, PyArray_FLOAT, 2, 2);
   if (! wei) {
-    return PyErr_Format(gl_Error, "cdriz.test_cdrizzle: Invalid Weghts Array.");
+    return PyErr_Format(gl_Error, "Invalid weghts array.");
   }
 
   map = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, PyArray_DOUBLE, 3, 3);
   if (! map) {
-    return PyErr_Format(gl_Error, "cdriz.test_cdrizzle: Invalid Pixmap.");
+    return PyErr_Format(gl_Error, "Invalid pixmap.");
   }
   
   odat = (PyArrayObject *)PyArray_ContiguousFromAny(output_data, PyArray_FLOAT, 2, 2);
   if (! odat) {
-    return PyErr_Format(gl_Error, "cdriz.test_cdrizzle: Invalid Output Data Array.");
+    return PyErr_Format(gl_Error, "Invalid output data array.");
   }
 
   ocnt = (PyArrayObject *)PyArray_ContiguousFromAny(output_counts, PyArray_FLOAT, 2, 2);
   if (! ocnt) {
-    return PyErr_Format(gl_Error, "cdriz.test_cdrizzle: Invalid Output Counts Array.");
+    return PyErr_Format(gl_Error, "Invalid output counts array.");
   }
 
   ocon = (PyArrayObject *)PyArray_ContiguousFromAny(output_context, PyArray_INT32, 2, 2);
@@ -381,7 +381,7 @@ test_cdrizzle(PyObject *self, PyObject *args)
  * Table of functions callable from python
 */
 
-static PyMethodDef cdriz_methods[] =
+static PyMethodDef cdrizzle_methods[] =
   {
     {"tdriz",  (PyCFunction)tdriz, METH_VARARGS|METH_KEYWORDS,
     "tdriz(image, weight, output, outweight, context, uniqid,  xmin, ymin, scale, pfract, kernel, inun, expin, wtscl, fill, nmiss, nskip, pixmap)"},
@@ -395,11 +395,11 @@ static PyMethodDef cdriz_methods[] =
 /** --------------------------------------------------------------------------------------------------
  */
 
-void initcdriz(void)
+void initcdrizzle(void)
 {
   PyObject* m;
 
-  m = Py_InitModule("cdriz", cdriz_methods);
+  m = Py_InitModule("cdrizzle", cdrizzle_methods);
   if (m == NULL)
     return;
 

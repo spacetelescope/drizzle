@@ -5,7 +5,7 @@ import glob
 import os.path
 import numpy as np
 import drizzle
-import drizzle.cdriz
+import drizzle.cdrizzle
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
@@ -42,9 +42,9 @@ class TestDrizzle(object):
         """
         Call C unit tests for cdrizzle, which are in the src/tests directory
         """
-        drizzle.cdriz.test_cdrizzle(self.data, self.weights, self.pixmap,
-                                    self.output_data, self.output_counts,
-                                    self.output_context)
+        drizzle.cdrizzle.test_cdrizzle(self.data, self.weights, self.pixmap,
+                                       self.output_data, self.output_counts,
+                                       self.output_context)
 
 if __name__ == "__main__":
     go = TestDrizzle(100)

@@ -18,7 +18,7 @@ def get_extensions():
 
     test_source = os.path.join('tests', 'utest_cdrizzle.c')
 
-    cdriz_sources = ['arrdrizmodule.c',
+    cdriz_sources = ['cdrizzleapi.c',
                      'cdrizzleblot.c',
                      'cdrizzlebox.c',
                      'cdrizzlemap.c',
@@ -33,7 +33,7 @@ def get_extensions():
     cfg['include_dirs'].append('numpy')
     cfg['include_dirs'].append(str(os.path.join(ROOT, 'src')))
                                
-    return [Extension(str('drizzle.cdriz'), sources, **cfg)]
+    return [Extension(str('drizzle.cdrizzle'), sources, **cfg)]
 
 def get_external_libraries():
     return []
