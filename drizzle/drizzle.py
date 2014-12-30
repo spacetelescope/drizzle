@@ -20,6 +20,7 @@ from astropy.io import fits
 
 # LOCAL
 from . import util
+from . import doblot
 from . import dodrizzle
 
 ##__all__ = ['Drizzle']
@@ -223,6 +224,53 @@ class Drizzle(object):
                             pixfrac=self.pixfrac, kernel=self.kernel,
                             fillval=self.fillval)
 
+    def blot_fits_file(self, infile="",  interp='poly5', sinscl=1.0):
+        """
+        Resample an output image using corrdinates read from a file
+        """
+        inheader = None
+        if not util.is_blank(infile):
+            fileroot, extn = util.parse_filename(infile)
+            extname = util.parse_extn(extn)
+
+            if os.path.exists(fileroot):
+                handle = fits.open(fileroot)
+        
+                if extname[0] == "":
+                    try:
+                        idx = handle.index_of("SCI")
+                    except:
+                        idx = handle.index_of("PRIMARY")
+
+                    inheader = handle[idx].header
+
+                else:
+                    try:
+                        idx = handle.index_of(extname)
+                    except:
+                        idx = None
+                    
+                    if idx is not None:
+                        inheader = handle[idx].header
+                    
+                handle.close()
+
+        if not inheader: raise ValueError("Drizzle cannot find input file")           
+        blotwcs = wcs.WCS(header=inheader)
+
+        self.blot_image(blotwcs, interp=interp, sinscl=sinscl)
+    
+    def blot_image(self, blotwcs, interp='poly5', sinscl=1.0):
+        """
+        Resample the output inage onto a different grid
+        """
+
+        util.set_pscale(blotwcs)
+        self.outsci = doblot.doblot(self.outsci, self.outwcs, blotwcs, 
+                                    1.0, interp=interp, sinscl=sinscl)
+        ##scale outwcs to match inwcs
+        ##self.outwcs = blotwcs
+        
     def write(self, outfile=""):
         """
         Write the drizzled image to a file

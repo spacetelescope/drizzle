@@ -33,6 +33,7 @@ distribute-*.tar.gz
 # Other
 .*.swp
 *~
+drizzle/tests/data/difference_*
 
 # Mac OSX
 .DS_Store

@@ -306,7 +306,7 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
   if (driz_error_check(&error, "kscale must be > 0", p.kscale > 0.0)) goto _exit;
   if (driz_error_check(&error, "exposure time must be > 0", p.ef > 0.0)) goto _exit;
 
-  if(doblot(&p)) goto _exit;
+  if (doblot(&p)) goto _exit;
 
  _exit:
   Py_DECREF(img);

@@ -493,6 +493,156 @@ class TestDriz(object):
             #assert(med_diff < 1.0e-6)
             #assert(max_diff < 1.0e-5)
 
+    def test_blot_with_point(self):
+        """
+        Test do_blot with point image
+        """
+        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        output = os.path.join(DATA_DIR, 'output_blot_point.fits')
+        output_difference = os.path.join(DATA_DIR, 'difference_blot_point.txt')
+        output_template = os.path.join(DATA_DIR, 'reference_blot_point.fits')
+        
+        outsci = self.read_image(input)
+        outwcs = self.read_wcs(input)
+        outsci = self.make_point_image(outsci, (500, 200), 40.0)
+        inwcs = self.read_wcs(output_template)
+
+        driz = drizzle.drizzle.Drizzle(outwcs=outwcs)
+        driz.outsci = outsci
+
+        driz.blot_image(inwcs)
+
+        if self.ok:
+            driz.write(outfile=output_template)
+        else:
+            driz.write(outfile=output)
+            template_data = self.read_image(output_template)
+
+            (min_diff, med_diff, max_diff) = self.centroid_statistics("blot with point", output_difference,
+                                                                      driz.outsci, template_data, 20.0, 16)
+            assert(med_diff < 1.0e-6)
+            assert(max_diff < 1.0e-5)
+
+    def test_blot_with_default(self):
+        """
+        Test do_blot with default grid image
+        """
+        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        output = os.path.join(DATA_DIR, 'output_blot_default.fits')
+        output_difference = os.path.join(DATA_DIR, 'difference_blot_default.txt')
+        output_template = os.path.join(DATA_DIR, 'reference_blot_default.fits')
+        
+        outsci = self.read_image(input)
+        outsci = self.make_grid_image(outsci, 64, 100.0)
+        outwcs = self.read_wcs(input)
+        inwcs = self.read_wcs(output_template)
+
+        driz = drizzle.drizzle.Drizzle(outwcs=outwcs)
+        driz.outsci = outsci
+
+        driz.blot_image(inwcs)
+
+        if self.ok:
+            driz.write(outfile=output_template)
+        else:
+            driz.write(outfile=output)
+            template_data = self.read_image(output_template)
+
+            (min_diff, med_diff, max_diff) = self.centroid_statistics("blot with defaults", output_difference,
+                                                                      driz.outsci, template_data, 20.0, 16)
+
+            assert(med_diff < 1.0e-6)
+            assert(max_diff < 1.0e-5)
+
+    def test_blot_with_lan3(self):
+        """
+        Test do_blot with lan3 grid image
+        """
+        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        output = os.path.join(DATA_DIR, 'output_blot_lan3.fits')
+        output_difference = os.path.join(DATA_DIR, 'difference_blot_lan3.txt')
+        output_template = os.path.join(DATA_DIR, 'reference_blot_lan3.fits')
+        
+        outsci = self.read_image(input)
+        outsci = self.make_grid_image(outsci, 64, 100.0)
+        outwcs = self.read_wcs(input)
+        inwcs = self.read_wcs(output_template)
+
+        driz = drizzle.drizzle.Drizzle(outwcs=outwcs)
+        driz.outsci = outsci
+
+        driz.blot_image(inwcs, interp="lan3")
+
+        if self.ok:
+            driz.write(outfile=output_template)
+        else:
+            driz.write(outfile=output)
+            template_data = self.read_image(output_template)
+
+            (min_diff, med_diff, max_diff) = self.centroid_statistics("blot with lan3", output_difference,
+                                                                      driz.outsci, template_data, 20.0, 16)
+
+            assert(med_diff < 1.0e-6)
+            assert(max_diff < 1.0e-5)
+
+    def test_blot_with_lan5(self):
+        """
+        Test do_blot with lan5 grid image
+        """
+        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        output = os.path.join(DATA_DIR, 'output_blot_lan5.fits')
+        output_difference = os.path.join(DATA_DIR, 'difference_blot_lan5.txt')
+        output_template = os.path.join(DATA_DIR, 'reference_blot_lan5.fits')
+        
+        outsci = self.read_image(input)
+        outsci = self.make_grid_image(outsci, 64, 100.0)
+        outwcs = self.read_wcs(input)
+        inwcs = self.read_wcs(output_template)
+
+        driz = drizzle.drizzle.Drizzle(outwcs=outwcs)
+        driz.outsci = outsci
+
+        driz.blot_image(inwcs, interp="lan5")
+
+        if self.ok:
+            driz.write(outfile=output_template)
+        else:
+            driz.write(outfile=output)
+            template_data = self.read_image(output_template)
+
+            (min_diff, med_diff, max_diff) = self.centroid_statistics("blot with lan5", output_difference,
+                                                                      driz.outsci, template_data, 20.0, 16)
+
+            assert(med_diff < 1.0e-6)
+            assert(max_diff < 1.0e-5)
+
+    def test_blot_with_image(self):
+        """
+        Test do_blot with full image
+        """
+        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        output = os.path.join(DATA_DIR, 'output_blot_image.fits')
+        output_difference = os.path.join(DATA_DIR, 'difference_bot_image.fits')
+        output_template = os.path.join(DATA_DIR, 'reference_blot_image.fits')
+        
+        outsci = self.read_image(input)
+        outwcs = self.read_wcs(input)
+        inwcs = self.read_wcs(output_template)
+
+        driz = drizzle.drizzle.Drizzle(outwcs=outwcs)
+        driz.outsci = outsci
+
+        driz.blot_image(inwcs)
+
+        if self.ok:
+            driz.write(outfile=output_template)
+        else:
+            driz.write(outfile=output)
+            template_data = self.read_image(output_template)
+
+            #assert(med_diff < 1.0e-6)
+            #assert(max_diff < 1.0e-5)
+
 if __name__ == "__main__":
     go = TestDriz()
     go.test_square_with_point()
@@ -504,4 +654,9 @@ if __name__ == "__main__":
     go.test_point_with_grid()
     go.test_square_with_image()
     go.test_turbo_with_image()
+    go.test_blot_with_point()
+    go.test_blot_with_default()
+    go.test_blot_with_lan3()
+    go.test_blot_with_lan5()
+    go.test_blot_with_image()
 
