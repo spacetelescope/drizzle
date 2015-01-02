@@ -13,6 +13,10 @@ MANIFEST
 .coverage
 docs/api/
 
+# Test output
+drizzle/tests/data/difference_*
+drizzle/tests/data/output_*
+
 # Sphinx
 _build
 

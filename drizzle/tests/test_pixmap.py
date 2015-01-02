@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import print_function, absolute_import
+
 import sys
 import glob
 import nose
@@ -7,8 +9,9 @@ import os.path
 import numpy as np
 import numpy.testing as npt
 
+from astropy import wcs
 from astropy.io import fits
-import stwcs
+
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
@@ -55,7 +58,7 @@ class TestPixmap(object):
         input_header = input_hdu[1].header
         input_shape = input_hdu[1].data.shape
     
-        input_wcs = stwcs.wcsutil.HSTWCS(input_hdu, 1)
+        input_wcs = wcs.WCS(input_hdu[1].header)
         naxis1 = input_wcs._naxis1
         naxis2 = input_wcs._naxis2
         input_hdu.close()
@@ -75,7 +78,7 @@ class TestPixmap(object):
         first_hdu = fits.open(first_file)
         first_header = first_hdu[1].header
         
-        first_wcs = stwcs.wcsutil.HSTWCS(first_hdu, 1)
+        first_wcs = wcs.WCS(first_header)
         naxis1 = first_wcs._naxis1
         naxis2 = first_wcs._naxis2
         first_hdu.close()
@@ -84,7 +87,7 @@ class TestPixmap(object):
         second_hdu = fits.open(second_file)
         second_header = second_hdu[1].header
         
-        second_wcs = stwcs.wcsutil.HSTWCS(second_hdu, 1)
+        second_wcs = wcs.WCS(second_header)
         second_hdu.close()
 
         ok_pixmap = np.indices((naxis1, naxis2), dtype='float32') - 2.0
