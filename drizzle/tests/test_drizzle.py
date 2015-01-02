@@ -250,9 +250,9 @@ class TestDriz(object):
         driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
         
         if self.ok:
-            driz.write(outfile=output_template)
+            driz.write(output_template)
         else:
-            driz.write(outfile=output)
+            driz.write(output)
             template_data = self.read_image(output_template)
 
             (min_diff, med_diff, max_diff) = self.centroid_statistics("square with point", output_difference,
@@ -280,9 +280,9 @@ class TestDriz(object):
         driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
         
         if self.ok:
-            driz.write(outfile=output_template)
+            driz.write(output_template)
         else:
-            driz.write(outfile=output)
+            driz.write(output)
             template_data = self.read_image(output_template)
             
             (min_diff, med_diff, max_diff) = self.centroid_statistics("square with grid", output_difference,
@@ -310,9 +310,9 @@ class TestDriz(object):
         driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
         
         if self.ok:
-            driz.write(outfile=output_template)
+            driz.write(output_template)
         else:
-            driz.write(outfile=output)
+            driz.write(output)
             template_data = self.read_image(output_template)
             
             (min_diff, med_diff, max_diff) = self.centroid_statistics("turbo with grid", output_difference,
@@ -340,9 +340,9 @@ class TestDriz(object):
         driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
         
         if self.ok:
-            driz.write(outfile=output_template)
+            driz.write(output_template)
         else:
-            driz.write(outfile=output)
+            driz.write(output)
             template_data = self.read_image(output_template)
             
             (min_diff, med_diff, max_diff) = self.centroid_statistics("gaussian with grid", output_difference,
@@ -370,9 +370,9 @@ class TestDriz(object):
         driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
         
         if self.ok:
-            driz.write(outfile=output_template)
+            driz.write(output_template)
         else:
-            driz.write(outfile=output)
+            driz.write(output)
             template_data = self.read_image(output_template)
             
             (min_diff, med_diff, max_diff) = self.centroid_statistics("lanczos with grid", output_difference,
@@ -400,9 +400,9 @@ class TestDriz(object):
         driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
         
         if self.ok:
-            driz.write(outfile=output_template)
+            driz.write(output_template)
         else:
-            driz.write(outfile=output)
+            driz.write(output)
             template_data = self.read_image(output_template)
             
             (min_diff, med_diff, max_diff) = self.centroid_statistics("tophat with grid", output_difference,
@@ -430,9 +430,9 @@ class TestDriz(object):
         driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
         
         if self.ok:
-            driz.write(outfile=output_template)
+            driz.write(output_template)
         else:
-            driz.write(outfile=output)
+            driz.write(output)
             template_data = self.read_image(output_template)
             
             (min_diff, med_diff, max_diff) = self.centroid_statistics("point with grid", output_difference,
@@ -459,9 +459,9 @@ class TestDriz(object):
         driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
         
         if self.ok:
-            driz.write(outfile=output_template)
+            driz.write(output_template)
         else:
-            driz.write(outfile=output)
+            driz.write(output)
             template_data = self.read_image(output_template)
             
             #assert(med_diff < 1.0e-6)
@@ -485,9 +485,9 @@ class TestDriz(object):
         driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
         
         if self.ok:
-            driz.write(outfile=output_template)
+            driz.write(output_template)
         else:
-            driz.write(outfile=output)
+            driz.write(output)
             template_data = self.read_image(output_template)
             
             #assert(med_diff < 1.0e-6)
@@ -513,9 +513,9 @@ class TestDriz(object):
         driz.blot_image(inwcs)
 
         if self.ok:
-            driz.write(outfile=output_template)
+            driz.write(output_template)
         else:
-            driz.write(outfile=output)
+            driz.write(output)
             template_data = self.read_image(output_template)
 
             (min_diff, med_diff, max_diff) = self.centroid_statistics("blot with point", output_difference,
@@ -543,9 +543,9 @@ class TestDriz(object):
         driz.blot_image(inwcs)
 
         if self.ok:
-            driz.write(outfile=output_template)
+            driz.write(output_template)
         else:
-            driz.write(outfile=output)
+            driz.write(output)
             template_data = self.read_image(output_template)
 
             (min_diff, med_diff, max_diff) = self.centroid_statistics("blot with defaults", output_difference,
@@ -574,9 +574,9 @@ class TestDriz(object):
         driz.blot_image(inwcs, interp="lan3")
 
         if self.ok:
-            driz.write(outfile=output_template)
+            driz.write(output_template)
         else:
-            driz.write(outfile=output)
+            driz.write(output)
             template_data = self.read_image(output_template)
 
             (min_diff, med_diff, max_diff) = self.centroid_statistics("blot with lan3", output_difference,
@@ -605,9 +605,9 @@ class TestDriz(object):
         driz.blot_image(inwcs, interp="lan5")
 
         if self.ok:
-            driz.write(outfile=output_template)
+            driz.write(output_template)
         else:
-            driz.write(outfile=output)
+            driz.write(output)
             template_data = self.read_image(output_template)
 
             (min_diff, med_diff, max_diff) = self.centroid_statistics("blot with lan5", output_difference,
@@ -635,9 +635,9 @@ class TestDriz(object):
         driz.blot_image(inwcs)
 
         if self.ok:
-            driz.write(outfile=output_template)
+            driz.write(output_template)
         else:
-            driz.write(outfile=output)
+            driz.write(output)
             template_data = self.read_image(output_template)
 
             #assert(med_diff < 1.0e-6)

@@ -27,7 +27,7 @@ from . import dodrizzle
 
 class Drizzle(object):
 
-    def __init__(self, outfile="", outwcs=None, out_units="cps", 
+    def __init__(self, infile="", outwcs=None, out_units="cps", 
                  wt_scl="exptime", pixfrac=1.0, kernel="square", 
                  fillval="INDEF"):
 
@@ -36,19 +36,14 @@ class Drizzle(object):
         self.outcon = None
         self.outwcs = None
 
-        if util.is_blank(outfile):
-            self.outfile = ""
-        else:
-            self.outfile = outfile
-            fileroot, extn = util.parse_filename(outfile)
+        if not util.is_blank(infile):
+            fileroot, extn = util.parse_filename(infile)
 
             if os.path.exists(fileroot):
                 handle = fits.open(fileroot)
-                hdu = util.get_extn(handle, extn=extn)
+                hdu = util.get_extn(handle, extn="SCI")
         
-                if hdu is None:
-                    hdu = util.get_extn(handle, extn="SCI") ## TODO ????
-                else:
+                if hdu is not None:
                     self.outsci = hdu.data.copy().astype(np.float32)
                     self.outwcs = wcs.WCS(hdu.header)
                     del hdu
@@ -90,10 +85,9 @@ class Drizzle(object):
         self.out_units = out_units
         self.pixfrac = float(pixfrac)
 
-        if self.outfile:
+        if infile:
             self.outexptime = util.get_keyword(fileroot, "DRIZEXPT", default=0.0)
             self.uniqid = util.get_keyword(fileroot, "NDRIZIM", default=0)
-            self.skyval = util.get_keyword(fileroot, 'MDRIZSKY')
 
             if (self.outsci is not None and
                 self.outexptime > 0.0 and
@@ -234,16 +228,10 @@ class Drizzle(object):
 
         self.outwcs = blotwcs
         
-    def write(self, outfile=""):
+    def write(self, outfile):
         """
         Write the drizzled image to a file
         """
-        if util.is_blank(outfile):
-            outfile = self.outfile
-
-        if util.is_blank(outfile):
-            raise ValueError("Drizzle was not given an output file name")
-
         fileroot, extn = util.parse_filename(outfile)
 
         if os.path.exists(fileroot):
