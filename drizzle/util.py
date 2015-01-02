@@ -8,13 +8,110 @@ import os.path
 import numpy as np
 from astropy.io import fits
 
+def find_keyword_extn(fimg, keyword, value=None):
+    """
+    This function will return the index of the extension in a multi-extension
+    FITS file which contains the desired keyword with the given value.
+    """
+
+    i = 0
+    extnum = -1
+    # Search through all the extensions in the FITS object
+    for chip in fimg:
+        hdr = chip.header
+        # Check to make sure the extension has the given keyword
+        if keyword in hdr:
+            if value is not None:
+                # If it does, then does the value match the desired value
+                # MUST use 'str.strip' to match against any input string!
+                if hdr[keyword].strip() == value:
+                    extnum = i
+                    break
+            else:
+                extnum = i
+                break
+        i += 1
+    # Return the index of the extension which contained the
+    # desired EXTNAME value.
+    return extnum
+
+def get_extn(fimg, extn=''):
+    """
+    Returns the FITS extension corresponding to extension specified in
+    filename. Defaults to returning the first extension with data or the 
+    primary extension, if none have data.
+    """
+
+    if extn:
+        try:
+            _extn = parse_extn(extn)
+            _e = fimg.index_of(extn)
+        except KeyError:
+            _e = None
+
+        if _e is None:
+            _extn = None
+        else:
+            _extn = fimg[_e]
+
+    else:
+        # If no extension is provided, search for first extension
+        # in FITS file with data associated with it.
+
+        # Set up default to point to PRIMARY extension.
+        _extn = fimg[0]
+        # then look for first extension with data.
+        for _e in fimg:
+            if _e.data is not None:
+                _extn = _e
+                break
+
+    return _extn    
+
+def get_keyword(filename, keyword, default=None):
+    """
+    General, write-safe method for returning a keyword value from the header of
+    an image.
+    """
+
+    value = None
+    if keyword:
+        # Insure that there is at least 1 extension specified...
+        if filename.find('[') < 0:
+            filename += '[0]'
+    
+        _fname, _extn = parse_filename(filename)
+        _fimg = fits.open(_fname)
+    
+        # Address the correct header
+        _extn = get_extn(_fimg, _extn)
+    
+        if _extn is not None:
+            _hdr = _extn.header
+            try:
+                value =  _hdr[keyword]
+            except KeyError:
+                _nextn = find_keyword_extn(_fimg, keyword)
+                try:
+                    value = _fimg[_nextn].header[keyword]
+                except KeyError:
+                    value = None
+        
+        _fimg.close()
+        del _fimg
+
+    if value is None and default is not None:
+        value = default
+
+    return value
+
 def is_blank(val):
     """
     Determines whether or not a value is considered 'blank'.
     """
     return val.strip() == ""
 
-def parse_extn(extn=None):
+def parse_extn(extn=''):
     """
     Parse a string representing a qualified fits extension name as in the
     output of parse_filename and return a tuple (str(extname), int(extver)),
@@ -58,7 +155,7 @@ def parse_filename(filename):
         _extn = filename[_indx+1:-1]
     else:
         _fname = filename
-        _extn = None
+        _extn = ''
 
     return _fname, _extn
 
