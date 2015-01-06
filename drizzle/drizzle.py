@@ -41,7 +41,6 @@ class Drizzle(object):
 
         Parameters
         ----------
-        
         infile: A fits file containing results from a previous run. The three
             extensions SCI, WHT, and CTX contain the combined image, total counts
             and image id bitmap, repectively. The WCS of the combined image is also
@@ -173,7 +172,6 @@ class Drizzle(object):
         
         Parameters
         ----------
-
         infile: The name of the fits file, possibly including an extension.
         
         inweight: The name of a file containing a pixel by pixel weighting
@@ -267,6 +265,8 @@ class Drizzle(object):
         by calling this lower level method. `Add_fits_file` calls this
         method after doing its setup.
         
+        Parameters
+        ----------
         insci: A 2d numpy array containing the input image to be drizzled.
             it is an error to not supply an image.
         
@@ -327,7 +327,6 @@ class Drizzle(object):
             raise ValueError(missing_data)
         else:
             util.set_pscale(inwcs)
-            util.set_orient(inwcs)
 
         if self.wt_scl == "exptime":
             wt_scl = expin
@@ -350,6 +349,8 @@ class Drizzle(object):
         Resample an output image using a world coordinate system read
         from an input file.
         
+        Parameters
+        ----------
         infile: The name of the fits file containing the world coordinate
             system that the output file will be resampled to. The name may
             possibly include an extension.
@@ -385,6 +386,8 @@ class Drizzle(object):
         """
         Resample an output image using a world coordinate system.
         
+        Parameters
+        ----------
         blotwcs: The world coordinate system to resample on.
 
         interp: The type of interpolation used in the resampling. The
@@ -414,6 +417,8 @@ class Drizzle(object):
         to account for the possibility that there are more than 32 input
         images.
         
+        Parameters
+        ----------
         outfile: The name of the output file. If the file already exists,
             the old file is deleted after writing the new file.
 
@@ -421,7 +426,7 @@ class Drizzle(object):
             (counts per second.) If the units are counts, the resulting
             image will be multiplied by the computed exposure time.
         """
-
+        ## TODO: Add header parameter, copy keywords to primary header
         if out_units != "counts" and out_units != "cps":
             raise ValueError("Illegal value for out_units: %s" % str(out_units))
 

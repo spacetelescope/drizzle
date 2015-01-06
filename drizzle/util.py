@@ -13,6 +13,18 @@ def find_keyword_extn(fimg, keyword, value=None):
     """
     This function will return the index of the extension in a multi-extension
     FITS file which contains the desired keyword with the given value.
+    
+    Parameters
+    ----------
+    fimg: A list of header data units
+    
+    keyword: The keyword to search for
+    
+    value: If set, the value the keyword must have to match
+    
+    Returns
+    -------
+    The index of the extension
     """
 
     i = 0
@@ -41,6 +53,16 @@ def get_extn(fimg, extn=''):
     Returns the FITS extension corresponding to extension specified in
     filename. Defaults to returning the first extension with data or the 
     primary extension, if none have data.
+    
+    Parameters
+    ----------
+    fimg: A list of header data units
+
+    extn: The extension name and version to match
+    
+    Returns
+    -------
+    The matching header data unit
     """
 
     if extn:
@@ -73,6 +95,18 @@ def get_keyword(fimg, keyword, default=None):
     """
     Return a keyword value from the header of an image,
     or the default if the keyword is not found.
+    
+    Parameters
+    ----------
+    fimg: A list of header data units
+    
+    keyword: The keyword value to search for
+    
+    default: The default value if not found
+    
+    Returns
+    -------
+    The value if found or default if not
     """
 
     value = None
@@ -88,11 +122,19 @@ def get_keyword(fimg, keyword, default=None):
 
     return value
 
-def is_blank(val):
+def is_blank(value):
     """
     Determines whether or not a value is considered 'blank'.
+    
+    Parameters
+    ----------
+    value: The value to check
+    
+    Returns
+    -------
+    True or False
     """
-    return val.strip() == ""
+    return value.strip() == ""
 
 def parse_extn(extn=''):
     """
@@ -109,6 +151,14 @@ def parse_extn(extn=''):
         ('', 2)
         >>>parse_extn('sci')
         ('sci', 1)
+        
+    Parameters
+    ----------
+    extn: The extension name
+    
+    Returns
+    -------
+    A tuple of the extension name and value
     """
     if not extn:
         return ('', 0)
@@ -129,6 +179,14 @@ def parse_filename(filename):
     """
     Parse out filename from any specified extensions.
     Returns rootname and string version of extension name.
+    
+    Parameters
+    ----------
+    filename: The filename to be parsed
+    
+    Returns
+    -------
+    A tuple with the filename root and extension
     """
     # Parse out any extension specified in filename
     _indx = filename.find('[')
@@ -142,17 +200,15 @@ def parse_filename(filename):
 
     return _fname, _extn
 
-def set_orient(the_wcs):
-    """
-    Computes ORIENTAT from the CD matrix
-    """
-    cd12 = the_wcs.wcs.cd[0][1]
-    cd22 = the_wcs.wcs.cd[1][1]
-    the_wcs.orientat = np.rad2deg(np.arctan2(cd12,cd22))
-
 def set_pscale(the_wcs):
     """
-    Calculates the plate scale from the CD matrix
+    Calculates the plate scale from the CD matrix and adds it to
+    the WCS. Plate scale is not part of the WCS standard, but is
+    required by the drizzle code
+    
+    Parameters
+    ----------
+    the_wcs: A WCS object
     """
     cd11 = the_wcs.wcs.cd[0][0]
     cd21 = the_wcs.wcs.cd[1][0]
