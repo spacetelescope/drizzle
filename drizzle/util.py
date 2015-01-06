@@ -6,6 +6,7 @@ import os.path
 
 # THIRD-PARTY
 import numpy as np
+from astropy import wcs
 from astropy.io import fits
 
 def find_keyword_extn(fimg, keyword, value=None):
@@ -68,38 +69,20 @@ def get_extn(fimg, extn=''):
 
     return _extn    
 
-def get_keyword(filename, keyword, default=None):
+def get_keyword(fimg, keyword, default=None):
     """
-    General, write-safe method for returning a keyword value from the header of
-    an image.
+    Return a keyword value from the header of an image,
+    or the default if the keyword is not found.
     """
 
     value = None
     if keyword:
-        # Insure that there is at least 1 extension specified...
-        if filename.find('[') < 0:
-            filename += '[0]'
-    
-        _fname, _extn = parse_filename(filename)
-        _fimg = fits.open(_fname)
-    
-        # Address the correct header
-        _extn = get_extn(_fimg, _extn)
-    
-        if _extn is not None:
-            _hdr = _extn.header
-            try:
-                value =  _hdr[keyword]
-            except KeyError:
-                _nextn = find_keyword_extn(_fimg, keyword)
-                try:
-                    value = _fimg[_nextn].header[keyword]
-                except KeyError:
-                    value = None
+        _nextn = find_keyword_extn(fimg, keyword)
+        try:
+            value = fimg[_nextn].header[keyword]
+        except KeyError:
+            value = None
         
-        _fimg.close()
-        del _fimg
-
     if value is None and default is not None:
         value = default
 
