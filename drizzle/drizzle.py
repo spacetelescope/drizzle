@@ -30,7 +30,7 @@ class Drizzle(object):
     input images.
     """
     def __init__(self, infile="", outwcs=None,  
-                 wt_scl="", pixfrac=1.0, kernel="square", 
+                 wt_scl="exptime", pixfrac=1.0, kernel="square", 
                  fillval="INDEF"):
         r"""
         All parameters are optional, but either infile or outwcs must be supplied.
@@ -463,7 +463,7 @@ class Drizzle(object):
 
         # Update header keyword NDRIZIM to keep track of how many images have
         # been combined in this product so far
-        phdu.header['NDRIZIM'] = self.uniqid
+        phdu.header['NDRIZIM'] = (self.uniqid, 'Drizzle, number of images')
 
         # Update header of output image with exptime used to scale the output data
         # if out_units is not counts, this will simply be a value of 1.0
