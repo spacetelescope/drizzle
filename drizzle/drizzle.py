@@ -102,16 +102,16 @@ class Drizzle(object):
                 self.outexptime = util.get_keyword(handle, "DRIZEXPT", default=0.0)
                 self.uniqid = util.get_keyword(handle, "NDRIZIM", default=0)
 
+                self.sciext = util.get_keyword(handle, "DRIZOUDA", default="SCI")
+                self.whtext = util.get_keyword(handle, "DRIZOUWE", default="WHT")
+                self.ctxext = util.get_keyword(handle, "DRIZOUCO", default="CTX")
+                
                 self.wt_scl = util.get_keyword(handle, "DRIZWTSC", default=wt_scl)
                 self.kernel = util.get_keyword(handle, "DRIZKERN", default=kernel)
                 self.fillval = util.get_keyword(handle, "DRIZFVAL", default=fillval)
                 self.pixfrac = float(util.get_keyword(handle,
                                      "DRIZPIXF", default=pixfrac))
 
-                self.sciext = util.get_keyword(handle, "DRIZOUDA", default="SCI")
-                self.whtext = util.get_keyword(handle, "DRIZOUWE", default="WHT")
-                self.ctxext = util.get_keyword(handle, "DRIZOUCO", default="CTX")
-                
                 out_units = util.get_keyword(handle, "DRIZOUUN", default="cps")
 
                 hdu = util.get_extn(handle, extn=self.sciext)        
@@ -406,7 +406,7 @@ class Drizzle(object):
 
         self.outwcs = blotwcs
         
-    def write(self, outfile, out_units="cps"):
+    def write(self, outfile, out_units="cps", outheader=None):
         """
         Write the output from a set of drizzled images to a file. The
         output file will contain three extensions. The "SCI" extension
@@ -425,59 +425,71 @@ class Drizzle(object):
         out_units: The units of the output image, either `counts` or `cps`
             (counts per second.) If the units are counts, the resulting
             image will be multiplied by the computed exposure time.
+        
+        outheader: Header keywords added to the primary header of the
+            output image.
         """
-        ## TODO: Add header parameter, copy keywords to primary header
+
         if out_units != "counts" and out_units != "cps":
             raise ValueError("Illegal value for out_units: %s" % str(out_units))
 
+        # Write the WCS to the output image
+        
         handle = self.outwcs.to_fits()
+        phdu = handle[0]
 
-        ehdu = fits.ImageHDU()
-        ehdu.header['EXTNAME'] = (self.sciext, 'Extension name')
-        ehdu.header['EXTVER'] = (1, 'Extension version')
+        # Copy the otional header to the primary header
+        
+        if outheader:
+            phdu.header.update(outheader)
 
-        ehdu.header['DRIZOUDA'] = \
+        # Write the class fields to the primary header 
+        phdu.header['DRIZOUDA'] = \
             (self.sciext, 'Drizzle, output data image')
-        ehdu.header['DRIZOUWE'] = \
+        phdu.header['DRIZOUWE'] = \
             (self.whtext, 'Drizzle, output weighting image')
-        ehdu.header['DRIZOUCO'] = \
+        phdu.header['DRIZOUCO'] = \
             (self.ctxext, 'Drizzle, output context image')
-        ehdu.header['DRIZWTSC'] = \
+        phdu.header['DRIZWTSC'] = \
             (self.wt_scl, 'Drizzle, weighting factor for input image')
-        ehdu.header['DRIZKERN'] = \
+        phdu.header['DRIZKERN'] = \
             (self.kernel, 'Drizzle, form of weight distribution kernel')
-        ehdu.header['DRIZPIXF'] = \
+        phdu.header['DRIZPIXF'] = \
             (self.pixfrac, 'Drizzle, linear size of drop') 
-        ehdu.header['DRIZFVAL'] = \
+        phdu.header['DRIZFVAL'] = \
             (self.fillval, 'Drizzle, fill value for zero weight output pix')
-        ehdu.header['DRIZOUUN'] = \
+        phdu.header['DRIZOUUN'] = \
             (out_units, 'Drizzle, units of output image - counts or cps')
 
         # Update header keyword NDRIZIM to keep track of how many images have
         # been combined in this product so far
-        ehdu.header['NDRIZIM'] = self.uniqid
+        phdu.header['NDRIZIM'] = self.uniqid
 
         # Update header of output image with exptime used to scale the output data
         # if out_units is not counts, this will simply be a value of 1.0
         # the keyword 'exptime' will always contain the total exposure time
         # of all input image regardless of the output units
 
-        ehdu.header['EXPTIME'] = \
+        phdu.header['EXPTIME'] = \
             (self.outexptime, 'Drizzle, total exposure time')
         
         outexptime = 1.0
         if out_units == 'counts':
             np.multiply(self.outsci, self.outexptime, self.outsci)
             outexptime = self.outexptime
-        ehdu.header['DRIZEXPT'] = \
+        phdu.header['DRIZEXPT'] = \
         (outexptime, 'Drizzle, exposure time scaling factor')
-    
-        # add output array to output file
+
+        # Add three extensions containing, the drizzled output image,
+        # the total counts, and the context bitmap, in that order
+        
+        ehdu = fits.ImageHDU()
+        ehdu.header['EXTNAME'] = (self.sciext, 'Extension name')
+        ehdu.header['EXTVER'] = (1, 'Extension version')
         ehdu.data = self.outsci
         handle.append(ehdu)
         
         whdu = fits.ImageHDU()
-        whdu.header = ehdu.header.copy()
         whdu.header['EXTNAME'] = (self.whtext, 'Extension name')
         whdu.header['EXTVER'] = (1, 'Extension version')
         whdu.data = self.outwht
@@ -489,14 +501,5 @@ class Drizzle(object):
         xhdu.data = self.outcon
         handle.append(xhdu)
 
-        oldfile = outfile + "~"            
-        if os.path.exists(outfile):
-            if os.path.exists(oldfile):
-                os.remove(oldfile)
-            os.rename(outfile, oldfile)
-            
-        handle.writeto(outfile)
+        handle.writeto(outfile, clobber=True)
         handle.close()
-
-        if os.path.exists(oldfile):
-            os.remove(oldfile)
