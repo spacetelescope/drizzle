@@ -344,7 +344,7 @@ class Drizzle(object):
                             pixfrac=self.pixfrac, kernel=self.kernel,
                             fillval=self.fillval)
 
-    def blot_fits_file(self, infile="",  interp='poly5', sinscl=1.0):
+    def blot_fits_file(self, infile, interp='poly5', sinscl=1.0):
         """
         Resample an output image using a world coordinate system read
         from an input file.
@@ -365,17 +365,17 @@ class Drizzle(object):
         sincscl: The scaling factor for sinc interpolation.
         """
         blotwcs = None
-        if not util.is_blank(infile):
-            fileroot, extn = util.parse_filename(infile)
 
-            if os.path.exists(fileroot):
-                handle = fits.open(fileroot)
-                hdu = util.get_extn(handle, extn=extn)
-    
-                if hdu is not None:
-                    blotwcs = wcs.WCS(header=hdu.header)
-                    del hdu
-                handle.close()
+        fileroot, extn = util.parse_filename(infile)
+
+        if os.path.exists(fileroot):
+            handle = fits.open(fileroot)
+            hdu = util.get_extn(handle, extn=extn)
+
+            if hdu is not None:
+                blotwcs = wcs.WCS(header=hdu.header)
+                del hdu
+            handle.close()
 
         if not blotwcs:
             raise ValueError("Drizzle did not get a blot reference image")
