@@ -20,7 +20,94 @@ def dodrizzle(insci, input_wcs, inwht,
     image. Interface is compatible with STScI code. All images are Python
     ndarrays, instead of filenames. File handling (input and output) is
     performed by the calling routine.
+    
+    Parameters
+    ----------
+    insci: A 2d numpy array containing the input image to be drizzled.
+        it is an error to not supply an image.
+    
+    input_wcs: The world coordinate system of the input image.
+        
+    inwht: A 2d numpy array containing the pixel by pixel weighting.
+        Must have the same dimenstions as insci. If none is supplied,
+        the weghting is set to one.
+        
+    output_wcs: The world coordinate system of the output image. 
+        
+    outsci: A 2d numpy array containing the output image produced by
+        drizzling. On the first call it should be set to zero.
+        Subsequent calls it will hold the intermediate results
+
+    outwht: A 2d numpy array containing the output counts. On the first
+        call it should be set to zero. On subsequent calls it will
+        hold the intermediate results.
+
+    outcon: A 3d numpy array holding a bitmap of which image was input
+        for each output pixel. Should be integer zero on first call.
+        Subsequent calls hold intermediate results.
+
+    expin: The exposure time of the input image, a positive number. The
+        exposure time is used to scale the image if the units are counts.
+            
+    in_units: The units of the input image. The units can either be "counts" 
+        or "cps" (counts per second.) 
+        
+    wt_scl:  A scaling factor for the pixel by pixel weighting.
+    
+    wcslin_pscale: The pixel scale of the input image.
+
+    uniqid: The id number of the input image. Should be one the first time
+        this function is called and incremented by one on each subsequent
+        call.
+
+    xmin: This and the following three parameters set a bounding rectangle
+
+        on the output image. Only pixels on the output image inside this
+        rectangle will have their flux updated. Xmin sets the minimum value
+        of the x dimension. The x dimension is the dimension that varies
+        quickest on the image. If the value is zero or less, no minimum will
+        be set in the x dimension. All four parameters are zero based,
+        counting starts at zero.
+        
+    xmax: Sets the maximum value of the x dimension on the bounding box
+        of the ouput image. If the value is zero or less, no maximum will 
+        be set in the x dimension.
+
+    ymin: Sets the minimum value in the y dimension on the bounding box. The
+        y dimension varies less rapidly than the x and represents the line
+        index on the output image. If the value is zero or less, no minimum 
+        will be set in the y dimension.
+        
+    ymax: Sets the maximum value in the y dimension. If the value is zero or
+        less, no maximum will be set in the y dimension.
+            
+    pixfrac: The fraction of a pixel that the pixel flux is confined to. The
+        default value of 1 has the pixel flux evenly spread across the image.
+        A value of 0.5 confines it to half a pixel in the linear dimension,
+        so the flux is confined to a quarter of the pixel area when the square
+        kernel is used. 
+    
+    kernel: The name of the kernel used to combine the input. The choice of
+        kernel controls the distribution of flux over the kernel. The kernel
+        names are: "square", "gaussian", "point", "tophat", "turbo", "lanczos2",
+        and "lanczos3". The square kernel is the default.
+
+    fillval: The value a pixel is set to in the output if the input image does
+        not overlap it. The default value of INDEF does not set a value.
+
+    stepsize: Was used when input to output mapping was computed
+    internally. Is no longer used and only here for backwards compatibility.
+
+    wcsmap: Was used when input to output mapping was computed
+    internally. Is no longer used and only here for backwards compatibility.
+    
+    Returns
+    -------
+    A tuple with three values: a version string, the number of pixels
+    on the input image that are not on the output image, and the number
+    of complete lines on the input image not on the output image.
     """
+    
     # Insure that the fillval parameter gets properly interpreted for use with tdriz
     if util.is_blank(fillval):
         fillval = 'INDEF'
