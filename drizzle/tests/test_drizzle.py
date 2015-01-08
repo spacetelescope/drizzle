@@ -235,19 +235,19 @@ class TestDriz(object):
         """
         Test do_driz square kernel with point
         """
-        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
         output = os.path.join(DATA_DIR, 'output_square_point.fits')
         output_difference = os.path.join(DATA_DIR, 'difference_square_point.txt')
         output_template = os.path.join(DATA_DIR, 'reference_square_point.fits')
         
-        insci = self.read_image(input)
-        inwcs = self.read_wcs(input)
+        insci = self.read_image(input_file)
+        inwcs = self.read_wcs(input_file)
         insci = self.make_point_image(insci, (500, 200), 100.0)
         inwht = np.ones(insci.shape,dtype=insci.dtype)
         output_wcs = self.read_wcs(output_template)
 
         driz = drizzle.drizzle.Drizzle(outwcs=output_wcs, wt_scl="")
-        driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
+        driz.add_image(insci, inwcs, inwht=inwht)
         
         if self.ok:
             driz.write(output_template)
@@ -265,19 +265,19 @@ class TestDriz(object):
         """
         Test do_driz square kernel with grid
         """
-        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
         output = os.path.join(DATA_DIR, 'output_square_grid.fits')
         output_difference = os.path.join(DATA_DIR, 'difference_square_grid.txt')
         output_template = os.path.join(DATA_DIR, 'reference_square_grid.fits')
         
-        insci = self.read_image(input)
-        inwcs = self.read_wcs(input)
+        insci = self.read_image(input_file)
+        inwcs = self.read_wcs(input_file)
         insci = self.make_grid_image(insci, 64, 100.0)
         inwht = np.ones(insci.shape,dtype=insci.dtype)
         output_wcs = self.read_wcs(output_template)
 
         driz = drizzle.drizzle.Drizzle(outwcs=output_wcs, wt_scl="")
-        driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
+        driz.add_image(insci, inwcs, inwht=inwht)
         
         if self.ok:
             driz.write(output_template)
@@ -295,19 +295,19 @@ class TestDriz(object):
         """
         Test do_driz turbo kernel with grid
         """
-        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
         output = os.path.join(DATA_DIR, 'output_turbo_grid.fits')
         output_difference = os.path.join(DATA_DIR, 'difference_turbo_grid.txt')
         output_template = os.path.join(DATA_DIR, 'reference_turbo_grid.fits')
         
-        insci = self.read_image(input)
-        inwcs = self.read_wcs(input)
+        insci = self.read_image(input_file)
+        inwcs = self.read_wcs(input_file)
         insci = self.make_grid_image(insci, 64, 100.0)
         inwht = np.ones(insci.shape,dtype=insci.dtype)
         output_wcs = self.read_wcs(output_template)
 
         driz = drizzle.drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='turbo')
-        driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
+        driz.add_image(insci, inwcs, inwht=inwht)
         
         if self.ok:
             driz.write(output_template)
@@ -325,19 +325,19 @@ class TestDriz(object):
         """
         Test do_driz gaussian kernel with grid
         """
-        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
         output = os.path.join(DATA_DIR, 'output_gaussian_grid.fits')
         output_difference = os.path.join(DATA_DIR, 'difference_gaussian_grid.txt')
         output_template = os.path.join(DATA_DIR, 'reference_gaussian_grid.fits')
         
-        insci = self.read_image(input)
-        inwcs = self.read_wcs(input)
+        insci = self.read_image(input_file)
+        inwcs = self.read_wcs(input_file)
         insci = self.make_grid_image(insci, 64, 100.0)
         inwht = np.ones(insci.shape,dtype=insci.dtype)
         output_wcs = self.read_wcs(output_template)
 
         driz = drizzle.drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='gaussian')
-        driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
+        driz.add_image(insci, inwcs, inwht=inwht)
         
         if self.ok:
             driz.write(output_template)
@@ -355,19 +355,19 @@ class TestDriz(object):
         """
         Test do_driz lanczos kernel with grid
         """
-        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
         output = os.path.join(DATA_DIR, 'output_lanczos_grid.fits')
         output_difference = os.path.join(DATA_DIR, 'difference_lanczos_grid.txt')
         output_template = os.path.join(DATA_DIR, 'reference_lanczos_grid.fits')
         
-        insci = self.read_image(input)
-        inwcs = self.read_wcs(input)
+        insci = self.read_image(input_file)
+        inwcs = self.read_wcs(input_file)
         insci = self.make_grid_image(insci, 64, 100.0)
         inwht = np.ones(insci.shape,dtype=insci.dtype)
         output_wcs = self.read_wcs(output_template)
 
         driz = drizzle.drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='lanczos3')
-        driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
+        driz.add_image(insci, inwcs, inwht=inwht)
         
         if self.ok:
             driz.write(output_template)
@@ -385,19 +385,19 @@ class TestDriz(object):
         """
         Test do_driz tophat kernel with grid
         """
-        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
         output = os.path.join(DATA_DIR, 'output_tophat_grid.fits')
         output_difference = os.path.join(DATA_DIR, 'difference_tophat_grid.txt')
         output_template = os.path.join(DATA_DIR, 'reference_tophat_grid.fits')
         
-        insci = self.read_image(input)
-        inwcs = self.read_wcs(input)
+        insci = self.read_image(input_file)
+        inwcs = self.read_wcs(input_file)
         insci = self.make_grid_image(insci, 64, 100.0)
         inwht = np.ones(insci.shape,dtype=insci.dtype)
         output_wcs = self.read_wcs(output_template)
 
         driz = drizzle.drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='tophat')
-        driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
+        driz.add_image(insci, inwcs, inwht=inwht)
         
         if self.ok:
             driz.write(output_template)
@@ -415,19 +415,19 @@ class TestDriz(object):
         """
         Test do_driz point kernel with grid
         """
-        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
         output = os.path.join(DATA_DIR, 'output_point_grid.fits')
         output_difference = os.path.join(DATA_DIR, 'difference_point_grid.txt')
         output_template = os.path.join(DATA_DIR, 'reference_point_grid.fits')
         
-        insci = self.read_image(input)
-        inwcs = self.read_wcs(input)
+        insci = self.read_image(input_file)
+        inwcs = self.read_wcs(input_file)
         insci = self.make_grid_image(insci, 64, 100.0)
         inwht = np.ones(insci.shape,dtype=insci.dtype)
         output_wcs = self.read_wcs(output_template)
 
         driz = drizzle.drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='point')
-        driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
+        driz.add_image(insci, inwcs, inwht=inwht)
         
         if self.ok:
             driz.write(output_template)
@@ -445,18 +445,18 @@ class TestDriz(object):
         """
         Test do_driz square kernel
         """
-        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
         output = os.path.join(DATA_DIR, 'output_square_image.fits')
         output_difference = os.path.join(DATA_DIR, 'difference_square_image.txt')
         output_template = os.path.join(DATA_DIR, 'reference_square_image.fits')
         
-        insci = self.read_image(input)
-        inwcs = self.read_wcs(input)
+        insci = self.read_image(input_file)
+        inwcs = self.read_wcs(input_file)
         inwht = np.ones(insci.shape,dtype=insci.dtype)
 
         output_wcs = self.read_wcs(output_template)
         driz = drizzle.drizzle.Drizzle(outwcs=output_wcs, wt_scl="")
-        driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
+        driz.add_image(insci, inwcs, inwht=inwht)
         
         if self.ok:
             driz.write(output_template)
@@ -471,18 +471,18 @@ class TestDriz(object):
         """
         Test do_driz turbo kernel
         """
-        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
         output = os.path.join(DATA_DIR, 'output_turbo_image.fits')
         output_difference = os.path.join(DATA_DIR, 'difference_turbo_image.txt')
         output_template = os.path.join(DATA_DIR, 'reference_turbo_image.fits')
         
-        insci = self.read_image(input)
-        inwcs = self.read_wcs(input)
+        insci = self.read_image(input_file)
+        inwcs = self.read_wcs(input_file)
         inwht = np.ones(insci.shape,dtype=insci.dtype)
 
         output_wcs = self.read_wcs(output_template)
         driz = drizzle.drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='turbo')
-        driz.add_image(insci=insci, inwht=inwht, inwcs=inwcs)
+        driz.add_image(insci, inwcs, inwht=inwht)
         
         if self.ok:
             driz.write(output_template)
@@ -497,13 +497,13 @@ class TestDriz(object):
         """
         Test do_blot with point image
         """
-        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
         output = os.path.join(DATA_DIR, 'output_blot_point.fits')
         output_difference = os.path.join(DATA_DIR, 'difference_blot_point.txt')
         output_template = os.path.join(DATA_DIR, 'reference_blot_point.fits')
         
-        outsci = self.read_image(input)
-        outwcs = self.read_wcs(input)
+        outsci = self.read_image(input_file)
+        outwcs = self.read_wcs(input_file)
         outsci = self.make_point_image(outsci, (500, 200), 40.0)
         inwcs = self.read_wcs(output_template)
 
@@ -527,14 +527,14 @@ class TestDriz(object):
         """
         Test do_blot with default grid image
         """
-        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
         output = os.path.join(DATA_DIR, 'output_blot_default.fits')
         output_difference = os.path.join(DATA_DIR, 'difference_blot_default.txt')
         output_template = os.path.join(DATA_DIR, 'reference_blot_default.fits')
         
-        outsci = self.read_image(input)
+        outsci = self.read_image(input_file)
         outsci = self.make_grid_image(outsci, 64, 100.0)
-        outwcs = self.read_wcs(input)
+        outwcs = self.read_wcs(input_file)
         inwcs = self.read_wcs(output_template)
 
         driz = drizzle.drizzle.Drizzle(outwcs=outwcs)
@@ -558,14 +558,14 @@ class TestDriz(object):
         """
         Test do_blot with lan3 grid image
         """
-        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
         output = os.path.join(DATA_DIR, 'output_blot_lan3.fits')
         output_difference = os.path.join(DATA_DIR, 'difference_blot_lan3.txt')
         output_template = os.path.join(DATA_DIR, 'reference_blot_lan3.fits')
         
-        outsci = self.read_image(input)
+        outsci = self.read_image(input_file)
         outsci = self.make_grid_image(outsci, 64, 100.0)
-        outwcs = self.read_wcs(input)
+        outwcs = self.read_wcs(input_file)
         inwcs = self.read_wcs(output_template)
 
         driz = drizzle.drizzle.Drizzle(outwcs=outwcs)
@@ -589,14 +589,14 @@ class TestDriz(object):
         """
         Test do_blot with lan5 grid image
         """
-        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
         output = os.path.join(DATA_DIR, 'output_blot_lan5.fits')
         output_difference = os.path.join(DATA_DIR, 'difference_blot_lan5.txt')
         output_template = os.path.join(DATA_DIR, 'reference_blot_lan5.fits')
         
-        outsci = self.read_image(input)
+        outsci = self.read_image(input_file)
         outsci = self.make_grid_image(outsci, 64, 100.0)
-        outwcs = self.read_wcs(input)
+        outwcs = self.read_wcs(input_file)
         inwcs = self.read_wcs(output_template)
 
         driz = drizzle.drizzle.Drizzle(outwcs=outwcs)
@@ -620,13 +620,13 @@ class TestDriz(object):
         """
         Test do_blot with full image
         """
-        input = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+        input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
         output = os.path.join(DATA_DIR, 'output_blot_image.fits')
         output_difference = os.path.join(DATA_DIR, 'difference_bot_image.fits')
         output_template = os.path.join(DATA_DIR, 'reference_blot_image.fits')
         
-        outsci = self.read_image(input)
-        outwcs = self.read_wcs(input)
+        outsci = self.read_image(input_file)
+        outwcs = self.read_wcs(input_file)
         inwcs = self.read_wcs(output_template)
 
         driz = drizzle.drizzle.Drizzle(outwcs=outwcs)

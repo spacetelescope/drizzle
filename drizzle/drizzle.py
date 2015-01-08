@@ -43,8 +43,8 @@ class Drizzle(object):
         ----------
         infile: A fits file containing results from a previous run. The three
             extensions SCI, WHT, and CTX contain the combined image, total counts
-            and image id bitmap, repectively. The WCS of the combined image is also
-            read from the SCI extension.
+            and image id bitmap, repectively. The WCS of the combined image is 
+            also read from the SCI extension.
 
         outwcs: The world coordinate system (WCS) of the combined image. This
             parameter must be present if no input file is given and is ignored if
@@ -92,11 +92,8 @@ class Drizzle(object):
         out_units = "cps"
 
         if not util.is_blank(infile):
-            fileroot, extn = util.parse_filename(infile)
-
-            if os.path.exists(fileroot):
-                handle = fits.open(fileroot)
-                self.outwcs = wcs.WCS(handle[0].header)
+            if os.path.exists(infile):
+                handle = fits.open(infile)
 
                 # Read parameters from image header
                 self.outexptime = util.get_keyword(handle, "DRIZEXPT", default=0.0)
@@ -114,20 +111,24 @@ class Drizzle(object):
 
                 out_units = util.get_keyword(handle, "DRIZOUUN", default="cps")
 
-                hdu = util.get_extn(handle, extn=self.sciext)        
-                if hdu is not None:
+                try:
+                    hdu = handle[self.sciext]
                     self.outsci = hdu.data.copy().astype(np.float32)
-                    del hdu
-
-                hdu = util.get_extn(handle, extn=self.whtext)
-                if hdu is not None:
+                    self.outwcs = wcs.WCS(hdu.header, fobj=handle)
+                except KeyError:
+                    pass
+                
+                try:
+                    hdu = handle[self.whtext]
                     self.outwht = hdu.data.copy().astype(np.float32)
-                    del hdu
-
-                hdu = util.get_extn(handle, extn=self.ctxext)
-                if hdu is not None:
+                except KeyError:
+                    pass
+                
+                try:
+                    hdu = handle[self.ctxext]
                     self.outcon = hdu.data.copy().astype(np.int32)
-                    del hdu
+                except KeyError:
+                    pass
 
                 handle.close()
 
@@ -231,7 +232,6 @@ class Drizzle(object):
                     insci = hdu.data
                     inwcs = wcs.WCS(header=hdu.header)
                     insci = hdu.data.copy()
-                    del hdu
                 handle.close()
 
         if not insci:
@@ -246,17 +246,16 @@ class Drizzle(object):
     
                 if hdu is not None:
                     inwht = hdu.data.copy()
-                    del hdu
                 handle.close()
 
         in_units = util.get_keyword(fileroot, unitkey, "cps")
         expin = util.get_keyword(fileroot, expkey, 1.0)
        
-        self.add_image(self, insci=insci, inwht=inwht, inwcs=inwcs,
+        self.add_image(self, insci, inwcs, inwht=inwht, 
                        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax,
                        expin=expin, in_units=in_units, wt_scl=wtscl)
 
-    def add_image(self, insci=None, inwht=None, inwcs=None,
+    def add_image(self, insci, inwcs, inwht=None, 
                   xmin=0, xmax=0, ymin=0, ymax=0,
                   expin=1.0, in_units="cps", wt_scl=1.0):
         r"""
@@ -270,12 +269,12 @@ class Drizzle(object):
         insci: A 2d numpy array containing the input image to be drizzled.
             it is an error to not supply an image.
         
+        inwcs: The world coordinate system of the input image. This is
+            used to convert the pixels to the output coordinate system.
+            
         inwht: A 2d numpy array containing the pixel by pixel weighting.
             Must have the same dimenstions as insci. If none is supplied,
             the weghting is set to one.
-            
-        inwcs: The world coordinate system of the input image. This is
-            used to convert the pixels to the output coordinate system.
             
         xmin: This and the following three parameters set a bounding rectangle
             on the output image. Only pixels on the output image inside this
@@ -313,21 +312,14 @@ class Drizzle(object):
             will be ignored.
         """
 
-        if insci is None:
-            raise ValueError("Drizzle did not get an input image")
-        else:
-            insci = insci.astype(np.float32)
+        insci = insci.astype(np.float32)
+        util.set_pscale(inwcs)
 
         if inwht is None:
             inwht = np.ones(insci.shape, dtype=insci.dtype)
         else:
             inwht = inwht.astype(np.float32)
         
-        if inwcs is None:
-            raise ValueError(missing_data)
-        else:
-            util.set_pscale(inwcs)
-
         if self.wt_scl == "exptime":
             wt_scl = expin
         elif self.wt_scl == "expsq":
@@ -374,7 +366,6 @@ class Drizzle(object):
 
             if hdu is not None:
                 blotwcs = wcs.WCS(header=hdu.header)
-                del hdu
             handle.close()
 
         if not blotwcs:
@@ -437,7 +428,7 @@ class Drizzle(object):
         
         handle = self.outwcs.to_fits()
         phdu = handle[0]
-
+        
         # Copy the otional header to the primary header
         
         if outheader:
@@ -484,21 +475,23 @@ class Drizzle(object):
         # the total counts, and the context bitmap, in that order
         
         ehdu = fits.ImageHDU()
+        ehdu.data = self.outsci
         ehdu.header['EXTNAME'] = (self.sciext, 'Extension name')
         ehdu.header['EXTVER'] = (1, 'Extension version')
-        ehdu.data = self.outsci
+        ehdu.header.update(self.outwcs.to_header())
         handle.append(ehdu)
         
         whdu = fits.ImageHDU()
+        whdu.data = self.outwht
         whdu.header['EXTNAME'] = (self.whtext, 'Extension name')
         whdu.header['EXTVER'] = (1, 'Extension version')
-        whdu.data = self.outwht
+        whdu.header.update(self.outwcs.to_header())
         handle.append(whdu)
             
         xhdu = fits.ImageHDU()
+        xhdu.data = self.outcon
         xhdu.header['EXTNAME'] = (self.ctxext, 'Extension name')
         xhdu.header['EXTVER'] = (1, 'Extension version')
-        xhdu.data = self.outcon
         handle.append(xhdu)
 
         handle.writeto(outfile, clobber=True)

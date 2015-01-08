@@ -210,6 +210,6 @@ def set_pscale(the_wcs):
     ----------
     the_wcs: A WCS object
     """
-    cd11 = the_wcs.wcs.cd[0][0]
-    cd21 = the_wcs.wcs.cd[1][0]
-    the_wcs.pscale = np.sqrt(np.power(cd11,2)+np.power(cd21,2)) * 3600.
+    cd = the_wcs.pixel_scale_matrix
+    the_wcs.pscale = \
+        np.sqrt(np.power(cd[0][0],2)+np.power(cd[1][0],2)) * 3600.
