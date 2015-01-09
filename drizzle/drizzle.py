@@ -234,7 +234,7 @@ class Drizzle(object):
                     insci = hdu.data.copy()
                 handle.close()
 
-        if not insci:
+        if insci is None:
             raise ValueError("Drizzle cannot find input file: %s" % infile)
 
         if not util.is_blank(inweight):
@@ -251,9 +251,9 @@ class Drizzle(object):
         in_units = util.get_keyword(fileroot, unitkey, "cps")
         expin = util.get_keyword(fileroot, expkey, 1.0)
        
-        self.add_image(self, insci, inwcs, inwht=inwht, 
+        self.add_image(insci, inwcs, inwht=inwht, 
                        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax,
-                       expin=expin, in_units=in_units, wt_scl=wtscl)
+                       expin=expin, in_units=in_units, wt_scl=wt_scl)
 
     def add_image(self, insci, inwcs, inwht=None, 
                   xmin=0, xmax=0, ymin=0, ymax=0,

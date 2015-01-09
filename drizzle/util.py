@@ -68,7 +68,11 @@ def get_extn(fimg, extn=''):
     if extn:
         try:
             _extn = parse_extn(extn)
-            _e = fimg.index_of(extn)
+            if _extn[0]:
+                _e = fimg.index_of(_extn)
+            else:
+                _e = _extn[1]
+            
         except KeyError:
             _e = None
 
