@@ -140,8 +140,6 @@ class TestFileIO(object):
         inwcs = self.read_wcs(input_file)
         driz.add_image(image, inwcs)
 
-        import pdb
-        pdb.set_trace()
         header = fits.header.Header()
         header['ONEVAL'] = (1.0, 'test value')
         header['TWOVAL'] = (2.0, 'test value')
