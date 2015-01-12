@@ -1,10 +1,24 @@
-****************
-Drizzle Documentation
-****************
+.. Drizzle documentation master file, created by
+   sphinx-quickstart on Tue Oct 11 09:04:48 2011.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
 
-This is the documentation for the astropy affiliated package drizzle.
+The Drizzle Library 
+===================
 
-Reference/API
-=============
+.. currentmodule:: drizzle
 
-.. automodapi:: drizzle
+Contents:
+
+.. toctree::
+   :maxdepth: 2
+
+   user
+   api
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
