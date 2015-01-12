@@ -417,8 +417,8 @@ class Drizzle(object):
             (counts per second.) If the units are counts, the resulting
             image will be multiplied by the computed exposure time.
         
-        outheader: Header keywords added to the primary header of the
-            output image.
+        outheader: A fits header containing cards to be added to the primary
+            header of the output image.
         """
 
         if out_units != "counts" and out_units != "cps":
@@ -429,11 +429,6 @@ class Drizzle(object):
         handle = self.outwcs.to_fits()
         phdu = handle[0]
         
-        # Copy the otional header to the primary header
-        
-        if outheader:
-            phdu.header.update(outheader)
-
         # Write the class fields to the primary header 
         phdu.header['DRIZOUDA'] = \
             (self.sciext, 'Drizzle, output data image')
@@ -471,27 +466,35 @@ class Drizzle(object):
         phdu.header['DRIZEXPT'] = \
         (outexptime, 'Drizzle, exposure time scaling factor')
 
+        # Copy the optional header to the primary header
+        
+        if outheader:
+            phdu.header.extend(outheader, unique=True)
+
         # Add three extensions containing, the drizzled output image,
         # the total counts, and the context bitmap, in that order
         
+        extheader = self.outwcs.to_header()
+
         ehdu = fits.ImageHDU()
         ehdu.data = self.outsci
         ehdu.header['EXTNAME'] = (self.sciext, 'Extension name')
         ehdu.header['EXTVER'] = (1, 'Extension version')
-        ehdu.header.update(self.outwcs.to_header())
+        ehdu.header.extend(extheader, unique=True)
         handle.append(ehdu)
         
         whdu = fits.ImageHDU()
         whdu.data = self.outwht
         whdu.header['EXTNAME'] = (self.whtext, 'Extension name')
         whdu.header['EXTVER'] = (1, 'Extension version')
-        whdu.header.update(self.outwcs.to_header())
+        whdu.header.extend(extheader, unique=True)
         handle.append(whdu)
             
         xhdu = fits.ImageHDU()
         xhdu.data = self.outcon
         xhdu.header['EXTNAME'] = (self.ctxext, 'Extension name')
         xhdu.header['EXTVER'] = (1, 'Extension version')
+        xhdu.header.extend(extheader, unique=True)
         handle.append(xhdu)
 
         handle.writeto(outfile, clobber=True)

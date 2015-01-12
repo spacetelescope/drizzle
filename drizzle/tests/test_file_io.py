@@ -140,16 +140,19 @@ class TestFileIO(object):
         inwcs = self.read_wcs(input_file)
         driz.add_image(image, inwcs)
 
-        hdu = fits.ImageHDU()
-        hdu.header['ONEVAL'] = 1.0
-        hdu.header['TWOVAL'] = 2.0
-        driz.write(output_file, outheader=hdu.header)
+        import pdb
+        pdb.set_trace()
+        header = fits.header.Header()
+        header['ONEVAL'] = (1.0, 'test value')
+        header['TWOVAL'] = (2.0, 'test value')
+
+        driz.write(output_file, outheader=header)
         driz.write(output_file)
         
         header = self.read_header(output_file)
-        ##assert(header['ONEVAL'] == 1.0)
-        ##assert(header['TWOVAL'] == 2.0)
-        ##assert(header['NDRIZIM'] == 1)
+        assert(header['ONEVAL'] == 1.0)
+        assert(header['TWOVAL'] == 2.0)
+        assert(header['NDRIZIM'] == 1)
 
     def test_add_file(self):
         """
