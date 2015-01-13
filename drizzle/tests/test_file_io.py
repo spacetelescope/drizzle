@@ -145,12 +145,11 @@ class TestFileIO(object):
         header['TWOVAL'] = (2.0, 'test value')
 
         driz.write(output_file, outheader=header)
-        driz.write(output_file)
         
         header = self.read_header(output_file)
         assert(header['ONEVAL'] == 1.0)
         assert(header['TWOVAL'] == 2.0)
-        assert(header['NDRIZIM'] == 1)
+        assert(header['DRIZKERN'] == 'square')
 
     def test_add_file(self):
         """
