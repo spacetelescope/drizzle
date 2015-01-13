@@ -3,7 +3,7 @@ API Documentation
 
 .. currentmodule:: drizzle.drizzle
 
-.. automodapi:: drizzle.drizzle
+.. automodapi::  drizzle.drizzle
 
 .. currentmodule:: drizzle.dodrizzle
 

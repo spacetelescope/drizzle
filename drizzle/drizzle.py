@@ -4,7 +4,7 @@
 
 """
 The `drizzle` module defines the `Drizzle` class, for combining input
-images into a single output image.
+images into a single output image using the drizzle algorithm.
 """
 
 from __future__ import division, print_function, unicode_literals, absolute_import
@@ -26,13 +26,14 @@ from . import dodrizzle
 
 class Drizzle(object):
     """
-    The `Drizzle` class contains the structure and methods used for combining
-    input images.
+    Combine images using the drizzle algorithm
     """
     def __init__(self, infile="", outwcs=None,  
                  wt_scl="exptime", pixfrac=1.0, kernel="square", 
                  fillval="INDEF"):
-        r"""
+        """
+        Create a new Drizzle output object and set the drizzle parameters.
+        
         All parameters are optional, but either infile or outwcs must be supplied.
         If infile initializes the object from a file written after a
         previous run of drizzle. Results from the previous run will be combined
@@ -41,37 +42,38 @@ class Drizzle(object):
 
         Parameters
         ----------
-        infile        
+
+        infile : str, optional       
             A fits file containing results from a previous run. The three
             extensions SCI, WHT, and CTX contain the combined image, total counts
             and image id bitmap, repectively. The WCS of the combined image is 
             also read from the SCI extension.
 
-        outwcs
+        outwcs : wcs, optional
             The world coordinate system (WCS) of the combined image. This
             parameter must be present if no input file is given and is ignored if
             one is.
 
-        wt_scl
+        wt_scl : str, optional
             How each input image should be scaled. The choices are `exptime`
             which scales each image by its exposure time, `expsq` which scales
             each image by the exposure time squared, or an empty string, which
             allows each input image to be scaled individually.
             
-        pixfrac
+        pixfrac : float, optional
             The fraction of a pixel that the pixel flux is confined to. The
             default value of 1 has the pixel flux evenly spread across the image.
             A value of 0.5 confines it to half a pixel in the linear dimension,
             so the flux is confined to a quarter of the pixel area when the square
             kernel is used. 
         
-        kernel
+        kernel : str, optional
             The name of the kernel used to combine the inputs. The choice of
             kernel controls the distribution of flux over the kernel. The kernel
             names are: "square", "gaussian", "point", "tophat", "turbo", "lanczos2",
             and "lanczos3". The square kernel is the default.
 
-        fillval
+        fillval : str, otional
             The value a pixel is set to in the output if the input image does
             not overlap it. The default value of INDEF does not set a value.
         """
@@ -174,20 +176,21 @@ class Drizzle(object):
     def add_fits_file(self, infile, inweight="",
                       xmin=0, xmax=0, ymin=0, ymax=0,
                       unitkey="", expkey="", wt_scl=1.0):
-        r"""
+        """
         Combine a fits file with the output drizzled image. 
         
         Parameters
         ----------
-        infile:
+
+        infile : str
             The name of the fits file, possibly including an extension.
         
-        inweight:
+        inweight : str, otional
             The name of a file containing a pixel by pixel weighting
             of the input data. If it is not set, an array will be generated
             where all values are set to one.
             
-        xmin:
+        xmin : float, otional
             This and the following three parameters set a bounding rectangle
             on the output image. Only pixels on the output image inside this
             rectangle will have their flux updated. Xmin sets the minimum value
@@ -196,36 +199,36 @@ class Drizzle(object):
             be set in the x dimension. All four parameters are zero based,
             counting starts at zero.
             
-        xmax:
+        xmax : float, otional
             Sets the maximum value of the x dimension on the bounding box
             of the ouput image. If the value is zero or less, no maximum will 
             be set in the x dimension.
 
-        ymin:
+        ymin : float, optional
             Sets the minimum value in the y dimension on the bounding box. The
             y dimension varies less rapidly than the x and represents the line
             index on the output image. If the value is zero or less, no minimum 
             will be set in the y dimension.
             
-        ymax:
+        ymax : float, optional
             Sets the maximum value in the y dimension. If the value is zero or
             less, no maximum will be set in the y dimension.
             
-        unitkey :
+        unitkey : string, optional
             The name of the header keyword containing the image units. The 
             units can either be "counts" or "cps" (counts per second.) If it is 
             left blank, the value is assumed to be "cps." If the value is counts, 
             before using the input image it is scaled by dividing it by the
             exposure time.
             
-        expkey:
+        expkey : string, optional
             The name of the header keyword containing the exposure time. The
             exposure time is used to scale the image if the units are counts and
             to scale the image weighting if the drizzle was initialized with
             wt_scl equal to "exptime" or "expsq." If the value of this parameter
             is blank, the exposure time is set to one, implying no scaling.
             
-        wt_scl:
+        wt_scl : float, optional
             If drizzle was initialized with wt_scl left blank, this value will
             set a scaling factor for the pixel weighting. If drizzle was
             initialized with wt_scl set to "exptime" or "expsq", the exposure time
@@ -273,28 +276,30 @@ class Drizzle(object):
     def add_image(self, insci, inwcs, inwht=None, 
                   xmin=0, xmax=0, ymin=0, ymax=0,
                   expin=1.0, in_units="cps", wt_scl=1.0):
-        r"""
-        Combine an input image with the output drizzled image. Instead
-        of reading the parameters from a fits file, you can set them
-        by calling this lower level method. `Add_fits_file` calls this
-        method after doing its setup.
+        """
+        Combine an input image with the output drizzled image.
+        
+        Instead of reading the parameters from a fits file, you can set
+        them by calling this lower level method. `Add_fits_file` calls
+        this method after doing its setup.
         
         Parameters
         ----------
-        insci:
+
+        insci : array
             A 2d numpy array containing the input image to be drizzled.
             it is an error to not supply an image.
         
-        inwcs:
+        inwcs : wcs
             The world coordinate system of the input image. This is
             used to convert the pixels to the output coordinate system.
             
-        inwht:
+        inwht : array, optional
             A 2d numpy array containing the pixel by pixel weighting.
             Must have the same dimenstions as insci. If none is supplied,
             the weghting is set to one.
             
-        xmin:
+        xmin : float, optional
             This and the following three parameters set a bounding rectangle
             on the output image. Only pixels on the output image inside this
             rectangle will have their flux updated. Xmin sets the minimum value
@@ -303,33 +308,33 @@ class Drizzle(object):
             be set in the x dimension. All four parameters are zero based,
             counting starts at zero.
             
-        xmax:
+        xmax : float, optional
             Sets the maximum value of the x dimension on the bounding box
             of the ouput image. If the value is zero or less, no maximum will 
             be set in the x dimension.
 
-        ymin:
+        ymin : float, optional
             Sets the minimum value in the y dimension on the bounding box. The
             y dimension varies less rapidly than the x and represents the line
             index on the output image. If the value is zero or less, no minimum 
             will be set in the y dimension.
             
-        ymax:
+        ymax : float, optional
             Sets the maximum value in the y dimension. If the value is zero or
             less, no maximum will be set in the y dimension.
             
-        expin:
+        expin : float, optional
             The exposure time of the input image, a positive number. The
             exposure time is used to scale the image if the units are counts and
             to scale the image weighting if the drizzle was initialized with
             wt_scl equal to "exptime" or "expsq."
 
-        in_units:
+        in_units : str, optional
             The units of the input image. The units can either be "counts" 
             or "cps" (counts per second.) If the value is counts, before using
             the input image it is scaled by dividing it by the exposure time.
             
-        wt_scl:
+        wt_scl : float, optional
             If drizzle was initialized with wt_scl left blank, this value will
             set a scaling factor for the pixel weighting. If drizzle was
             initialized with wt_scl set to "exptime" or "expsq", the exposure time
@@ -362,18 +367,18 @@ class Drizzle(object):
                             fillval=self.fillval)
 
     def blot_fits_file(self, infile, interp='poly5', sinscl=1.0):
-        r"""
-        Resample an output image using a world coordinate system read
-        from an input file.
+        """
+        Resample the output using another image's world coordinate system.
         
         Parameters
         ----------
-        infile:
+
+        infile : str
             The name of the fits file containing the world coordinate
             system that the output file will be resampled to. The name may
             possibly include an extension.
             
-        interp:
+        interp : str, optional
             The type of interpolation used in the resampling. The
             possible values are "nearest" (nearest neighbor interpolation),
             "linear" (bilinear interpolation), "poly3" (cubic polynomial
@@ -381,7 +386,8 @@ class Drizzle(object):
             "sinc" (sinc interpolation), "lan3" (3rd order Lanczos
             interpolation), and "lan5" (5th order Lanczos interpolation).
             
-        sincscl: The scaling factor for sinc interpolation.
+        sincscl : float, optional
+            The scaling factor for sinc interpolation.
         """
         blotwcs = None
 
@@ -401,15 +407,16 @@ class Drizzle(object):
         self.blot_image(blotwcs, interp=interp, sinscl=sinscl)
     
     def blot_image(self, blotwcs, interp='poly5', sinscl=1.0):
-        r"""
-        Resample an output image using a world coordinate system.
+        """
+        Resample the output image using an input world coordinate system.
         
         Parameters
         ----------
-        blotwcs:
+
+        blotwcs : wcs
             The world coordinate system to resample on.
 
-        interp:
+        interp : str, optional
             The type of interpolation used in the resampling. The
             possible values are "nearest" (nearest neighbor interpolation),
             "linear" (bilinear interpolation), "poly3" (cubic polynomial
@@ -417,7 +424,7 @@ class Drizzle(object):
             "sinc" (sinc interpolation), "lan3" (3rd order Lanczos
             interpolation), and "lan5" (5th order Lanczos interpolation).
             
-        sincscl:
+        sincscl : float, optional
             The scaling factor for sinc interpolation.
         """
 
@@ -428,9 +435,10 @@ class Drizzle(object):
         self.outwcs = blotwcs
         
     def write(self, outfile, out_units="cps", outheader=None):
-        r"""
-        Write the output from a set of drizzled images to a file. The
-        output file will contain three extensions. The "SCI" extension
+        """
+        Write the output from a set of drizzled images to a file.
+        
+        The output file will contain three extensions. The "SCI" extension
         contains the resulting image. The "WHT" extension contains the
         combined weights. The "CTX" extension is a bit map. The nth bit
         is set to one if the nth input image contributed non-zero flux
@@ -440,16 +448,17 @@ class Drizzle(object):
         
         Parameters
         ----------
-        outfile:
+
+        outfile : str
             The name of the output file. If the file already exists,
             the old file is deleted after writing the new file.
 
-        out_units:
+        out_units : str, optional
             The units of the output image, either `counts` or `cps`
             (counts per second.) If the units are counts, the resulting
             image will be multiplied by the computed exposure time.
         
-        outheader:
+        outheader : header, optional
             A fits header containing cards to be added to the primary
             header of the output image.
         """
