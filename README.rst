@@ -3,8 +3,13 @@ User documentation
 
 .. currentmodule:: drizzle
 
-The ``drizzle`` library is a Python package for combining dithered
-images into a single image
+The ``drizzle`` library is a Python package for combining dithered images into a
+single image. This library is derived from code used in drizzlepac. Like
+drizzlepac, most of the code is implemented in the C language. The biggest
+change from drizzlepac is that this code passes an array that maps the input to
+output image into the C code, while the drizzlepac code computes the mapping by
+using a Python callback. Switching to using an array allowed the code to be
+greatly simplified.
 
 Requirements
 ------------
@@ -18,7 +23,8 @@ Requirements
 The Drizzle Algorithm
 ---------------------
 
-This section has been extracted from The DrizzlePac Handbook.
+This section has been extracted from Chapter 2 of
+`The DrizzlePac Handbook <http://www.stsci.edu/hst/HST_overview/drizzlepac/documents/handbooks/drizzlepac.pdf>`_ [Driz2012]_
 
 There are a family of linear reconstruction techniques that, at two opposite
 extremes, are represented by the interlacing and shift-and-add techniques, with
@@ -102,6 +108,16 @@ information from an input pixel, missing data does not cause a substantial
 problem as long as the observer has taken enough dither samples to fill in the
 missing information.
 
+The blot methods perform the inverse operation of drizzle. That is, blotting
+performs the inverse mapping to transform the dithered median image back into
+the coordinate system of the original input image. Blotting is primarily used
+for identifying cosmic rays in the original image. Like the original drizzle
+task, blot requires the user to provide the world coordinate system
+transformations as inputs.
+
+.. [Driz2012] Gonzaga, S., Hack, W., Fruchter, A., Mack, J., eds. 2012, The DrizzlePac Handbook. (Baltimore, STScI)
+
+
 The Drizzle Library
 -------------------
 
@@ -121,10 +137,76 @@ square brackets. Optionally you can pass the name of the header keywords
 containing the exposure time and units. Two units are understood: counts and
 cps (counts per second.)
 
+The following function is a demonstration of how you can create a new output
+image::
+
+    def drizzle_demo_one(reference, outfile, infiles):
+        """
+        First demonstration of drizzle
+    
+        reference
+            A file containing the wcs of the output image
+    
+        outfile
+            The name of the output image
+    
+        infiles
+            The names of the input images to be combined
+        """
+        # Get the world coordinate system for the output image
+        hdulist = fits.open(reference)
+        reference_wcs = wcs.WCS(hdulist[1].header)
+    
+        # Initialize the output with the wcs
+        driz = drizzle.drizzle.Drizzle(outwcs=reference_wcs)
+        
+        # Combine the input images into on drizzle image
+        for infile in infiles:
+            driz.add_fits_file(infile)
+    
+        # Write the drizzled image out
+        driz.write(outfile)
+
 Optionally you can supply the input and weight images as numpy arrays by using
 the add_image method. If you use this method, you must supply the extra
 information that would otherwise be read from the fits image: The word coordinate
 system (WCS) of the input image, the exposure time and image units.
+
+Here is an example of how you would call add_image::
+
+    def drizzle_demo_two(reference, outfile, infiles):
+        """
+        Demonstration of drizzle with add image
+    
+        reference
+            A file containing the wcs of the output image
+    
+        outfile
+            The name of the output image
+    
+        infiles
+            The names of the input images to be combined
+        """
+        # Get the world coordinate system for the output image
+        reflist = fits.open(reference)
+        reference_wcs = wcs.WCS(reflist[1].header)
+    
+        # Initialize the output with the wcs
+        driz = drizzle.drizzle.Drizzle(outwcs=reference_wcs)
+        
+        # Combine the input images into on drizzle image
+        for infile in infiles:
+            # Open the file and read the image and wcs
+            # This is a contrived example, we would not do this
+            # unless the data came from another source
+            # than a fits file
+            imlist = fits.open(reference)
+            image = imlist[1].data
+            image_wcs = wcs.WCS(imlist[1].header)
+            driz.add_image(image, image_wcs)
+    
+        # Write the drizzled image out
+        driz.write(outfile)
 
 After combining all the input images, you write the output image into a fits
 file with the write method. You must pass the name of the output iamge and
@@ -136,6 +218,62 @@ a new Drizzle object and passing the existing output file name as the new
 object is created. In that case the output world coordinate system and all
 other parameters are read from the file.
 
-The lower level funtion dodrizzle is present for backwards compatinility
-with the existing STScI drizzle code and should not be used unless you are
-also concerned with this compatibility.
+Here is a demonstration of adding additional input images to a drizzled image::
+
+    def drizzle_demo_three(outfile, infiles):
+        """
+        Demonstration of drizzle and adding to an existing output
+    
+        outfile
+            Name of output image that new files will be appended to
+    
+        infiles
+            The names of the input images to be added
+        """
+        # Re-open the output file
+        driz = drizzle.drizzle.Drizzle(infile=outfile)
+        
+        # Add the input images to the existing output image
+        for infile in infiles:
+            driz.add_fits_file(infile)
+    
+        # Write the modified drizzled image out
+        driz.write(outfile)
+
+You can use the methods blot_fits_file and blot_image to transform the drizzled
+output image into another world coordinate system. Most usually this is the
+coordinates of one of the input images and is used to identify cosmic rays or
+other defects. The two methods blot_fits_file and blot_image allow you to
+retrieve the world coordinates from the fits file header or input it drirectly.
+The optional parameter interp allows you to selct the method used to resample
+the pixels on the new grid and sincscl is used to scale the sinc function if one
+of the sinc interpolation methods is used. This function demonstrates how both
+methods are called::
+
+    def drizzle_demo_four(outfile, blotfile):
+        """
+        Demonstration of blot methods
+    
+        outfile
+            Name of output image that will be converted
+    
+        blotfile
+            Name of image containing wcs to be transformed to
+        """
+        # Open drizzle using the output file    
+        # Transform it to another coordinate system
+        driz = drizzle.drizzle.Drizzle(infile=outfile)
+        driz.blot_fits_file(blotfile)
+        driz.write(outfile)
+    
+        # Read the wcs and transform using it instead
+        # This is a contrived example
+        blotlist = fits.open(blotfile)
+        blot_wcs = wcs.WCS(blotlist[1].header)
+        driz = drizzle.drizzle.Drizzle(infile=outfile)
+        driz.blot_image(blot_wcs)
+        driz.write(outfile)
+
+The lower level funtion dodrizzle is present for backwards compatinility with
+the existing STScI drizzlepac code and should not be used unless you are also
+concerned with this compatibility.
