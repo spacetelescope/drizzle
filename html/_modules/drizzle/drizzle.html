@@ -1,0 +1,632 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>drizzle.drizzle &mdash; drizzle v0.0.dev185</title>
+    
+    <link rel="stylesheet" href="../../_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.0.dev185',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="../../_static/astropy_logo.ico"/>
+    <link rel="top" title="drizzle v0.0.dev185" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'>
+<script type="text/javascript" src="../../_static/copybutton.js"></script>
+
+
+  </head>
+  <body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">astro</span><span id="logotext2">py</span><span id="logotext3">:docs</span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../index.html">drizzle v0.0.dev185</a>
+	 &raquo;
+      </li>
+      <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for drizzle.drizzle</h1><div class="highlight"><pre>
+<span class="c"># -*- coding: utf-8 -*-</span>
+
+<span class="c"># Licensed under a 3-clause BSD style license - see LICENSE.rst</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">The `drizzle` module defines the `Drizzle` class, for combining input</span>
+<span class="sd">images into a single output image.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span><span class="p">,</span> <span class="n">print_function</span><span class="p">,</span> <span class="n">unicode_literals</span><span class="p">,</span> <span class="n">absolute_import</span>
+
+<span class="c"># SYSTEM</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">os.path</span>
+
+<span class="c"># THIRD-PARTY</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">astropy</span> <span class="kn">import</span> <span class="n">wcs</span>
+<span class="kn">from</span> <span class="nn">astropy.io</span> <span class="kn">import</span> <span class="n">fits</span>
+
+<span class="c"># LOCAL</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">util</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">doblot</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">dodrizzle</span>
+
+<div class="viewcode-block" id="Drizzle"><a class="viewcode-back" href="../../api/drizzle.drizzle.Drizzle.html#drizzle.drizzle.Drizzle">[docs]</a><span class="k">class</span> <span class="nc">Drizzle</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The `Drizzle` class contains the structure and methods used for combining</span>
+<span class="sd">    input images.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">infile</span><span class="o">=</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">outwcs</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>  
+                 <span class="n">wt_scl</span><span class="o">=</span><span class="s">&quot;exptime&quot;</span><span class="p">,</span> <span class="n">pixfrac</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="s">&quot;square&quot;</span><span class="p">,</span> 
+                 <span class="n">fillval</span><span class="o">=</span><span class="s">&quot;INDEF&quot;</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">        All parameters are optional, but either infile or outwcs must be supplied.</span>
+<span class="sd">        If infile initializes the object from a file written after a</span>
+<span class="sd">        previous run of drizzle. Results from the previous run will be combined</span>
+<span class="sd">        with new results. The value passed in outwcs will be ignored. If infile is</span>
+<span class="sd">        not set, outwcs will be used to initilize a new run of drizzle.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        infile        </span>
+<span class="sd">            A fits file containing results from a previous run. The three</span>
+<span class="sd">            extensions SCI, WHT, and CTX contain the combined image, total counts</span>
+<span class="sd">            and image id bitmap, repectively. The WCS of the combined image is </span>
+<span class="sd">            also read from the SCI extension.</span>
+
+<span class="sd">        outwcs</span>
+<span class="sd">            The world coordinate system (WCS) of the combined image. This</span>
+<span class="sd">            parameter must be present if no input file is given and is ignored if</span>
+<span class="sd">            one is.</span>
+
+<span class="sd">        wt_scl</span>
+<span class="sd">            How each input image should be scaled. The choices are `exptime`</span>
+<span class="sd">            which scales each image by its exposure time, `expsq` which scales</span>
+<span class="sd">            each image by the exposure time squared, or an empty string, which</span>
+<span class="sd">            allows each input image to be scaled individually.</span>
+<span class="sd">            </span>
+<span class="sd">        pixfrac</span>
+<span class="sd">            The fraction of a pixel that the pixel flux is confined to. The</span>
+<span class="sd">            default value of 1 has the pixel flux evenly spread across the image.</span>
+<span class="sd">            A value of 0.5 confines it to half a pixel in the linear dimension,</span>
+<span class="sd">            so the flux is confined to a quarter of the pixel area when the square</span>
+<span class="sd">            kernel is used. </span>
+<span class="sd">        </span>
+<span class="sd">        kernel</span>
+<span class="sd">            The name of the kernel used to combine the inputs. The choice of</span>
+<span class="sd">            kernel controls the distribution of flux over the kernel. The kernel</span>
+<span class="sd">            names are: &quot;square&quot;, &quot;gaussian&quot;, &quot;point&quot;, &quot;tophat&quot;, &quot;turbo&quot;, &quot;lanczos2&quot;,</span>
+<span class="sd">            and &quot;lanczos3&quot;. The square kernel is the default.</span>
+
+<span class="sd">        fillval</span>
+<span class="sd">            The value a pixel is set to in the output if the input image does</span>
+<span class="sd">            not overlap it. The default value of INDEF does not set a value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c"># Initialize the object fields</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">outsci</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">outwht</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">outcon</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">outexptime</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">uniqid</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">outwcs</span> <span class="o">=</span> <span class="n">outwcs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wt_scl</span> <span class="o">=</span> <span class="n">wt_scl</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span> <span class="o">=</span> <span class="n">kernel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fillval</span> <span class="o">=</span> <span class="n">fillval</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pixfrac</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">pixfrac</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">sciext</span> <span class="o">=</span> <span class="s">&quot;SCI&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">whtext</span> <span class="o">=</span> <span class="s">&quot;WHT&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ctxext</span> <span class="o">=</span> <span class="s">&quot;CTX&quot;</span>
+
+        <span class="n">out_units</span> <span class="o">=</span> <span class="s">&quot;cps&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">util</span><span class="o">.</span><span class="n">is_blank</span><span class="p">(</span><span class="n">infile</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">infile</span><span class="p">):</span>
+                <span class="n">handle</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span>
+
+                <span class="c"># Read parameters from image header</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">outexptime</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">get_keyword</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="s">&quot;DRIZEXPT&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">uniqid</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">get_keyword</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="s">&quot;NDRIZIM&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">sciext</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">get_keyword</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="s">&quot;DRIZOUDA&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;SCI&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">whtext</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">get_keyword</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="s">&quot;DRIZOUWE&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;WHT&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ctxext</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">get_keyword</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="s">&quot;DRIZOUCO&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;CTX&quot;</span><span class="p">)</span>
+                
+                <span class="bp">self</span><span class="o">.</span><span class="n">wt_scl</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">get_keyword</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="s">&quot;DRIZWTSC&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">wt_scl</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">get_keyword</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="s">&quot;DRIZKERN&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">kernel</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fillval</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">get_keyword</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="s">&quot;DRIZFVAL&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">fillval</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pixfrac</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">util</span><span class="o">.</span><span class="n">get_keyword</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span>
+                                     <span class="s">&quot;DRIZPIXF&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">pixfrac</span><span class="p">))</span>
+
+                <span class="n">out_units</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">get_keyword</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="s">&quot;DRIZOUUN&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;cps&quot;</span><span class="p">)</span>
+
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">hdu</span> <span class="o">=</span> <span class="n">handle</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sciext</span><span class="p">]</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">outsci</span> <span class="o">=</span> <span class="n">hdu</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">outwcs</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">WCS</span><span class="p">(</span><span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="p">,</span> <span class="n">fobj</span><span class="o">=</span><span class="n">handle</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+                
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">hdu</span> <span class="o">=</span> <span class="n">handle</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">whtext</span><span class="p">]</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">outwht</span> <span class="o">=</span> <span class="n">hdu</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+                
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">hdu</span> <span class="o">=</span> <span class="n">handle</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ctxext</span><span class="p">]</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">outcon</span> <span class="o">=</span> <span class="n">hdu</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+                <span class="n">handle</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="c"># Check field values</span>
+    
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">outwcs</span><span class="p">:</span>
+            <span class="n">util</span><span class="o">.</span><span class="n">set_pscale</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outwcs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Either an existing file or wcs must be supplied to Drizzle&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">util</span><span class="o">.</span><span class="n">is_blank</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wt_scl</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wt_scl</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">wt_scl</span> <span class="o">!=</span> <span class="s">&quot;exptime&quot;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">wt_scl</span> <span class="o">!=</span> <span class="s">&quot;expsq&quot;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Illegal value for wt_scl: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">out_units</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">out_units</span> <span class="o">==</span> <span class="s">&quot;counts&quot;</span><span class="p">:</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outsci</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">outexptime</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">outsci</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">out_units</span> <span class="o">!=</span> <span class="s">&quot;cps&quot;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Illegal value for wt_scl: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">out_units</span><span class="p">)</span>
+
+        <span class="c"># Initialize images if not read from a file</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">outsci</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">outsci</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">outwcs</span><span class="o">.</span><span class="n">_naxis2</span><span class="p">,</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">outwcs</span><span class="o">.</span><span class="n">_naxis1</span><span class="p">),</span>
+                                   <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">outwht</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">outwht</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">outwcs</span><span class="o">.</span><span class="n">_naxis2</span><span class="p">,</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">outwcs</span><span class="o">.</span><span class="n">_naxis1</span><span class="p">),</span>
+                                    <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">outcon</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">outcon</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">outwcs</span><span class="o">.</span><span class="n">_naxis2</span><span class="p">,</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">outwcs</span><span class="o">.</span><span class="n">_naxis1</span><span class="p">),</span>
+                                    <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Drizzle.add_fits_file"><a class="viewcode-back" href="../../api/drizzle.drizzle.Drizzle.html#drizzle.drizzle.Drizzle.add_fits_file">[docs]</a>    <span class="k">def</span> <span class="nf">add_fits_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">infile</span><span class="p">,</span> <span class="n">inweight</span><span class="o">=</span><span class="s">&quot;&quot;</span><span class="p">,</span>
+                      <span class="n">xmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">xmax</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ymin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ymax</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                      <span class="n">unitkey</span><span class="o">=</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">expkey</span><span class="o">=</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">wt_scl</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">        Combine a fits file with the output drizzled image. </span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        infile:</span>
+<span class="sd">            The name of the fits file, possibly including an extension.</span>
+<span class="sd">        </span>
+<span class="sd">        inweight:</span>
+<span class="sd">            The name of a file containing a pixel by pixel weighting</span>
+<span class="sd">            of the input data. If it is not set, an array will be generated</span>
+<span class="sd">            where all values are set to one.</span>
+<span class="sd">            </span>
+<span class="sd">        xmin:</span>
+<span class="sd">            This and the following three parameters set a bounding rectangle</span>
+<span class="sd">            on the output image. Only pixels on the output image inside this</span>
+<span class="sd">            rectangle will have their flux updated. Xmin sets the minimum value</span>
+<span class="sd">            of the x dimension. The x dimension is the dimension that varies</span>
+<span class="sd">            quickest on the image. If the value is zero or less, no minimum will</span>
+<span class="sd">            be set in the x dimension. All four parameters are zero based,</span>
+<span class="sd">            counting starts at zero.</span>
+<span class="sd">            </span>
+<span class="sd">        xmax:</span>
+<span class="sd">            Sets the maximum value of the x dimension on the bounding box</span>
+<span class="sd">            of the ouput image. If the value is zero or less, no maximum will </span>
+<span class="sd">            be set in the x dimension.</span>
+
+<span class="sd">        ymin:</span>
+<span class="sd">            Sets the minimum value in the y dimension on the bounding box. The</span>
+<span class="sd">            y dimension varies less rapidly than the x and represents the line</span>
+<span class="sd">            index on the output image. If the value is zero or less, no minimum </span>
+<span class="sd">            will be set in the y dimension.</span>
+<span class="sd">            </span>
+<span class="sd">        ymax:</span>
+<span class="sd">            Sets the maximum value in the y dimension. If the value is zero or</span>
+<span class="sd">            less, no maximum will be set in the y dimension.</span>
+<span class="sd">            </span>
+<span class="sd">        unitkey :</span>
+<span class="sd">            The name of the header keyword containing the image units. The </span>
+<span class="sd">            units can either be &quot;counts&quot; or &quot;cps&quot; (counts per second.) If it is </span>
+<span class="sd">            left blank, the value is assumed to be &quot;cps.&quot; If the value is counts, </span>
+<span class="sd">            before using the input image it is scaled by dividing it by the</span>
+<span class="sd">            exposure time.</span>
+<span class="sd">            </span>
+<span class="sd">        expkey:</span>
+<span class="sd">            The name of the header keyword containing the exposure time. The</span>
+<span class="sd">            exposure time is used to scale the image if the units are counts and</span>
+<span class="sd">            to scale the image weighting if the drizzle was initialized with</span>
+<span class="sd">            wt_scl equal to &quot;exptime&quot; or &quot;expsq.&quot; If the value of this parameter</span>
+<span class="sd">            is blank, the exposure time is set to one, implying no scaling.</span>
+<span class="sd">            </span>
+<span class="sd">        wt_scl:</span>
+<span class="sd">            If drizzle was initialized with wt_scl left blank, this value will</span>
+<span class="sd">            set a scaling factor for the pixel weighting. If drizzle was</span>
+<span class="sd">            initialized with wt_scl set to &quot;exptime&quot; or &quot;expsq&quot;, the exposure time</span>
+<span class="sd">            will be used to set the weight scaling and the value of this parameter</span>
+<span class="sd">            will be ignored.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">insci</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="n">inwht</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">util</span><span class="o">.</span><span class="n">is_blank</span><span class="p">(</span><span class="n">infile</span><span class="p">):</span>
+            <span class="n">fileroot</span><span class="p">,</span> <span class="n">extn</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">parse_filename</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fileroot</span><span class="p">):</span>
+                <span class="n">handle</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fileroot</span><span class="p">)</span>
+                <span class="n">hdu</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">get_extn</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="n">extn</span><span class="o">=</span><span class="n">extn</span><span class="p">)</span>
+    
+                <span class="k">if</span> <span class="n">hdu</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">insci</span> <span class="o">=</span> <span class="n">hdu</span><span class="o">.</span><span class="n">data</span>
+                    <span class="n">inwcs</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">WCS</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+                    <span class="n">insci</span> <span class="o">=</span> <span class="n">hdu</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                <span class="n">handle</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">insci</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Drizzle cannot find input file: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">infile</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">util</span><span class="o">.</span><span class="n">is_blank</span><span class="p">(</span><span class="n">inweight</span><span class="p">):</span>
+            <span class="n">fileroot</span><span class="p">,</span> <span class="n">extn</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">parse_filename</span><span class="p">(</span><span class="n">inweight</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fileroot</span><span class="p">):</span>
+                <span class="n">handle</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fileroot</span><span class="p">)</span>
+                <span class="n">hdu</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">get_extn</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="n">extn</span><span class="o">=</span><span class="n">extn</span><span class="p">)</span>
+    
+                <span class="k">if</span> <span class="n">hdu</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">inwht</span> <span class="o">=</span> <span class="n">hdu</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                <span class="n">handle</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="n">in_units</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">get_keyword</span><span class="p">(</span><span class="n">fileroot</span><span class="p">,</span> <span class="n">unitkey</span><span class="p">,</span> <span class="s">&quot;cps&quot;</span><span class="p">)</span>
+        <span class="n">expin</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">get_keyword</span><span class="p">(</span><span class="n">fileroot</span><span class="p">,</span> <span class="n">expkey</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+       
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="n">insci</span><span class="p">,</span> <span class="n">inwcs</span><span class="p">,</span> <span class="n">inwht</span><span class="o">=</span><span class="n">inwht</span><span class="p">,</span> 
+                       <span class="n">xmin</span><span class="o">=</span><span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="o">=</span><span class="n">xmax</span><span class="p">,</span> <span class="n">ymin</span><span class="o">=</span><span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span><span class="o">=</span><span class="n">ymax</span><span class="p">,</span>
+                       <span class="n">expin</span><span class="o">=</span><span class="n">expin</span><span class="p">,</span> <span class="n">in_units</span><span class="o">=</span><span class="n">in_units</span><span class="p">,</span> <span class="n">wt_scl</span><span class="o">=</span><span class="n">wt_scl</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Drizzle.add_image"><a class="viewcode-back" href="../../api/drizzle.drizzle.Drizzle.html#drizzle.drizzle.Drizzle.add_image">[docs]</a>    <span class="k">def</span> <span class="nf">add_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">insci</span><span class="p">,</span> <span class="n">inwcs</span><span class="p">,</span> <span class="n">inwht</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> 
+                  <span class="n">xmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">xmax</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ymin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ymax</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                  <span class="n">expin</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">in_units</span><span class="o">=</span><span class="s">&quot;cps&quot;</span><span class="p">,</span> <span class="n">wt_scl</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">        Combine an input image with the output drizzled image. Instead</span>
+<span class="sd">        of reading the parameters from a fits file, you can set them</span>
+<span class="sd">        by calling this lower level method. `Add_fits_file` calls this</span>
+<span class="sd">        method after doing its setup.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        insci:</span>
+<span class="sd">            A 2d numpy array containing the input image to be drizzled.</span>
+<span class="sd">            it is an error to not supply an image.</span>
+<span class="sd">        </span>
+<span class="sd">        inwcs:</span>
+<span class="sd">            The world coordinate system of the input image. This is</span>
+<span class="sd">            used to convert the pixels to the output coordinate system.</span>
+<span class="sd">            </span>
+<span class="sd">        inwht:</span>
+<span class="sd">            A 2d numpy array containing the pixel by pixel weighting.</span>
+<span class="sd">            Must have the same dimenstions as insci. If none is supplied,</span>
+<span class="sd">            the weghting is set to one.</span>
+<span class="sd">            </span>
+<span class="sd">        xmin:</span>
+<span class="sd">            This and the following three parameters set a bounding rectangle</span>
+<span class="sd">            on the output image. Only pixels on the output image inside this</span>
+<span class="sd">            rectangle will have their flux updated. Xmin sets the minimum value</span>
+<span class="sd">            of the x dimension. The x dimension is the dimension that varies</span>
+<span class="sd">            quickest on the image. If the value is zero or less, no minimum will</span>
+<span class="sd">            be set in the x dimension. All four parameters are zero based,</span>
+<span class="sd">            counting starts at zero.</span>
+<span class="sd">            </span>
+<span class="sd">        xmax:</span>
+<span class="sd">            Sets the maximum value of the x dimension on the bounding box</span>
+<span class="sd">            of the ouput image. If the value is zero or less, no maximum will </span>
+<span class="sd">            be set in the x dimension.</span>
+
+<span class="sd">        ymin:</span>
+<span class="sd">            Sets the minimum value in the y dimension on the bounding box. The</span>
+<span class="sd">            y dimension varies less rapidly than the x and represents the line</span>
+<span class="sd">            index on the output image. If the value is zero or less, no minimum </span>
+<span class="sd">            will be set in the y dimension.</span>
+<span class="sd">            </span>
+<span class="sd">        ymax:</span>
+<span class="sd">            Sets the maximum value in the y dimension. If the value is zero or</span>
+<span class="sd">            less, no maximum will be set in the y dimension.</span>
+<span class="sd">            </span>
+<span class="sd">        expin:</span>
+<span class="sd">            The exposure time of the input image, a positive number. The</span>
+<span class="sd">            exposure time is used to scale the image if the units are counts and</span>
+<span class="sd">            to scale the image weighting if the drizzle was initialized with</span>
+<span class="sd">            wt_scl equal to &quot;exptime&quot; or &quot;expsq.&quot;</span>
+
+<span class="sd">        in_units:</span>
+<span class="sd">            The units of the input image. The units can either be &quot;counts&quot; </span>
+<span class="sd">            or &quot;cps&quot; (counts per second.) If the value is counts, before using</span>
+<span class="sd">            the input image it is scaled by dividing it by the exposure time.</span>
+<span class="sd">            </span>
+<span class="sd">        wt_scl:</span>
+<span class="sd">            If drizzle was initialized with wt_scl left blank, this value will</span>
+<span class="sd">            set a scaling factor for the pixel weighting. If drizzle was</span>
+<span class="sd">            initialized with wt_scl set to &quot;exptime&quot; or &quot;expsq&quot;, the exposure time</span>
+<span class="sd">            will be used to set the weight scaling and the value of this parameter</span>
+<span class="sd">            will be ignored.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">insci</span> <span class="o">=</span> <span class="n">insci</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">util</span><span class="o">.</span><span class="n">set_pscale</span><span class="p">(</span><span class="n">inwcs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">inwht</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">inwht</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">insci</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">insci</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">inwht</span> <span class="o">=</span> <span class="n">inwht</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">wt_scl</span> <span class="o">==</span> <span class="s">&quot;exptime&quot;</span><span class="p">:</span>
+            <span class="n">wt_scl</span> <span class="o">=</span> <span class="n">expin</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">wt_scl</span> <span class="o">==</span> <span class="s">&quot;expsq&quot;</span><span class="p">:</span>
+            <span class="n">wt_scl</span> <span class="o">=</span> <span class="n">expin</span> <span class="o">*</span> <span class="n">expin</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">uniqid</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">outexptime</span> <span class="o">+=</span> <span class="n">expin</span>
+        
+        <span class="n">dodrizzle</span><span class="o">.</span><span class="n">dodrizzle</span><span class="p">(</span><span class="n">insci</span><span class="p">,</span> <span class="n">inwcs</span><span class="p">,</span> <span class="n">inwht</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">outwcs</span><span class="p">,</span> 
+                            <span class="bp">self</span><span class="o">.</span><span class="n">outsci</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">outwht</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">outcon</span><span class="p">,</span>
+                            <span class="n">expin</span><span class="p">,</span> <span class="n">in_units</span><span class="p">,</span> <span class="n">wt_scl</span><span class="p">,</span>
+                            <span class="n">wcslin_pscale</span><span class="o">=</span><span class="n">inwcs</span><span class="o">.</span><span class="n">pscale</span><span class="p">,</span> <span class="n">uniqid</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">uniqid</span><span class="p">,</span>
+                            <span class="n">xmin</span><span class="o">=</span><span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="o">=</span><span class="n">xmax</span><span class="p">,</span> <span class="n">ymin</span><span class="o">=</span><span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span><span class="o">=</span><span class="n">ymax</span><span class="p">,</span> 
+                            <span class="n">pixfrac</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pixfrac</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="p">,</span>
+                            <span class="n">fillval</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fillval</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Drizzle.blot_fits_file"><a class="viewcode-back" href="../../api/drizzle.drizzle.Drizzle.html#drizzle.drizzle.Drizzle.blot_fits_file">[docs]</a>    <span class="k">def</span> <span class="nf">blot_fits_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">infile</span><span class="p">,</span> <span class="n">interp</span><span class="o">=</span><span class="s">&#39;poly5&#39;</span><span class="p">,</span> <span class="n">sinscl</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">        Resample an output image using a world coordinate system read</span>
+<span class="sd">        from an input file.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        infile:</span>
+<span class="sd">            The name of the fits file containing the world coordinate</span>
+<span class="sd">            system that the output file will be resampled to. The name may</span>
+<span class="sd">            possibly include an extension.</span>
+<span class="sd">            </span>
+<span class="sd">        interp:</span>
+<span class="sd">            The type of interpolation used in the resampling. The</span>
+<span class="sd">            possible values are &quot;nearest&quot; (nearest neighbor interpolation),</span>
+<span class="sd">            &quot;linear&quot; (bilinear interpolation), &quot;poly3&quot; (cubic polynomial</span>
+<span class="sd">            interpolation), &quot;poly5&quot; (quintic polynomial interpolation),</span>
+<span class="sd">            &quot;sinc&quot; (sinc interpolation), &quot;lan3&quot; (3rd order Lanczos</span>
+<span class="sd">            interpolation), and &quot;lan5&quot; (5th order Lanczos interpolation).</span>
+<span class="sd">            </span>
+<span class="sd">        sincscl: The scaling factor for sinc interpolation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">blotwcs</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="n">fileroot</span><span class="p">,</span> <span class="n">extn</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">parse_filename</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fileroot</span><span class="p">):</span>
+            <span class="n">handle</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fileroot</span><span class="p">)</span>
+            <span class="n">hdu</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">get_extn</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="n">extn</span><span class="o">=</span><span class="n">extn</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">hdu</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">blotwcs</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">WCS</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+            <span class="n">handle</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">blotwcs</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Drizzle did not get a blot reference image&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">blot_image</span><span class="p">(</span><span class="n">blotwcs</span><span class="p">,</span> <span class="n">interp</span><span class="o">=</span><span class="n">interp</span><span class="p">,</span> <span class="n">sinscl</span><span class="o">=</span><span class="n">sinscl</span><span class="p">)</span>
+    </div>
+<div class="viewcode-block" id="Drizzle.blot_image"><a class="viewcode-back" href="../../api/drizzle.drizzle.Drizzle.html#drizzle.drizzle.Drizzle.blot_image">[docs]</a>    <span class="k">def</span> <span class="nf">blot_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blotwcs</span><span class="p">,</span> <span class="n">interp</span><span class="o">=</span><span class="s">&#39;poly5&#39;</span><span class="p">,</span> <span class="n">sinscl</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">        Resample an output image using a world coordinate system.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        blotwcs:</span>
+<span class="sd">            The world coordinate system to resample on.</span>
+
+<span class="sd">        interp:</span>
+<span class="sd">            The type of interpolation used in the resampling. The</span>
+<span class="sd">            possible values are &quot;nearest&quot; (nearest neighbor interpolation),</span>
+<span class="sd">            &quot;linear&quot; (bilinear interpolation), &quot;poly3&quot; (cubic polynomial</span>
+<span class="sd">            interpolation), &quot;poly5&quot; (quintic polynomial interpolation),</span>
+<span class="sd">            &quot;sinc&quot; (sinc interpolation), &quot;lan3&quot; (3rd order Lanczos</span>
+<span class="sd">            interpolation), and &quot;lan5&quot; (5th order Lanczos interpolation).</span>
+<span class="sd">            </span>
+<span class="sd">        sincscl:</span>
+<span class="sd">            The scaling factor for sinc interpolation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">util</span><span class="o">.</span><span class="n">set_pscale</span><span class="p">(</span><span class="n">blotwcs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">outsci</span> <span class="o">=</span> <span class="n">doblot</span><span class="o">.</span><span class="n">doblot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outsci</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">outwcs</span><span class="p">,</span> <span class="n">blotwcs</span><span class="p">,</span> 
+                                    <span class="mf">1.0</span><span class="p">,</span> <span class="n">interp</span><span class="o">=</span><span class="n">interp</span><span class="p">,</span> <span class="n">sinscl</span><span class="o">=</span><span class="n">sinscl</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">outwcs</span> <span class="o">=</span> <span class="n">blotwcs</span>
+        </div>
+<div class="viewcode-block" id="Drizzle.write"><a class="viewcode-back" href="../../api/drizzle.drizzle.Drizzle.html#drizzle.drizzle.Drizzle.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outfile</span><span class="p">,</span> <span class="n">out_units</span><span class="o">=</span><span class="s">&quot;cps&quot;</span><span class="p">,</span> <span class="n">outheader</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">        Write the output from a set of drizzled images to a file. The</span>
+<span class="sd">        output file will contain three extensions. The &quot;SCI&quot; extension</span>
+<span class="sd">        contains the resulting image. The &quot;WHT&quot; extension contains the</span>
+<span class="sd">        combined weights. The &quot;CTX&quot; extension is a bit map. The nth bit</span>
+<span class="sd">        is set to one if the nth input image contributed non-zero flux</span>
+<span class="sd">        to the output image. The &quot;CTX&quot; image is three dimensionsional</span>
+<span class="sd">        to account for the possibility that there are more than 32 input</span>
+<span class="sd">        images.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        outfile:</span>
+<span class="sd">            The name of the output file. If the file already exists,</span>
+<span class="sd">            the old file is deleted after writing the new file.</span>
+
+<span class="sd">        out_units:</span>
+<span class="sd">            The units of the output image, either `counts` or `cps`</span>
+<span class="sd">            (counts per second.) If the units are counts, the resulting</span>
+<span class="sd">            image will be multiplied by the computed exposure time.</span>
+<span class="sd">        </span>
+<span class="sd">        outheader:</span>
+<span class="sd">            A fits header containing cards to be added to the primary</span>
+<span class="sd">            header of the output image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">out_units</span> <span class="o">!=</span> <span class="s">&quot;counts&quot;</span> <span class="ow">and</span> <span class="n">out_units</span> <span class="o">!=</span> <span class="s">&quot;cps&quot;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Illegal value for out_units: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">out_units</span><span class="p">))</span>
+
+        <span class="c"># Write the WCS to the output image</span>
+        
+        <span class="n">handle</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">outwcs</span><span class="o">.</span><span class="n">to_fits</span><span class="p">()</span>
+        <span class="n">phdu</span> <span class="o">=</span> <span class="n">handle</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="c"># Write the class fields to the primary header </span>
+        <span class="n">phdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s">&#39;DRIZOUDA&#39;</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sciext</span><span class="p">,</span> <span class="s">&#39;Drizzle, output data image&#39;</span><span class="p">)</span>
+        <span class="n">phdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s">&#39;DRIZOUWE&#39;</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">whtext</span><span class="p">,</span> <span class="s">&#39;Drizzle, output weighting image&#39;</span><span class="p">)</span>
+        <span class="n">phdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s">&#39;DRIZOUCO&#39;</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ctxext</span><span class="p">,</span> <span class="s">&#39;Drizzle, output context image&#39;</span><span class="p">)</span>
+        <span class="n">phdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s">&#39;DRIZWTSC&#39;</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wt_scl</span><span class="p">,</span> <span class="s">&#39;Drizzle, weighting factor for input image&#39;</span><span class="p">)</span>
+        <span class="n">phdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s">&#39;DRIZKERN&#39;</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="p">,</span> <span class="s">&#39;Drizzle, form of weight distribution kernel&#39;</span><span class="p">)</span>
+        <span class="n">phdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s">&#39;DRIZPIXF&#39;</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pixfrac</span><span class="p">,</span> <span class="s">&#39;Drizzle, linear size of drop&#39;</span><span class="p">)</span> 
+        <span class="n">phdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s">&#39;DRIZFVAL&#39;</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fillval</span><span class="p">,</span> <span class="s">&#39;Drizzle, fill value for zero weight output pix&#39;</span><span class="p">)</span>
+        <span class="n">phdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s">&#39;DRIZOUUN&#39;</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="p">(</span><span class="n">out_units</span><span class="p">,</span> <span class="s">&#39;Drizzle, units of output image - counts or cps&#39;</span><span class="p">)</span>
+
+        <span class="c"># Update header keyword NDRIZIM to keep track of how many images have</span>
+        <span class="c"># been combined in this product so far</span>
+        <span class="n">phdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s">&#39;NDRIZIM&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">uniqid</span><span class="p">,</span> <span class="s">&#39;Drizzle, number of images&#39;</span><span class="p">)</span>
+
+        <span class="c"># Update header of output image with exptime used to scale the output data</span>
+        <span class="c"># if out_units is not counts, this will simply be a value of 1.0</span>
+        <span class="c"># the keyword &#39;exptime&#39; will always contain the total exposure time</span>
+        <span class="c"># of all input image regardless of the output units</span>
+
+        <span class="n">phdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s">&#39;EXPTIME&#39;</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outexptime</span><span class="p">,</span> <span class="s">&#39;Drizzle, total exposure time&#39;</span><span class="p">)</span>
+        
+        <span class="n">outexptime</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">if</span> <span class="n">out_units</span> <span class="o">==</span> <span class="s">&#39;counts&#39;</span><span class="p">:</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outsci</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">outexptime</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">outsci</span><span class="p">)</span>
+            <span class="n">outexptime</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">outexptime</span>
+        <span class="n">phdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s">&#39;DRIZEXPT&#39;</span><span class="p">]</span> <span class="o">=</span> \
+        <span class="p">(</span><span class="n">outexptime</span><span class="p">,</span> <span class="s">&#39;Drizzle, exposure time scaling factor&#39;</span><span class="p">)</span>
+
+        <span class="c"># Copy the optional header to the primary header</span>
+        
+        <span class="k">if</span> <span class="n">outheader</span><span class="p">:</span>
+            <span class="n">phdu</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">outheader</span><span class="p">,</span> <span class="n">unique</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+        <span class="c"># Add three extensions containing, the drizzled output image,</span>
+        <span class="c"># the total counts, and the context bitmap, in that order</span>
+        
+        <span class="n">extheader</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">outwcs</span><span class="o">.</span><span class="n">to_header</span><span class="p">()</span>
+
+        <span class="n">ehdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">ImageHDU</span><span class="p">()</span>
+        <span class="n">ehdu</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">outsci</span>
+        <span class="n">ehdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s">&#39;EXTNAME&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sciext</span><span class="p">,</span> <span class="s">&#39;Extension name&#39;</span><span class="p">)</span>
+        <span class="n">ehdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s">&#39;EXTVER&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&#39;Extension version&#39;</span><span class="p">)</span>
+        <span class="n">ehdu</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">extheader</span><span class="p">,</span> <span class="n">unique</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">handle</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ehdu</span><span class="p">)</span>
+        
+        <span class="n">whdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">ImageHDU</span><span class="p">()</span>
+        <span class="n">whdu</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">outwht</span>
+        <span class="n">whdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s">&#39;EXTNAME&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">whtext</span><span class="p">,</span> <span class="s">&#39;Extension name&#39;</span><span class="p">)</span>
+        <span class="n">whdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s">&#39;EXTVER&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&#39;Extension version&#39;</span><span class="p">)</span>
+        <span class="n">whdu</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">extheader</span><span class="p">,</span> <span class="n">unique</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">handle</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">whdu</span><span class="p">)</span>
+            
+        <span class="n">xhdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">ImageHDU</span><span class="p">()</span>
+        <span class="n">xhdu</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">outcon</span>
+        <span class="n">xhdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s">&#39;EXTNAME&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ctxext</span><span class="p">,</span> <span class="s">&#39;Extension name&#39;</span><span class="p">)</span>
+        <span class="n">xhdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s">&#39;EXTVER&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&#39;Extension version&#39;</span><span class="p">)</span>
+        <span class="n">xhdu</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">extheader</span><span class="p">,</span> <span class="n">unique</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">handle</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">xhdu</span><span class="p">)</span>
+
+        <span class="n">handle</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">handle</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2015, Bernie Simmon.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2. &nbsp;
+    Last built 14 Jan 2015. <br/>
+  </p>
+</footer>
+  </body>
+</html>

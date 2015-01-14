@@ -1,0 +1,382 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>User documentation &mdash; drizzle v0.0.dev185</title>
+    
+    <link rel="stylesheet" href="../_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.0.dev185',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="../_static/astropy_logo.ico"/>
+    <link rel="top" title="drizzle v0.0.dev185" href="../index.html" />
+    <link rel="up" title="The Drizzle Library" href="index.html" />
+    <link rel="next" title="API Documentation" href="api.html" />
+    <link rel="prev" title="The Drizzle Library" href="index.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'>
+<script type="text/javascript" src="../_static/copybutton.js"></script>
+
+
+  </head>
+  <body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../index.html"><span id="logotext1">astro</span><span id="logotext2">py</span><span id="logotext3">:docs</span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="api.html" title="API Documentation">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="index.html" title="The Drizzle Library">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../index.html">drizzle v0.0.dev185</a>
+	 &raquo;
+      </li>
+      <li><a href="index.html" accesskey="U">The Drizzle Library</a> &raquo;</li>
+      
+      <li>User documentation</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="user-documentation">
+<h1>User documentation<a class="headerlink" href="#user-documentation" title="Permalink to this headline">¶</a></h1>
+<p>The <tt class="docutils literal"><span class="pre">drizzle</span></tt> library is a Python package for combining dithered images into a
+single image. This library is derived from code used in drizzlepac. Like
+drizzlepac, most of the code is implemented in the C language. The biggest
+change from drizzlepac is that this code passes an array that maps the input to
+output image into the C code, while the drizzlepac code computes the mapping by
+using a Python callback. Switching to using an array allowed the code to be
+greatly simplified.</p>
+<div class="section" id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Python 2.7, 3.3 or 3.4</li>
+<li>Numpy 1.5.0 or later</li>
+<li>astropy 0.3 or later</li>
+</ul>
+</div>
+<div class="section" id="the-drizzle-algorithm">
+<h2>The Drizzle Algorithm<a class="headerlink" href="#the-drizzle-algorithm" title="Permalink to this headline">¶</a></h2>
+<p>This section has been extracted from Chapter 2 of
+<a class="reference external" href="http://www.stsci.edu/hst/HST_overview/drizzlepac/documents/handbooks/drizzlepac.pdf">The DrizzlePac Handbook</a> <a class="reference internal" href="#driz2012" id="id1">[Driz2012]</a></p>
+<p>There are a family of linear reconstruction techniques that, at two opposite
+extremes, are represented by the interlacing and shift-and-add techniques, with
+the Drizzle algorithm representing a continuum between these two extremes.</p>
+<p>If the dithers are particularly well-placed, one can simply interlace the pixels
+from the images onto a finer grid. In the interlacing method, pixels from the
+independent input images are placed in alternate pixels on the output image
+according to the alignment of the pixel centers in the original images. However,
+due to occasional small positioning errors by the telescope, and non-uniform
+shifts in pixel space across the detector caused by geometric distortion of the
+optics, true interlacing of images is generally not feasible.</p>
+<p>Another standard simple linear technique for combining shifted images,
+descriptively named “shift-and-add”, has been used for many years to combine
+dithered infrared data onto finer grids. Each input pixel is block-replicated
+onto a finer subsampled grid, shifted into place, and added to the output image.
+Shift-and-add has the advantage of being able to easily handle arbitrary dither
+positions. However, it convolves the image yet again with the original pixel,
+thus adding to the blurring of the image and to the correlation of noise in the
+image. Furthermore, it is difficult to use shift-and-add in the presence of
+missing data (e.g., from cosmic rays) and geometric distortion.</p>
+<p>In response to the limitations of the two techniques described above, an
+improved method known formally as variable-pixel linear reconstruction, and more
+commonly referred to as Drizzle, was developed by Andy Fruchter and Richard
+Hook, initially for the purposes of combining dithered images of the Hubble Deep
+Field North (HDF-N). This algorithm can be thought of as a continuous set of
+linear functions that vary smoothly between the optimum linear combination
+technique (interlacing) and shift-and-add. This often allows an improvement in
+resolution and a reduction in correlated noise, compared with images produced by
+only using shift-and-add.</p>
+<p>The degree to which the algorithm departs from interlacing and moves towards
+shift-and-add depends upon how well the PSF is subsampled by the shifts in the
+input images. In practice, the behavior of the Drizzle algorithm is controlled
+through the use of a parameter called pixfrac, which can be set to values
+ranging from 0 to 1, that represents the amount by which input pixels are shrunk
+before being mapped onto the output image plane.</p>
+<p>A key to understanding the use of pixfrac is to realize that a CCD image can be
+thought of as the true image convolved first by the optics, then by the pixel
+response function (ideally a square the size of a pixel), and then sampled by a
+delta-function at the center of each pixel. A CCD image is thus a set of point
+samples of a continuous two-dimensional function. Hence the natural value of
+pixfrac is 0, which corresponds to pure interlacing. Setting pixfrac to values
+greater than 0 causes additional broadening of the output PSF by convolving the
+original PSF with pixels of non-zero size. Thus, setting pixfrac to its maximum
+value of 1 is equivalent to shift-and-add, the other extreme of linear
+combination, in which the output image PSF has been smeared by a convolution
+with the full size of the original input pixels.</p>
+<p>The Drizzle algorithm is conceptually straightforward. Pixels in the original
+input images are mapped into pixels in the subsampled output image, taking into
+account shifts and rotations between images and the optical distortion of the
+camera. However, in order to avoid convolving the image with the large pixel
+“footprint” of the camera, Drizzle allows the user to shrink the pixel before it
+is averaged into the output image through the pixfrac parameter.</p>
+<p>The flux value of each input pixel is divided up into the output pixels with
+weights proportional to the area of overlap between the “drop” and each output
+pixel. If the drop size is too small, not all output pixels have data added to
+them from each of the input images. One should therefore choose a drop size that
+is small enough to avoid convolving the image with too large an input pixel
+footprint, yet sufficiently large to ensure that there is not too much variation
+in the number of input pixels contributing to each output pixel.</p>
+<p>When images are combined using Drizzle, a weight map can be specified for each
+input image. The weight image contains information about bad pixels in the image
+(in that bad pixels result in lower weight values). When the final output
+science image is generated, an output weight map which combines information from
+all the input weight images, is also saved.</p>
+<p>Drizzle has a number of advantages over standard linear reconstruction methods.
+Since the pixel area can be scaled by the Jacobian of the geometric distortion,
+it is preserved for surface and absolute photometry. Therefore, the flux in the
+drizzled image, that was corrected for geometric distortion, can be measured
+with an aperture size that&#8217;s not dependent of its position on the image. Since
+the Drizzle code anticipates that a given output pixel might not receive any
+information from an input pixel, missing data does not cause a substantial
+problem as long as the observer has taken enough dither samples to fill in the
+missing information.</p>
+<p>The blot methods perform the inverse operation of drizzle. That is, blotting
+performs the inverse mapping to transform the dithered median image back into
+the coordinate system of the original input image. Blotting is primarily used
+for identifying cosmic rays in the original image. Like the original drizzle
+task, blot requires the user to provide the world coordinate system
+transformations as inputs.</p>
+<table class="docutils citation" frame="void" id="driz2012" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[Driz2012]</a></td><td>Gonzaga, S., Hack, W., Fruchter, A., Mack, J., eds. 2012, The DrizzlePac Handbook. (Baltimore, STScI)</td></tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="the-drizzle-library">
+<h2>The Drizzle Library<a class="headerlink" href="#the-drizzle-library" title="Permalink to this headline">¶</a></h2>
+<p>The Drizzle library is class based and you use it by first creating an object of
+the Drizzle class. To create a new Drizzle output image, supply an Astropy world
+coordinate system object representing the coordinate syatem of the output image.
+The other parameters are the linear pixel dimension described in the previous
+section, the drizzle kernel used, how each input image is scaled (by exposure
+time or time squared) and the pixel value set in the output image where the
+input images do not overlap.</p>
+<p>After creating a drizzle object, you add one or more images by calling the
+add_fits_file method. The arguments are the name of the fits file containing
+the input image and optionally the name of a fits file containing the pixel
+weighting. Both file name can be followed by an extension name or number in
+square brackets. Optionally you can pass the name of the header keywords
+containing the exposure time and units. Two units are understood: counts and
+cps (counts per second.)</p>
+<p>The following function is a demonstration of how you can create a new output
+image:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">drizzle_demo_one</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="n">outfile</span><span class="p">,</span> <span class="n">infiles</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    First demonstration of drizzle</span>
+
+<span class="sd">    reference</span>
+<span class="sd">        A file containing the wcs of the output image</span>
+
+<span class="sd">    outfile</span>
+<span class="sd">        The name of the output image</span>
+
+<span class="sd">    infiles</span>
+<span class="sd">        The names of the input images to be combined</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># Get the world coordinate system for the output image</span>
+    <span class="n">hdulist</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">reference</span><span class="p">)</span>
+    <span class="n">reference_wcs</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">WCS</span><span class="p">(</span><span class="n">hdulist</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+
+    <span class="c"># Initialize the output with the wcs</span>
+    <span class="n">driz</span> <span class="o">=</span> <span class="n">drizzle</span><span class="o">.</span><span class="n">drizzle</span><span class="o">.</span><span class="n">Drizzle</span><span class="p">(</span><span class="n">outwcs</span><span class="o">=</span><span class="n">reference_wcs</span><span class="p">)</span>
+
+    <span class="c"># Combine the input images into on drizzle image</span>
+    <span class="k">for</span> <span class="n">infile</span> <span class="ow">in</span> <span class="n">infiles</span><span class="p">:</span>
+        <span class="n">driz</span><span class="o">.</span><span class="n">add_fits_file</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span>
+
+    <span class="c"># Write the drizzled image out</span>
+    <span class="n">driz</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">outfile</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Optionally you can supply the input and weight images as numpy arrays by using
+the add_image method. If you use this method, you must supply the extra
+information that would otherwise be read from the fits image: The word coordinate
+system (WCS) of the input image, the exposure time and image units.</p>
+<p>Here is an example of how you would call add_image:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">drizzle_demo_two</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="n">outfile</span><span class="p">,</span> <span class="n">infiles</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Demonstration of drizzle with add image</span>
+
+<span class="sd">    reference</span>
+<span class="sd">        A file containing the wcs of the output image</span>
+
+<span class="sd">    outfile</span>
+<span class="sd">        The name of the output image</span>
+
+<span class="sd">    infiles</span>
+<span class="sd">        The names of the input images to be combined</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># Get the world coordinate system for the output image</span>
+    <span class="n">reflist</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">reference</span><span class="p">)</span>
+    <span class="n">reference_wcs</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">WCS</span><span class="p">(</span><span class="n">reflist</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+
+    <span class="c"># Initialize the output with the wcs</span>
+    <span class="n">driz</span> <span class="o">=</span> <span class="n">drizzle</span><span class="o">.</span><span class="n">drizzle</span><span class="o">.</span><span class="n">Drizzle</span><span class="p">(</span><span class="n">outwcs</span><span class="o">=</span><span class="n">reference_wcs</span><span class="p">)</span>
+
+    <span class="c"># Combine the input images into on drizzle image</span>
+    <span class="k">for</span> <span class="n">infile</span> <span class="ow">in</span> <span class="n">infiles</span><span class="p">:</span>
+        <span class="c"># Open the file and read the image and wcs</span>
+        <span class="c"># This is a contrived example, we would not do this</span>
+        <span class="c"># unless the data came from another source</span>
+        <span class="c"># than a fits file</span>
+        <span class="n">imlist</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">reference</span><span class="p">)</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">imlist</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+        <span class="n">image_wcs</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">WCS</span><span class="p">(</span><span class="n">imlist</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+        <span class="n">driz</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">image_wcs</span><span class="p">)</span>
+
+    <span class="c"># Write the drizzled image out</span>
+    <span class="n">driz</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">outfile</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>After combining all the input images, you write the output image into a fits
+file with the write method. You must pass the name of the output iamge and
+optionally the units. You can also supply a set of header cards to be added
+to the primary header of the output fits file.</p>
+<p>You can also add more images to an existing Drizzle output file by creating
+a new Drizzle object and passing the existing output file name as the new
+object is created. In that case the output world coordinate system and all
+other parameters are read from the file.</p>
+<p>Here is a demonstration of adding additional input images to a drizzled image:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">drizzle_demo_three</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">infiles</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Demonstration of drizzle and adding to an existing output</span>
+
+<span class="sd">    outfile</span>
+<span class="sd">        Name of output image that new files will be appended to</span>
+
+<span class="sd">    infiles</span>
+<span class="sd">        The names of the input images to be added</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># Re-open the output file</span>
+    <span class="n">driz</span> <span class="o">=</span> <span class="n">drizzle</span><span class="o">.</span><span class="n">drizzle</span><span class="o">.</span><span class="n">Drizzle</span><span class="p">(</span><span class="n">infile</span><span class="o">=</span><span class="n">outfile</span><span class="p">)</span>
+
+    <span class="c"># Add the input images to the existing output image</span>
+    <span class="k">for</span> <span class="n">infile</span> <span class="ow">in</span> <span class="n">infiles</span><span class="p">:</span>
+        <span class="n">driz</span><span class="o">.</span><span class="n">add_fits_file</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span>
+
+    <span class="c"># Write the modified drizzled image out</span>
+    <span class="n">driz</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">outfile</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can use the methods blot_fits_file and blot_image to transform the drizzled
+output image into another world coordinate system. Most usually this is the
+coordinates of one of the input images and is used to identify cosmic rays or
+other defects. The two methods blot_fits_file and blot_image allow you to
+retrieve the world coordinates from the fits file header or input it drirectly.
+The optional parameter interp allows you to selct the method used to resample
+the pixels on the new grid and sincscl is used to scale the sinc function if one
+of the sinc interpolation methods is used. This function demonstrates how both
+methods are called:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">drizzle_demo_four</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">blotfile</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Demonstration of blot methods</span>
+
+<span class="sd">    outfile</span>
+<span class="sd">        Name of output image that will be converted</span>
+
+<span class="sd">    blotfile</span>
+<span class="sd">        Name of image containing wcs to be transformed to</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># Open drizzle using the output file</span>
+    <span class="c"># Transform it to another coordinate system</span>
+    <span class="n">driz</span> <span class="o">=</span> <span class="n">drizzle</span><span class="o">.</span><span class="n">drizzle</span><span class="o">.</span><span class="n">Drizzle</span><span class="p">(</span><span class="n">infile</span><span class="o">=</span><span class="n">outfile</span><span class="p">)</span>
+    <span class="n">driz</span><span class="o">.</span><span class="n">blot_fits_file</span><span class="p">(</span><span class="n">blotfile</span><span class="p">)</span>
+    <span class="n">driz</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">outfile</span><span class="p">)</span>
+
+    <span class="c"># Read the wcs and transform using it instead</span>
+    <span class="c"># This is a contrived example</span>
+    <span class="n">blotlist</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">blotfile</span><span class="p">)</span>
+    <span class="n">blot_wcs</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">WCS</span><span class="p">(</span><span class="n">blotlist</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+    <span class="n">driz</span> <span class="o">=</span> <span class="n">drizzle</span><span class="o">.</span><span class="n">drizzle</span><span class="o">.</span><span class="n">Drizzle</span><span class="p">(</span><span class="n">infile</span><span class="o">=</span><span class="n">outfile</span><span class="p">)</span>
+    <span class="n">driz</span><span class="o">.</span><span class="n">blot_image</span><span class="p">(</span><span class="n">blot_wcs</span><span class="p">)</span>
+    <span class="n">driz</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">outfile</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The lower level funtion dodrizzle is present for backwards compatinility with
+the existing STScI drizzlepac code and should not be used unless you are also
+concerned with this compatibility.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">User documentation</a><ul>
+<li><a class="reference internal" href="#requirements">Requirements</a></li>
+<li><a class="reference internal" href="#the-drizzle-algorithm">The Drizzle Algorithm</a></li>
+<li><a class="reference internal" href="#the-drizzle-library">The Drizzle Library</a></li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="http://github.com/spacetelescope/drizzle/tree/master/docs/drizzle/user.rst">Edit This Page on Github</a> &nbsp;
+    <a href="../_sources/drizzle/user.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2015, Bernie Simmon.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2. &nbsp;
+    Last built 14 Jan 2015. <br/>
+  </p>
+</footer>
+  </body>
+</html>

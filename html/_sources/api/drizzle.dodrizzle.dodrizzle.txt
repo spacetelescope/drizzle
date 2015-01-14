@@ -1,0 +1,8 @@
+
+
+dodrizzle
+===========================
+
+.. currentmodule:: drizzle.dodrizzle
+
+.. autofunction:: dodrizzle

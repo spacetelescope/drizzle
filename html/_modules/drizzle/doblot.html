@@ -1,0 +1,172 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>drizzle.doblot &mdash; drizzle v0.0.dev185</title>
+    
+    <link rel="stylesheet" href="../../_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.0.dev185',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="../../_static/astropy_logo.ico"/>
+    <link rel="top" title="drizzle v0.0.dev185" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'>
+<script type="text/javascript" src="../../_static/copybutton.js"></script>
+
+
+  </head>
+  <body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">astro</span><span id="logotext2">py</span><span id="logotext3">:docs</span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../index.html">drizzle v0.0.dev185</a>
+	 &raquo;
+      </li>
+      <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for drizzle.doblot</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span><span class="p">,</span> <span class="n">print_function</span><span class="p">,</span> <span class="n">unicode_literals</span><span class="p">,</span> <span class="n">absolute_import</span>
+
+<span class="c"># THIRD-PARTY</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="c"># LOCAL</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">util</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">cdrizzle</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">calc_pixmap</span>
+
+<div class="viewcode-block" id="doblot"><a class="viewcode-back" href="../../api/drizzle.doblot.doblot.html#drizzle.doblot.doblot">[docs]</a><span class="k">def</span> <span class="nf">doblot</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">source_wcs</span><span class="p">,</span> <span class="n">blot_wcs</span><span class="p">,</span> <span class="n">exptime</span><span class="p">,</span> <span class="n">coeffs</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
+            <span class="n">interp</span><span class="o">=</span><span class="s">&#39;poly5&#39;</span><span class="p">,</span> <span class="n">sinscl</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">stepsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">wcsmap</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">r&quot;&quot;&quot;</span>
+<span class="sd">    Core functionality of performing the &#39;blot&#39; operation to create a single</span>
+<span class="sd">    blotted image from a single source image. Interface is compatible with</span>
+<span class="sd">    STScI code. All distortion information is assumed to be included in the</span>
+<span class="sd">    WCS specification of the &#39;output&#39; blotted image given in &#39;blot_wcs&#39;.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    source:</span>
+<span class="sd">        Input numpy array of the source image in units of &#39;cps&#39;.</span>
+<span class="sd">    </span>
+<span class="sd">    source_wcs:</span>
+<span class="sd">        The source image WCS.</span>
+<span class="sd">    </span>
+<span class="sd">    blot_wcs:</span>
+<span class="sd">        The blotted image WCS.</span>
+<span class="sd">    </span>
+<span class="sd">    exptime:</span>
+<span class="sd">        The exposure time of the input image.</span>
+<span class="sd">    </span>
+<span class="sd">    coeffs:</span>
+<span class="sd">        Not used. Only kept for backwards compatibility.</span>
+<span class="sd">    </span>
+<span class="sd">    interp:</span>
+<span class="sd">        The type of interpolation used in the blotting. The</span>
+<span class="sd">        possible values are &quot;nearest&quot; (nearest neighbor interpolation),</span>
+<span class="sd">        &quot;linear&quot; (bilinear interpolation), &quot;poly3&quot; (cubic polynomial</span>
+<span class="sd">        interpolation), &quot;poly5&quot; (quintic polynomial interpolation),</span>
+<span class="sd">        &quot;sinc&quot; (sinc interpolation), &quot;lan3&quot; (3rd order Lanczos</span>
+<span class="sd">        interpolation), and &quot;lan5&quot; (5th order Lanczos interpolation).</span>
+
+<span class="sd">    sincscl:</span>
+<span class="sd">        The scaling factor for sinc interpolation.</span>
+
+<span class="sd">    stepsize:</span>
+<span class="sd">        Was used when input to output mapping was computed</span>
+<span class="sd">        internally. Is no longer used and only here for backwards compatibility.</span>
+
+<span class="sd">    wcsmap:</span>
+<span class="sd">        Was used when input to output mapping was computed</span>
+<span class="sd">        internally. Is no longer used and only here for backwards compatibility.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    A 2d numpy array with the blotted image</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_outsci</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">blot_wcs</span><span class="o">.</span><span class="n">_naxis2</span><span class="p">,</span><span class="n">blot_wcs</span><span class="o">.</span><span class="n">_naxis1</span><span class="p">),</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+    <span class="c"># compute the undistorted &#39;natural&#39; plate scale </span>
+    <span class="n">wcslin</span> <span class="o">=</span> <span class="n">blot_wcs</span>
+    <span class="n">blot_wcs</span><span class="o">.</span><span class="n">sip</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">blot_wcs</span><span class="o">.</span><span class="n">cpdis1</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">blot_wcs</span><span class="o">.</span><span class="n">cpdis2</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">blot_wcs</span><span class="o">.</span><span class="n">det2im</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="n">pixmap</span> <span class="o">=</span> <span class="n">calc_pixmap</span><span class="o">.</span><span class="n">calc_pixmap</span><span class="p">(</span><span class="n">blot_wcs</span><span class="p">,</span> <span class="n">source_wcs</span><span class="p">)</span>
+    <span class="n">pix_ratio</span> <span class="o">=</span> <span class="n">source_wcs</span><span class="o">.</span><span class="n">pscale</span><span class="o">/</span><span class="n">blot_wcs</span><span class="o">.</span><span class="n">pscale</span>
+
+    <span class="n">cdrizzle</span><span class="o">.</span><span class="n">tblot</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">pixmap</span><span class="p">,</span> <span class="n">_outsci</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">pix_ratio</span><span class="p">,</span> <span class="n">kscale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+                   <span class="n">interp</span><span class="o">=</span><span class="n">interp</span><span class="p">,</span> <span class="n">exptime</span><span class="o">=</span><span class="n">exptime</span><span class="p">,</span> <span class="n">misval</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sinscl</span><span class="o">=</span><span class="n">sinscl</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">_outsci</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2015, Bernie Simmon.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2. &nbsp;
+    Last built 14 Jan 2015. <br/>
+  </p>
+</footer>
+  </body>
+</html>

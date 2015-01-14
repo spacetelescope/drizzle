@@ -1,0 +1,463 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Drizzle &mdash; drizzle v0.0.dev185</title>
+    
+    <link rel="stylesheet" href="../_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.0.dev185',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="../_static/astropy_logo.ico"/>
+    <link rel="top" title="drizzle v0.0.dev185" href="../index.html" />
+    <link rel="up" title="API Documentation" href="../drizzle/api.html" />
+    <link rel="next" title="dodrizzle" href="drizzle.dodrizzle.dodrizzle.html" />
+    <link rel="prev" title="doblot" href="drizzle.doblot.doblot.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'>
+<script type="text/javascript" src="../_static/copybutton.js"></script>
+
+
+  </head>
+  <body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../index.html"><span id="logotext1">astro</span><span id="logotext2">py</span><span id="logotext3">:docs</span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="drizzle.dodrizzle.dodrizzle.html" title="dodrizzle">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="drizzle.doblot.doblot.html" title="doblot">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../index.html">drizzle v0.0.dev185</a>
+	 &raquo;
+      </li>
+      <li><a href="../drizzle/index.html" >The Drizzle Library</a> &raquo;</li>
+      <li><a href="../drizzle/api.html" accesskey="U">API Documentation</a> &raquo;</li>
+      
+      <li>Drizzle</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="drizzle">
+<h1>Drizzle<a class="headerlink" href="#drizzle" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="drizzle.drizzle.Drizzle">
+<em class="property">class </em><tt class="descclassname">drizzle.drizzle.</tt><tt class="descname">Drizzle</tt><big>(</big><em>infile=u''</em>, <em>outwcs=None</em>, <em>wt_scl=u'exptime'</em>, <em>pixfrac=1.0</em>, <em>kernel=u'square'</em>, <em>fillval=u'INDEF'</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle"><span class="viewcode-link">[source]</span></a><a class="reference external" href="http://github.com/spacetelescope/drizzle/tree/master/drizzle/drizzle.py#L27" title="Push the Edit button on the next page"><span class="edit-on-github viewcode-link">&nbsp;[edit on github]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="http://docs.python.org/3/library/functions.html#object" title="(in Python v3.4)"><tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></a></p>
+<p>The <a class="reference internal" href="#drizzle.drizzle.Drizzle" title="drizzle.drizzle.Drizzle"><tt class="xref py py-obj docutils literal"><span class="pre">Drizzle</span></tt></a> class contains the structure and methods used for combining
+input images.</p>
+<p>All parameters are optional, but either infile or outwcs must be supplied.
+If infile initializes the object from a file written after a
+previous run of drizzle. Results from the previous run will be combined
+with new results. The value passed in outwcs will be ignored. If infile is
+not set, outwcs will be used to initilize a new run of drizzle.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>infile</strong></p>
+<blockquote>
+<div><p>A fits file containing results from a previous run. The three
+extensions SCI, WHT, and CTX contain the combined image, total counts
+and image id bitmap, repectively. The WCS of the combined image is 
+also read from the SCI extension.</p>
+</div></blockquote>
+<p><strong>outwcs</strong></p>
+<blockquote>
+<div><p>The world coordinate system (WCS) of the combined image. This
+parameter must be present if no input file is given and is ignored if
+one is.</p>
+</div></blockquote>
+<p><strong>wt_scl</strong></p>
+<blockquote>
+<div><p>How each input image should be scaled. The choices are <tt class="xref py py-obj docutils literal"><span class="pre">exptime</span></tt>
+which scales each image by its exposure time, <tt class="xref py py-obj docutils literal"><span class="pre">expsq</span></tt> which scales
+each image by the exposure time squared, or an empty string, which
+allows each input image to be scaled individually.</p>
+</div></blockquote>
+<p><strong>pixfrac</strong></p>
+<blockquote>
+<div><p>The fraction of a pixel that the pixel flux is confined to. The
+default value of 1 has the pixel flux evenly spread across the image.
+A value of 0.5 confines it to half a pixel in the linear dimension,
+so the flux is confined to a quarter of the pixel area when the square
+kernel is used.</p>
+</div></blockquote>
+<p><strong>kernel</strong></p>
+<blockquote>
+<div><p>The name of the kernel used to combine the inputs. The choice of
+kernel controls the distribution of flux over the kernel. The kernel
+names are: &#8220;square&#8221;, &#8220;gaussian&#8221;, &#8220;point&#8221;, &#8220;tophat&#8221;, &#8220;turbo&#8221;, &#8220;lanczos2&#8221;,
+and &#8220;lanczos3&#8221;. The square kernel is the default.</p>
+</div></blockquote>
+<p><strong>fillval</strong></p>
+<blockquote class="last">
+<div><p>The value a pixel is set to in the output if the input image does
+not overlap it. The default value of INDEF does not set a value.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods Summary</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#drizzle.drizzle.Drizzle.add_fits_file" title="drizzle.drizzle.Drizzle.add_fits_file"><tt class="xref py py-obj docutils literal"><span class="pre">add_fits_file</span></tt></a>(infile[,&nbsp;inweight,&nbsp;xmin,&nbsp;...])</td>
+<td>Combine a fits file with the output drizzled image.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#drizzle.drizzle.Drizzle.add_image" title="drizzle.drizzle.Drizzle.add_image"><tt class="xref py py-obj docutils literal"><span class="pre">add_image</span></tt></a>(insci,&nbsp;inwcs[,&nbsp;inwht,&nbsp;xmin,&nbsp;xmax,&nbsp;...])</td>
+<td>Combine an input image with the output drizzled image.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#drizzle.drizzle.Drizzle.blot_fits_file" title="drizzle.drizzle.Drizzle.blot_fits_file"><tt class="xref py py-obj docutils literal"><span class="pre">blot_fits_file</span></tt></a>(infile[,&nbsp;interp,&nbsp;sinscl])</td>
+<td>Resample an output image using a world coordinate system read from an input file.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#drizzle.drizzle.Drizzle.blot_image" title="drizzle.drizzle.Drizzle.blot_image"><tt class="xref py py-obj docutils literal"><span class="pre">blot_image</span></tt></a>(blotwcs[,&nbsp;interp,&nbsp;sinscl])</td>
+<td>Resample an output image using a world coordinate system.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#drizzle.drizzle.Drizzle.write" title="drizzle.drizzle.Drizzle.write"><tt class="xref py py-obj docutils literal"><span class="pre">write</span></tt></a>(outfile[,&nbsp;out_units,&nbsp;outheader])</td>
+<td>Write the output from a set of drizzled images to a file.</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods Documentation</p>
+<dl class="method">
+<dt id="drizzle.drizzle.Drizzle.add_fits_file">
+<tt class="descname">add_fits_file</tt><big>(</big><em>infile</em>, <em>inweight=u''</em>, <em>xmin=0</em>, <em>xmax=0</em>, <em>ymin=0</em>, <em>ymax=0</em>, <em>unitkey=u''</em>, <em>expkey=u''</em>, <em>wt_scl=1.0</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle.add_fits_file"><span class="viewcode-link">[source]</span></a><a class="reference external" href="http://github.com/spacetelescope/drizzle/tree/master/drizzle/drizzle.py#L174" title="Push the Edit button on the next page"><span class="edit-on-github viewcode-link">&nbsp;[edit on github]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle.add_fits_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Combine a fits file with the output drizzled image.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>infile:</strong></p>
+<blockquote>
+<div><p>The name of the fits file, possibly including an extension.</p>
+</div></blockquote>
+<p><strong>inweight:</strong></p>
+<blockquote>
+<div><p>The name of a file containing a pixel by pixel weighting
+of the input data. If it is not set, an array will be generated
+where all values are set to one.</p>
+</div></blockquote>
+<p><strong>xmin:</strong></p>
+<blockquote>
+<div><p>This and the following three parameters set a bounding rectangle
+on the output image. Only pixels on the output image inside this
+rectangle will have their flux updated. Xmin sets the minimum value
+of the x dimension. The x dimension is the dimension that varies
+quickest on the image. If the value is zero or less, no minimum will
+be set in the x dimension. All four parameters are zero based,
+counting starts at zero.</p>
+</div></blockquote>
+<p><strong>xmax:</strong></p>
+<blockquote>
+<div><p>Sets the maximum value of the x dimension on the bounding box
+of the ouput image. If the value is zero or less, no maximum will 
+be set in the x dimension.</p>
+</div></blockquote>
+<p><strong>ymin:</strong></p>
+<blockquote>
+<div><p>Sets the minimum value in the y dimension on the bounding box. The
+y dimension varies less rapidly than the x and represents the line
+index on the output image. If the value is zero or less, no minimum 
+will be set in the y dimension.</p>
+</div></blockquote>
+<p><strong>ymax:</strong></p>
+<blockquote>
+<div><p>Sets the maximum value in the y dimension. If the value is zero or
+less, no maximum will be set in the y dimension.</p>
+</div></blockquote>
+<p><strong>unitkey :</strong></p>
+<blockquote>
+<div><p>The name of the header keyword containing the image units. The 
+units can either be &#8220;counts&#8221; or &#8220;cps&#8221; (counts per second.) If it is 
+left blank, the value is assumed to be &#8220;cps.&#8221; If the value is counts, 
+before using the input image it is scaled by dividing it by the
+exposure time.</p>
+</div></blockquote>
+<p><strong>expkey:</strong></p>
+<blockquote>
+<div><p>The name of the header keyword containing the exposure time. The
+exposure time is used to scale the image if the units are counts and
+to scale the image weighting if the drizzle was initialized with
+wt_scl equal to &#8220;exptime&#8221; or &#8220;expsq.&#8221; If the value of this parameter
+is blank, the exposure time is set to one, implying no scaling.</p>
+</div></blockquote>
+<p><strong>wt_scl:</strong></p>
+<blockquote class="last">
+<div><p>If drizzle was initialized with wt_scl left blank, this value will
+set a scaling factor for the pixel weighting. If drizzle was
+initialized with wt_scl set to &#8220;exptime&#8221; or &#8220;expsq&#8221;, the exposure time
+will be used to set the weight scaling and the value of this parameter
+will be ignored.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="drizzle.drizzle.Drizzle.add_image">
+<tt class="descname">add_image</tt><big>(</big><em>insci</em>, <em>inwcs</em>, <em>inwht=None</em>, <em>xmin=0</em>, <em>xmax=0</em>, <em>ymin=0</em>, <em>ymax=0</em>, <em>expin=1.0</em>, <em>in_units=u'cps'</em>, <em>wt_scl=1.0</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle.add_image"><span class="viewcode-link">[source]</span></a><a class="reference external" href="http://github.com/spacetelescope/drizzle/tree/master/drizzle/drizzle.py#L273" title="Push the Edit button on the next page"><span class="edit-on-github viewcode-link">&nbsp;[edit on github]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle.add_image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Combine an input image with the output drizzled image. Instead
+of reading the parameters from a fits file, you can set them
+by calling this lower level method. <tt class="xref py py-obj docutils literal"><span class="pre">Add_fits_file</span></tt> calls this
+method after doing its setup.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>insci:</strong></p>
+<blockquote>
+<div><p>A 2d numpy array containing the input image to be drizzled.
+it is an error to not supply an image.</p>
+</div></blockquote>
+<p><strong>inwcs:</strong></p>
+<blockquote>
+<div><p>The world coordinate system of the input image. This is
+used to convert the pixels to the output coordinate system.</p>
+</div></blockquote>
+<p><strong>inwht:</strong></p>
+<blockquote>
+<div><p>A 2d numpy array containing the pixel by pixel weighting.
+Must have the same dimenstions as insci. If none is supplied,
+the weghting is set to one.</p>
+</div></blockquote>
+<p><strong>xmin:</strong></p>
+<blockquote>
+<div><p>This and the following three parameters set a bounding rectangle
+on the output image. Only pixels on the output image inside this
+rectangle will have their flux updated. Xmin sets the minimum value
+of the x dimension. The x dimension is the dimension that varies
+quickest on the image. If the value is zero or less, no minimum will
+be set in the x dimension. All four parameters are zero based,
+counting starts at zero.</p>
+</div></blockquote>
+<p><strong>xmax:</strong></p>
+<blockquote>
+<div><p>Sets the maximum value of the x dimension on the bounding box
+of the ouput image. If the value is zero or less, no maximum will 
+be set in the x dimension.</p>
+</div></blockquote>
+<p><strong>ymin:</strong></p>
+<blockquote>
+<div><p>Sets the minimum value in the y dimension on the bounding box. The
+y dimension varies less rapidly than the x and represents the line
+index on the output image. If the value is zero or less, no minimum 
+will be set in the y dimension.</p>
+</div></blockquote>
+<p><strong>ymax:</strong></p>
+<blockquote>
+<div><p>Sets the maximum value in the y dimension. If the value is zero or
+less, no maximum will be set in the y dimension.</p>
+</div></blockquote>
+<p><strong>expin:</strong></p>
+<blockquote>
+<div><p>The exposure time of the input image, a positive number. The
+exposure time is used to scale the image if the units are counts and
+to scale the image weighting if the drizzle was initialized with
+wt_scl equal to &#8220;exptime&#8221; or &#8220;expsq.&#8221;</p>
+</div></blockquote>
+<p><strong>in_units:</strong></p>
+<blockquote>
+<div><p>The units of the input image. The units can either be &#8220;counts&#8221; 
+or &#8220;cps&#8221; (counts per second.) If the value is counts, before using
+the input image it is scaled by dividing it by the exposure time.</p>
+</div></blockquote>
+<p><strong>wt_scl:</strong></p>
+<blockquote class="last">
+<div><p>If drizzle was initialized with wt_scl left blank, this value will
+set a scaling factor for the pixel weighting. If drizzle was
+initialized with wt_scl set to &#8220;exptime&#8221; or &#8220;expsq&#8221;, the exposure time
+will be used to set the weight scaling and the value of this parameter
+will be ignored.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="drizzle.drizzle.Drizzle.blot_fits_file">
+<tt class="descname">blot_fits_file</tt><big>(</big><em>infile</em>, <em>interp=u'poly5'</em>, <em>sinscl=1.0</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle.blot_fits_file"><span class="viewcode-link">[source]</span></a><a class="reference external" href="http://github.com/spacetelescope/drizzle/tree/master/drizzle/drizzle.py#L364" title="Push the Edit button on the next page"><span class="edit-on-github viewcode-link">&nbsp;[edit on github]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle.blot_fits_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resample an output image using a world coordinate system read
+from an input file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>infile:</strong></p>
+<blockquote>
+<div><p>The name of the fits file containing the world coordinate
+system that the output file will be resampled to. The name may
+possibly include an extension.</p>
+</div></blockquote>
+<p><strong>interp:</strong></p>
+<blockquote>
+<div><p>The type of interpolation used in the resampling. The
+possible values are &#8220;nearest&#8221; (nearest neighbor interpolation),
+&#8220;linear&#8221; (bilinear interpolation), &#8220;poly3&#8221; (cubic polynomial
+interpolation), &#8220;poly5&#8221; (quintic polynomial interpolation),
+&#8220;sinc&#8221; (sinc interpolation), &#8220;lan3&#8221; (3rd order Lanczos
+interpolation), and &#8220;lan5&#8221; (5th order Lanczos interpolation).</p>
+</div></blockquote>
+<p class="last"><strong>sincscl: The scaling factor for sinc interpolation.</strong></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="drizzle.drizzle.Drizzle.blot_image">
+<tt class="descname">blot_image</tt><big>(</big><em>blotwcs</em>, <em>interp=u'poly5'</em>, <em>sinscl=1.0</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle.blot_image"><span class="viewcode-link">[source]</span></a><a class="reference external" href="http://github.com/spacetelescope/drizzle/tree/master/drizzle/drizzle.py#L403" title="Push the Edit button on the next page"><span class="edit-on-github viewcode-link">&nbsp;[edit on github]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle.blot_image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resample an output image using a world coordinate system.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>blotwcs:</strong></p>
+<blockquote>
+<div><p>The world coordinate system to resample on.</p>
+</div></blockquote>
+<p><strong>interp:</strong></p>
+<blockquote>
+<div><p>The type of interpolation used in the resampling. The
+possible values are &#8220;nearest&#8221; (nearest neighbor interpolation),
+&#8220;linear&#8221; (bilinear interpolation), &#8220;poly3&#8221; (cubic polynomial
+interpolation), &#8220;poly5&#8221; (quintic polynomial interpolation),
+&#8220;sinc&#8221; (sinc interpolation), &#8220;lan3&#8221; (3rd order Lanczos
+interpolation), and &#8220;lan5&#8221; (5th order Lanczos interpolation).</p>
+</div></blockquote>
+<p><strong>sincscl:</strong></p>
+<blockquote class="last">
+<div><p>The scaling factor for sinc interpolation.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="drizzle.drizzle.Drizzle.write">
+<tt class="descname">write</tt><big>(</big><em>outfile</em>, <em>out_units=u'cps'</em>, <em>outheader=None</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle.write"><span class="viewcode-link">[source]</span></a><a class="reference external" href="http://github.com/spacetelescope/drizzle/tree/master/drizzle/drizzle.py#L430" title="Push the Edit button on the next page"><span class="edit-on-github viewcode-link">&nbsp;[edit on github]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write the output from a set of drizzled images to a file. The
+output file will contain three extensions. The &#8220;SCI&#8221; extension
+contains the resulting image. The &#8220;WHT&#8221; extension contains the
+combined weights. The &#8220;CTX&#8221; extension is a bit map. The nth bit
+is set to one if the nth input image contributed non-zero flux
+to the output image. The &#8220;CTX&#8221; image is three dimensionsional
+to account for the possibility that there are more than 32 input
+images.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>outfile:</strong></p>
+<blockquote>
+<div><p>The name of the output file. If the file already exists,
+the old file is deleted after writing the new file.</p>
+</div></blockquote>
+<p><strong>out_units:</strong></p>
+<blockquote>
+<div><p>The units of the output image, either <tt class="xref py py-obj docutils literal"><span class="pre">counts</span></tt> or <tt class="xref py py-obj docutils literal"><span class="pre">cps</span></tt>
+(counts per second.) If the units are counts, the resulting
+image will be multiplied by the computed exposure time.</p>
+</div></blockquote>
+<p><strong>outheader:</strong></p>
+<blockquote class="last">
+<div><p>A fits header containing cards to be added to the primary
+header of the output image.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Drizzle</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="http://github.com/spacetelescope/drizzle/tree/master/docs/api/drizzle.drizzle.Drizzle.rst">Edit This Page on Github</a> &nbsp;
+    <a href="../_sources/api/drizzle.drizzle.Drizzle.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2015, Bernie Simmon.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2. &nbsp;
+    Last built 14 Jan 2015. <br/>
+  </p>
+</footer>
+  </body>
+</html>

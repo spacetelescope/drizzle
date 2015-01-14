@@ -1,0 +1,52 @@
+
+
+Drizzle
+=======================
+
+.. currentmodule:: drizzle.drizzle
+
+.. autoclass:: Drizzle
+   :show-inheritance:
+
+   
+     
+   
+
+   
+   
+   
+
+   
+   
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+   
+      ~Drizzle.add_fits_file
+      ~Drizzle.add_image
+      ~Drizzle.blot_fits_file
+      ~Drizzle.blot_image
+      ~Drizzle.write
+
+   
+   
+
+   
+   
+   
+
+   
+   
+
+   .. rubric:: Methods Documentation
+
+   
+   .. automethod:: add_fits_file
+   .. automethod:: add_image
+   .. automethod:: blot_fits_file
+   .. automethod:: blot_image
+   .. automethod:: write
+
+   
+   

@@ -1,0 +1,8 @@
+
+
+doblot
+=====================
+
+.. currentmodule:: drizzle.doblot
+
+.. autofunction:: doblot
