@@ -4,7 +4,22 @@ import numpy as np
 
 def calc_pixmap(first_wcs, second_wcs):
     """
-    Calculate a mapping between the pixels of two images
+    Calculate a mapping between the pixels of two images.
+    
+    Parameters
+    ----------
+    first_wcs: A WCS object representing the coordinate system you are
+        converting from
+    
+    seond_wcs: A WCS object representing the coordinate system you are
+        converting to
+        
+    Returns
+    -------
+    A three dimensional array representing the transformation between
+    the two. The last dimension is of length two and contains the x and
+    y coordinates of a pixel center, repectively. The other two coordinates
+    correspond to the two coordinates of the image the first WCS is from.
     """
 
     first_naxis1 = first_wcs._naxis1
