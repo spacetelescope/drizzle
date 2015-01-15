@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>drizzle.drizzle &mdash; drizzle v0.0.dev185</title>
+    <title>drizzle.drizzle &mdash; drizzle v0.0.dev187</title>
     
     <link rel="stylesheet" href="../../_static/bootstrap-astropy.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.0.dev185',
+        VERSION:     '0.0.dev187',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script type="text/javascript" src="../../_static/sidebar.js"></script>
     <link rel="shortcut icon" href="../../_static/astropy_logo.ico"/>
-    <link rel="top" title="drizzle v0.0.dev185" href="../../index.html" />
+    <link rel="top" title="drizzle v0.0.dev187" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" />
 <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'>
 <script type="text/javascript" src="../../_static/copybutton.js"></script>
@@ -56,7 +56,7 @@
     <h3>Navigation</h3>
     <ul>
       <li>
-	<a href="../../index.html">drizzle v0.0.dev185</a>
+	<a href="../../index.html">drizzle v0.0.dev187</a>
 	 &raquo;
       </li>
       <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li>
@@ -78,7 +78,7 @@
 
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">The `drizzle` module defines the `Drizzle` class, for combining input</span>
-<span class="sd">images into a single output image.</span>
+<span class="sd">images into a single output image using the drizzle algorithm.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span><span class="p">,</span> <span class="n">print_function</span><span class="p">,</span> <span class="n">unicode_literals</span><span class="p">,</span> <span class="n">absolute_import</span>
@@ -100,13 +100,14 @@
 
 <div class="viewcode-block" id="Drizzle"><a class="viewcode-back" href="../../api/drizzle.drizzle.Drizzle.html#drizzle.drizzle.Drizzle">[docs]</a><span class="k">class</span> <span class="nc">Drizzle</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    The `Drizzle` class contains the structure and methods used for combining</span>
-<span class="sd">    input images.</span>
+<span class="sd">    Combine images using the drizzle algorithm</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">infile</span><span class="o">=</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">outwcs</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>  
                  <span class="n">wt_scl</span><span class="o">=</span><span class="s">&quot;exptime&quot;</span><span class="p">,</span> <span class="n">pixfrac</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="s">&quot;square&quot;</span><span class="p">,</span> 
                  <span class="n">fillval</span><span class="o">=</span><span class="s">&quot;INDEF&quot;</span><span class="p">):</span>
-        <span class="sd">r&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a new Drizzle output object and set the drizzle parameters.</span>
+<span class="sd">        </span>
 <span class="sd">        All parameters are optional, but either infile or outwcs must be supplied.</span>
 <span class="sd">        If infile initializes the object from a file written after a</span>
 <span class="sd">        previous run of drizzle. Results from the previous run will be combined</span>
@@ -115,37 +116,38 @@
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        infile        </span>
+
+<span class="sd">        infile : str, optional       </span>
 <span class="sd">            A fits file containing results from a previous run. The three</span>
 <span class="sd">            extensions SCI, WHT, and CTX contain the combined image, total counts</span>
 <span class="sd">            and image id bitmap, repectively. The WCS of the combined image is </span>
 <span class="sd">            also read from the SCI extension.</span>
 
-<span class="sd">        outwcs</span>
+<span class="sd">        outwcs : wcs, optional</span>
 <span class="sd">            The world coordinate system (WCS) of the combined image. This</span>
 <span class="sd">            parameter must be present if no input file is given and is ignored if</span>
 <span class="sd">            one is.</span>
 
-<span class="sd">        wt_scl</span>
+<span class="sd">        wt_scl : str, optional</span>
 <span class="sd">            How each input image should be scaled. The choices are `exptime`</span>
 <span class="sd">            which scales each image by its exposure time, `expsq` which scales</span>
 <span class="sd">            each image by the exposure time squared, or an empty string, which</span>
 <span class="sd">            allows each input image to be scaled individually.</span>
 <span class="sd">            </span>
-<span class="sd">        pixfrac</span>
+<span class="sd">        pixfrac : float, optional</span>
 <span class="sd">            The fraction of a pixel that the pixel flux is confined to. The</span>
 <span class="sd">            default value of 1 has the pixel flux evenly spread across the image.</span>
 <span class="sd">            A value of 0.5 confines it to half a pixel in the linear dimension,</span>
 <span class="sd">            so the flux is confined to a quarter of the pixel area when the square</span>
 <span class="sd">            kernel is used. </span>
 <span class="sd">        </span>
-<span class="sd">        kernel</span>
+<span class="sd">        kernel : str, optional</span>
 <span class="sd">            The name of the kernel used to combine the inputs. The choice of</span>
 <span class="sd">            kernel controls the distribution of flux over the kernel. The kernel</span>
 <span class="sd">            names are: &quot;square&quot;, &quot;gaussian&quot;, &quot;point&quot;, &quot;tophat&quot;, &quot;turbo&quot;, &quot;lanczos2&quot;,</span>
 <span class="sd">            and &quot;lanczos3&quot;. The square kernel is the default.</span>
 
-<span class="sd">        fillval</span>
+<span class="sd">        fillval : str, otional</span>
 <span class="sd">            The value a pixel is set to in the output if the input image does</span>
 <span class="sd">            not overlap it. The default value of INDEF does not set a value.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -248,20 +250,21 @@
 <div class="viewcode-block" id="Drizzle.add_fits_file"><a class="viewcode-back" href="../../api/drizzle.drizzle.Drizzle.html#drizzle.drizzle.Drizzle.add_fits_file">[docs]</a>    <span class="k">def</span> <span class="nf">add_fits_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">infile</span><span class="p">,</span> <span class="n">inweight</span><span class="o">=</span><span class="s">&quot;&quot;</span><span class="p">,</span>
                       <span class="n">xmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">xmax</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ymin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ymax</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                       <span class="n">unitkey</span><span class="o">=</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">expkey</span><span class="o">=</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">wt_scl</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
-        <span class="sd">r&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Combine a fits file with the output drizzled image. </span>
 <span class="sd">        </span>
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        infile:</span>
+
+<span class="sd">        infile : str</span>
 <span class="sd">            The name of the fits file, possibly including an extension.</span>
 <span class="sd">        </span>
-<span class="sd">        inweight:</span>
+<span class="sd">        inweight : str, otional</span>
 <span class="sd">            The name of a file containing a pixel by pixel weighting</span>
 <span class="sd">            of the input data. If it is not set, an array will be generated</span>
 <span class="sd">            where all values are set to one.</span>
 <span class="sd">            </span>
-<span class="sd">        xmin:</span>
+<span class="sd">        xmin : float, otional</span>
 <span class="sd">            This and the following three parameters set a bounding rectangle</span>
 <span class="sd">            on the output image. Only pixels on the output image inside this</span>
 <span class="sd">            rectangle will have their flux updated. Xmin sets the minimum value</span>
@@ -270,36 +273,36 @@
 <span class="sd">            be set in the x dimension. All four parameters are zero based,</span>
 <span class="sd">            counting starts at zero.</span>
 <span class="sd">            </span>
-<span class="sd">        xmax:</span>
+<span class="sd">        xmax : float, otional</span>
 <span class="sd">            Sets the maximum value of the x dimension on the bounding box</span>
 <span class="sd">            of the ouput image. If the value is zero or less, no maximum will </span>
 <span class="sd">            be set in the x dimension.</span>
 
-<span class="sd">        ymin:</span>
+<span class="sd">        ymin : float, optional</span>
 <span class="sd">            Sets the minimum value in the y dimension on the bounding box. The</span>
 <span class="sd">            y dimension varies less rapidly than the x and represents the line</span>
 <span class="sd">            index on the output image. If the value is zero or less, no minimum </span>
 <span class="sd">            will be set in the y dimension.</span>
 <span class="sd">            </span>
-<span class="sd">        ymax:</span>
+<span class="sd">        ymax : float, optional</span>
 <span class="sd">            Sets the maximum value in the y dimension. If the value is zero or</span>
 <span class="sd">            less, no maximum will be set in the y dimension.</span>
 <span class="sd">            </span>
-<span class="sd">        unitkey :</span>
+<span class="sd">        unitkey : string, optional</span>
 <span class="sd">            The name of the header keyword containing the image units. The </span>
 <span class="sd">            units can either be &quot;counts&quot; or &quot;cps&quot; (counts per second.) If it is </span>
 <span class="sd">            left blank, the value is assumed to be &quot;cps.&quot; If the value is counts, </span>
 <span class="sd">            before using the input image it is scaled by dividing it by the</span>
 <span class="sd">            exposure time.</span>
 <span class="sd">            </span>
-<span class="sd">        expkey:</span>
+<span class="sd">        expkey : string, optional</span>
 <span class="sd">            The name of the header keyword containing the exposure time. The</span>
 <span class="sd">            exposure time is used to scale the image if the units are counts and</span>
 <span class="sd">            to scale the image weighting if the drizzle was initialized with</span>
 <span class="sd">            wt_scl equal to &quot;exptime&quot; or &quot;expsq.&quot; If the value of this parameter</span>
 <span class="sd">            is blank, the exposure time is set to one, implying no scaling.</span>
 <span class="sd">            </span>
-<span class="sd">        wt_scl:</span>
+<span class="sd">        wt_scl : float, optional</span>
 <span class="sd">            If drizzle was initialized with wt_scl left blank, this value will</span>
 <span class="sd">            set a scaling factor for the pixel weighting. If drizzle was</span>
 <span class="sd">            initialized with wt_scl set to &quot;exptime&quot; or &quot;expsq&quot;, the exposure time</span>
@@ -347,28 +350,30 @@
 <div class="viewcode-block" id="Drizzle.add_image"><a class="viewcode-back" href="../../api/drizzle.drizzle.Drizzle.html#drizzle.drizzle.Drizzle.add_image">[docs]</a>    <span class="k">def</span> <span class="nf">add_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">insci</span><span class="p">,</span> <span class="n">inwcs</span><span class="p">,</span> <span class="n">inwht</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> 
                   <span class="n">xmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">xmax</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ymin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ymax</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                   <span class="n">expin</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">in_units</span><span class="o">=</span><span class="s">&quot;cps&quot;</span><span class="p">,</span> <span class="n">wt_scl</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
-        <span class="sd">r&quot;&quot;&quot;</span>
-<span class="sd">        Combine an input image with the output drizzled image. Instead</span>
-<span class="sd">        of reading the parameters from a fits file, you can set them</span>
-<span class="sd">        by calling this lower level method. `Add_fits_file` calls this</span>
-<span class="sd">        method after doing its setup.</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Combine an input image with the output drizzled image.</span>
+<span class="sd">        </span>
+<span class="sd">        Instead of reading the parameters from a fits file, you can set</span>
+<span class="sd">        them by calling this lower level method. `Add_fits_file` calls</span>
+<span class="sd">        this method after doing its setup.</span>
 <span class="sd">        </span>
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        insci:</span>
+
+<span class="sd">        insci : array</span>
 <span class="sd">            A 2d numpy array containing the input image to be drizzled.</span>
 <span class="sd">            it is an error to not supply an image.</span>
 <span class="sd">        </span>
-<span class="sd">        inwcs:</span>
+<span class="sd">        inwcs : wcs</span>
 <span class="sd">            The world coordinate system of the input image. This is</span>
 <span class="sd">            used to convert the pixels to the output coordinate system.</span>
 <span class="sd">            </span>
-<span class="sd">        inwht:</span>
+<span class="sd">        inwht : array, optional</span>
 <span class="sd">            A 2d numpy array containing the pixel by pixel weighting.</span>
 <span class="sd">            Must have the same dimenstions as insci. If none is supplied,</span>
 <span class="sd">            the weghting is set to one.</span>
 <span class="sd">            </span>
-<span class="sd">        xmin:</span>
+<span class="sd">        xmin : float, optional</span>
 <span class="sd">            This and the following three parameters set a bounding rectangle</span>
 <span class="sd">            on the output image. Only pixels on the output image inside this</span>
 <span class="sd">            rectangle will have their flux updated. Xmin sets the minimum value</span>
@@ -377,33 +382,33 @@
 <span class="sd">            be set in the x dimension. All four parameters are zero based,</span>
 <span class="sd">            counting starts at zero.</span>
 <span class="sd">            </span>
-<span class="sd">        xmax:</span>
+<span class="sd">        xmax : float, optional</span>
 <span class="sd">            Sets the maximum value of the x dimension on the bounding box</span>
 <span class="sd">            of the ouput image. If the value is zero or less, no maximum will </span>
 <span class="sd">            be set in the x dimension.</span>
 
-<span class="sd">        ymin:</span>
+<span class="sd">        ymin : float, optional</span>
 <span class="sd">            Sets the minimum value in the y dimension on the bounding box. The</span>
 <span class="sd">            y dimension varies less rapidly than the x and represents the line</span>
 <span class="sd">            index on the output image. If the value is zero or less, no minimum </span>
 <span class="sd">            will be set in the y dimension.</span>
 <span class="sd">            </span>
-<span class="sd">        ymax:</span>
+<span class="sd">        ymax : float, optional</span>
 <span class="sd">            Sets the maximum value in the y dimension. If the value is zero or</span>
 <span class="sd">            less, no maximum will be set in the y dimension.</span>
 <span class="sd">            </span>
-<span class="sd">        expin:</span>
+<span class="sd">        expin : float, optional</span>
 <span class="sd">            The exposure time of the input image, a positive number. The</span>
 <span class="sd">            exposure time is used to scale the image if the units are counts and</span>
 <span class="sd">            to scale the image weighting if the drizzle was initialized with</span>
 <span class="sd">            wt_scl equal to &quot;exptime&quot; or &quot;expsq.&quot;</span>
 
-<span class="sd">        in_units:</span>
+<span class="sd">        in_units : str, optional</span>
 <span class="sd">            The units of the input image. The units can either be &quot;counts&quot; </span>
 <span class="sd">            or &quot;cps&quot; (counts per second.) If the value is counts, before using</span>
 <span class="sd">            the input image it is scaled by dividing it by the exposure time.</span>
 <span class="sd">            </span>
-<span class="sd">        wt_scl:</span>
+<span class="sd">        wt_scl : float, optional</span>
 <span class="sd">            If drizzle was initialized with wt_scl left blank, this value will</span>
 <span class="sd">            set a scaling factor for the pixel weighting. If drizzle was</span>
 <span class="sd">            initialized with wt_scl set to &quot;exptime&quot; or &quot;expsq&quot;, the exposure time</span>
@@ -436,18 +441,18 @@
                             <span class="n">fillval</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fillval</span><span class="p">)</span>
 </div>
 <div class="viewcode-block" id="Drizzle.blot_fits_file"><a class="viewcode-back" href="../../api/drizzle.drizzle.Drizzle.html#drizzle.drizzle.Drizzle.blot_fits_file">[docs]</a>    <span class="k">def</span> <span class="nf">blot_fits_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">infile</span><span class="p">,</span> <span class="n">interp</span><span class="o">=</span><span class="s">&#39;poly5&#39;</span><span class="p">,</span> <span class="n">sinscl</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
-        <span class="sd">r&quot;&quot;&quot;</span>
-<span class="sd">        Resample an output image using a world coordinate system read</span>
-<span class="sd">        from an input file.</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resample the output using another image&#39;s world coordinate system.</span>
 <span class="sd">        </span>
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        infile:</span>
+
+<span class="sd">        infile : str</span>
 <span class="sd">            The name of the fits file containing the world coordinate</span>
 <span class="sd">            system that the output file will be resampled to. The name may</span>
 <span class="sd">            possibly include an extension.</span>
 <span class="sd">            </span>
-<span class="sd">        interp:</span>
+<span class="sd">        interp : str, optional</span>
 <span class="sd">            The type of interpolation used in the resampling. The</span>
 <span class="sd">            possible values are &quot;nearest&quot; (nearest neighbor interpolation),</span>
 <span class="sd">            &quot;linear&quot; (bilinear interpolation), &quot;poly3&quot; (cubic polynomial</span>
@@ -455,7 +460,8 @@
 <span class="sd">            &quot;sinc&quot; (sinc interpolation), &quot;lan3&quot; (3rd order Lanczos</span>
 <span class="sd">            interpolation), and &quot;lan5&quot; (5th order Lanczos interpolation).</span>
 <span class="sd">            </span>
-<span class="sd">        sincscl: The scaling factor for sinc interpolation.</span>
+<span class="sd">        sincscl : float, optional</span>
+<span class="sd">            The scaling factor for sinc interpolation.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">blotwcs</span> <span class="o">=</span> <span class="bp">None</span>
 
@@ -475,15 +481,16 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">blot_image</span><span class="p">(</span><span class="n">blotwcs</span><span class="p">,</span> <span class="n">interp</span><span class="o">=</span><span class="n">interp</span><span class="p">,</span> <span class="n">sinscl</span><span class="o">=</span><span class="n">sinscl</span><span class="p">)</span>
     </div>
 <div class="viewcode-block" id="Drizzle.blot_image"><a class="viewcode-back" href="../../api/drizzle.drizzle.Drizzle.html#drizzle.drizzle.Drizzle.blot_image">[docs]</a>    <span class="k">def</span> <span class="nf">blot_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blotwcs</span><span class="p">,</span> <span class="n">interp</span><span class="o">=</span><span class="s">&#39;poly5&#39;</span><span class="p">,</span> <span class="n">sinscl</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
-        <span class="sd">r&quot;&quot;&quot;</span>
-<span class="sd">        Resample an output image using a world coordinate system.</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resample the output image using an input world coordinate system.</span>
 <span class="sd">        </span>
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        blotwcs:</span>
+
+<span class="sd">        blotwcs : wcs</span>
 <span class="sd">            The world coordinate system to resample on.</span>
 
-<span class="sd">        interp:</span>
+<span class="sd">        interp : str, optional</span>
 <span class="sd">            The type of interpolation used in the resampling. The</span>
 <span class="sd">            possible values are &quot;nearest&quot; (nearest neighbor interpolation),</span>
 <span class="sd">            &quot;linear&quot; (bilinear interpolation), &quot;poly3&quot; (cubic polynomial</span>
@@ -491,7 +498,7 @@
 <span class="sd">            &quot;sinc&quot; (sinc interpolation), &quot;lan3&quot; (3rd order Lanczos</span>
 <span class="sd">            interpolation), and &quot;lan5&quot; (5th order Lanczos interpolation).</span>
 <span class="sd">            </span>
-<span class="sd">        sincscl:</span>
+<span class="sd">        sincscl : float, optional</span>
 <span class="sd">            The scaling factor for sinc interpolation.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
@@ -502,9 +509,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">outwcs</span> <span class="o">=</span> <span class="n">blotwcs</span>
         </div>
 <div class="viewcode-block" id="Drizzle.write"><a class="viewcode-back" href="../../api/drizzle.drizzle.Drizzle.html#drizzle.drizzle.Drizzle.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outfile</span><span class="p">,</span> <span class="n">out_units</span><span class="o">=</span><span class="s">&quot;cps&quot;</span><span class="p">,</span> <span class="n">outheader</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-        <span class="sd">r&quot;&quot;&quot;</span>
-<span class="sd">        Write the output from a set of drizzled images to a file. The</span>
-<span class="sd">        output file will contain three extensions. The &quot;SCI&quot; extension</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write the output from a set of drizzled images to a file.</span>
+<span class="sd">        </span>
+<span class="sd">        The output file will contain three extensions. The &quot;SCI&quot; extension</span>
 <span class="sd">        contains the resulting image. The &quot;WHT&quot; extension contains the</span>
 <span class="sd">        combined weights. The &quot;CTX&quot; extension is a bit map. The nth bit</span>
 <span class="sd">        is set to one if the nth input image contributed non-zero flux</span>
@@ -514,16 +522,17 @@
 <span class="sd">        </span>
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        outfile:</span>
+
+<span class="sd">        outfile : str</span>
 <span class="sd">            The name of the output file. If the file already exists,</span>
 <span class="sd">            the old file is deleted after writing the new file.</span>
 
-<span class="sd">        out_units:</span>
+<span class="sd">        out_units : str, optional</span>
 <span class="sd">            The units of the output image, either `counts` or `cps`</span>
 <span class="sd">            (counts per second.) If the units are counts, the resulting</span>
 <span class="sd">            image will be multiplied by the computed exposure time.</span>
 <span class="sd">        </span>
-<span class="sd">        outheader:</span>
+<span class="sd">        outheader : header, optional</span>
 <span class="sd">            A fits header containing cards to be added to the primary</span>
 <span class="sd">            header of the output image.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -623,9 +632,9 @@
   <p class="pull-right"> &nbsp;
     <a href="#">Back to Top</a></p>
   <p>
-    &copy; Copyright 2015, Bernie Simmon.<br/>
+    &copy; Copyright 2015, Bernie Simon.<br/>
     Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2. &nbsp;
-    Last built 14 Jan 2015. <br/>
+    Last built 15 Jan 2015. <br/>
   </p>
 </footer>
   </body>

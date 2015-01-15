@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>drizzle.doblot &mdash; drizzle v0.0.dev185</title>
+    <title>drizzle.doblot &mdash; drizzle v0.0.dev187</title>
     
     <link rel="stylesheet" href="../../_static/bootstrap-astropy.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.0.dev185',
+        VERSION:     '0.0.dev187',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script type="text/javascript" src="../../_static/sidebar.js"></script>
     <link rel="shortcut icon" href="../../_static/astropy_logo.ico"/>
-    <link rel="top" title="drizzle v0.0.dev185" href="../../index.html" />
+    <link rel="top" title="drizzle v0.0.dev187" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" />
 <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'>
 <script type="text/javascript" src="../../_static/copybutton.js"></script>
@@ -56,7 +56,7 @@
     <h3>Navigation</h3>
     <ul>
       <li>
-	<a href="../../index.html">drizzle v0.0.dev185</a>
+	<a href="../../index.html">drizzle v0.0.dev187</a>
 	 &raquo;
       </li>
       <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li>
@@ -79,35 +79,40 @@
 
 <span class="c"># LOCAL</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">util</span>
-<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">cdrizzle</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">calc_pixmap</span>
+<span class="c">#from . import cdrizzle</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">STScI Python compatable blot module</span>
+<span class="sd">&quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="doblot"><a class="viewcode-back" href="../../api/drizzle.doblot.doblot.html#drizzle.doblot.doblot">[docs]</a><span class="k">def</span> <span class="nf">doblot</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">source_wcs</span><span class="p">,</span> <span class="n">blot_wcs</span><span class="p">,</span> <span class="n">exptime</span><span class="p">,</span> <span class="n">coeffs</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span>
             <span class="n">interp</span><span class="o">=</span><span class="s">&#39;poly5&#39;</span><span class="p">,</span> <span class="n">sinscl</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">stepsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">wcsmap</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-    <span class="sd">r&quot;&quot;&quot;</span>
-<span class="sd">    Core functionality of performing the &#39;blot&#39; operation to create a single</span>
-<span class="sd">    blotted image from a single source image. Interface is compatible with</span>
-<span class="sd">    STScI code. All distortion information is assumed to be included in the</span>
-<span class="sd">    WCS specification of the &#39;output&#39; blotted image given in &#39;blot_wcs&#39;.</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Low level routine for performing the &#39;blot&#39; operation.</span>
+<span class="sd">    </span>
+<span class="sd">    Create a single blotted image from a single source image. The</span>
+<span class="sd">    interface is compatible with STScI code. All distortion information</span>
+<span class="sd">    is assumed to be included in the WCS specification of the &#39;output&#39;</span>
+<span class="sd">    blotted image given in &#39;blot_wcs&#39;.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    source:</span>
+
+<span class="sd">    source : 2d array</span>
 <span class="sd">        Input numpy array of the source image in units of &#39;cps&#39;.</span>
 <span class="sd">    </span>
-<span class="sd">    source_wcs:</span>
+<span class="sd">    source_wcs : wcs</span>
 <span class="sd">        The source image WCS.</span>
 <span class="sd">    </span>
-<span class="sd">    blot_wcs:</span>
-<span class="sd">        The blotted image WCS.</span>
+<span class="sd">    blot_wcs : wcs</span>
+<span class="sd">        The blotted image WCS. The WCS that the source image will be</span>
+<span class="sd">        resampled to.</span>
 <span class="sd">    </span>
-<span class="sd">    exptime:</span>
+<span class="sd">    exptime : float</span>
 <span class="sd">        The exposure time of the input image.</span>
 <span class="sd">    </span>
-<span class="sd">    coeffs:</span>
-<span class="sd">        Not used. Only kept for backwards compatibility.</span>
-<span class="sd">    </span>
-<span class="sd">    interp:</span>
+<span class="sd">    interp : str, optional</span>
 <span class="sd">        The type of interpolation used in the blotting. The</span>
 <span class="sd">        possible values are &quot;nearest&quot; (nearest neighbor interpolation),</span>
 <span class="sd">        &quot;linear&quot; (bilinear interpolation), &quot;poly3&quot; (cubic polynomial</span>
@@ -115,20 +120,27 @@
 <span class="sd">        &quot;sinc&quot; (sinc interpolation), &quot;lan3&quot; (3rd order Lanczos</span>
 <span class="sd">        interpolation), and &quot;lan5&quot; (5th order Lanczos interpolation).</span>
 
-<span class="sd">    sincscl:</span>
+<span class="sd">    sincscl : float, optional</span>
 <span class="sd">        The scaling factor for sinc interpolation.</span>
 
-<span class="sd">    stepsize:</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    A 2d numpy array with the blotted image</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    </span>
+<span class="sd">    coeffs : bool, optional</span>
+<span class="sd">        Not used. Only kept for backwards compatibility.</span>
+<span class="sd">    </span>
+<span class="sd">    stepsize : float, optional</span>
 <span class="sd">        Was used when input to output mapping was computed</span>
 <span class="sd">        internally. Is no longer used and only here for backwards compatibility.</span>
 
-<span class="sd">    wcsmap:</span>
+<span class="sd">    wcsmap : function, optional</span>
 <span class="sd">        Was used when input to output mapping was computed</span>
 <span class="sd">        internally. Is no longer used and only here for backwards compatibility.</span>
-<span class="sd">    </span>
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    A 2d numpy array with the blotted image</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">_outsci</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">blot_wcs</span><span class="o">.</span><span class="n">_naxis2</span><span class="p">,</span><span class="n">blot_wcs</span><span class="o">.</span><span class="n">_naxis1</span><span class="p">),</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 
@@ -163,9 +175,9 @@
   <p class="pull-right"> &nbsp;
     <a href="#">Back to Top</a></p>
   <p>
-    &copy; Copyright 2015, Bernie Simmon.<br/>
+    &copy; Copyright 2015, Bernie Simon.<br/>
     Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2. &nbsp;
-    Last built 14 Jan 2015. <br/>
+    Last built 15 Jan 2015. <br/>
   </p>
 </footer>
   </body>

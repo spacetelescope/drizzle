@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>doblot &mdash; drizzle v0.0.dev185</title>
+    <title>doblot &mdash; drizzle v0.0.dev187</title>
     
     <link rel="stylesheet" href="../_static/bootstrap-astropy.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.0.dev185',
+        VERSION:     '0.0.dev187',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="../_static/sidebar.js"></script>
     <link rel="shortcut icon" href="../_static/astropy_logo.ico"/>
-    <link rel="top" title="drizzle v0.0.dev185" href="../index.html" />
+    <link rel="top" title="drizzle v0.0.dev187" href="../index.html" />
     <link rel="up" title="API Documentation" href="../drizzle/api.html" />
     <link rel="prev" title="dodrizzle" href="drizzle.dodrizzle.dodrizzle.html" />
 <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'>
@@ -63,7 +63,7 @@
 	
       </li>
       <li>
-	<a href="../index.html">drizzle v0.0.dev185</a>
+	<a href="../index.html">drizzle v0.0.dev187</a>
 	 &raquo;
       </li>
       <li><a href="../drizzle/index.html" >The Drizzle Library</a> &raquo;</li>
@@ -83,36 +83,34 @@
 <h1>doblot<a class="headerlink" href="#doblot" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="drizzle.doblot.doblot">
-<tt class="descclassname">drizzle.doblot.</tt><tt class="descname">doblot</tt><big>(</big><em>source</em>, <em>source_wcs</em>, <em>blot_wcs</em>, <em>exptime</em>, <em>coeffs=True</em>, <em>interp=u'poly5'</em>, <em>sinscl=1.0</em>, <em>stepsize=10</em>, <em>wcsmap=None</em><big>)</big><a class="reference internal" href="../_modules/drizzle/doblot.html#doblot"><span class="viewcode-link">[source]</span></a><a class="reference external" href="http://github.com/spacetelescope/drizzle/tree/master/drizzle/doblot.py#L11" title="Push the Edit button on the next page"><span class="edit-on-github viewcode-link">&nbsp;[edit on github]</span></a><a class="headerlink" href="#drizzle.doblot.doblot" title="Permalink to this definition">¶</a></dt>
-<dd><p>Core functionality of performing the &#8216;blot&#8217; operation to create a single
-blotted image from a single source image. Interface is compatible with
-STScI code. All distortion information is assumed to be included in the
-WCS specification of the &#8216;output&#8217; blotted image given in &#8216;blot_wcs&#8217;.</p>
+<tt class="descclassname">drizzle.doblot.</tt><tt class="descname">doblot</tt><big>(</big><em>source</em>, <em>source_wcs</em>, <em>blot_wcs</em>, <em>exptime</em>, <em>coeffs=True</em>, <em>interp=u'poly5'</em>, <em>sinscl=1.0</em>, <em>stepsize=10</em>, <em>wcsmap=None</em><big>)</big><a class="reference internal" href="../_modules/drizzle/doblot.html#doblot"><span class="viewcode-link">[source]</span></a><a class="reference external" href="http://github.com/spacetelescope/drizzle/tree/master/drizzle/doblot.py#L15" title="Push the Edit button on the next page"><span class="edit-on-github viewcode-link">&nbsp;[edit on github]</span></a><a class="headerlink" href="#drizzle.doblot.doblot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Low level routine for performing the &#8216;blot&#8217; operation.</p>
+<p>Create a single blotted image from a single source image. The
+interface is compatible with STScI code. All distortion information
+is assumed to be included in the WCS specification of the &#8216;output&#8217;
+blotted image given in &#8216;blot_wcs&#8217;.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>source:</strong></p>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>source</strong> : 2d array</p>
 <blockquote>
 <div><p>Input numpy array of the source image in units of &#8216;cps&#8217;.</p>
 </div></blockquote>
-<p><strong>source_wcs:</strong></p>
+<p><strong>source_wcs</strong> : wcs</p>
 <blockquote>
 <div><p>The source image WCS.</p>
 </div></blockquote>
-<p><strong>blot_wcs:</strong></p>
+<p><strong>blot_wcs</strong> : wcs</p>
 <blockquote>
-<div><p>The blotted image WCS.</p>
+<div><p>The blotted image WCS. The WCS that the source image will be
+resampled to.</p>
 </div></blockquote>
-<p><strong>exptime:</strong></p>
+<p><strong>exptime</strong> : float</p>
 <blockquote>
 <div><p>The exposure time of the input image.</p>
 </div></blockquote>
-<p><strong>coeffs:</strong></p>
-<blockquote>
-<div><p>Not used. Only kept for backwards compatibility.</p>
-</div></blockquote>
-<p><strong>interp:</strong></p>
+<p><strong>interp</strong> : str, optional</p>
 <blockquote>
 <div><p>The type of interpolation used in the blotting. The
 possible values are &#8220;nearest&#8221; (nearest neighbor interpolation),
@@ -121,23 +119,30 @@ interpolation), &#8220;poly5&#8221; (quintic polynomial interpolation),
 &#8220;sinc&#8221; (sinc interpolation), &#8220;lan3&#8221; (3rd order Lanczos
 interpolation), and &#8220;lan5&#8221; (5th order Lanczos interpolation).</p>
 </div></blockquote>
-<p><strong>sincscl:</strong></p>
+<p><strong>sincscl</strong> : float, optional</p>
 <blockquote>
 <div><p>The scaling factor for sinc interpolation.</p>
 </div></blockquote>
-<p><strong>stepsize:</strong></p>
-<blockquote>
-<div><p>Was used when input to output mapping was computed
-internally. Is no longer used and only here for backwards compatibility.</p>
-</div></blockquote>
-<p><strong>wcsmap:</strong></p>
-<blockquote>
-<div><p>Was used when input to output mapping was computed
-internally. Is no longer used and only here for backwards compatibility.</p>
-</div></blockquote>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A 2d numpy array with the blotted image</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A 2d numpy array with the blotted image</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">Other Parameters:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body"><p class="first"><strong>coeffs</strong> : bool, optional</p>
+<blockquote>
+<div><p>Not used. Only kept for backwards compatibility.</p>
+</div></blockquote>
+<p><strong>stepsize</strong> : float, optional</p>
+<blockquote>
+<div><p>Was used when input to output mapping was computed
+internally. Is no longer used and only here for backwards compatibility.</p>
+</div></blockquote>
+<p><strong>wcsmap</strong> : function, optional</p>
+<blockquote class="last">
+<div><p>Was used when input to output mapping was computed
+internally. Is no longer used and only here for backwards compatibility.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
@@ -168,9 +173,9 @@ internally. Is no longer used and only here for backwards compatibility.</p>
        rel="nofollow">Page Source</a> &nbsp;
     <a href="#">Back to Top</a></p>
   <p>
-    &copy; Copyright 2015, Bernie Simmon.<br/>
+    &copy; Copyright 2015, Bernie Simon.<br/>
     Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2. &nbsp;
-    Last built 14 Jan 2015. <br/>
+    Last built 15 Jan 2015. <br/>
   </p>
 </footer>
   </body>

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>dodrizzle &mdash; drizzle v0.0.dev185</title>
+    <title>dodrizzle &mdash; drizzle v0.0.dev187</title>
     
     <link rel="stylesheet" href="../_static/bootstrap-astropy.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.0.dev185',
+        VERSION:     '0.0.dev187',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="../_static/sidebar.js"></script>
     <link rel="shortcut icon" href="../_static/astropy_logo.ico"/>
-    <link rel="top" title="drizzle v0.0.dev185" href="../index.html" />
+    <link rel="top" title="drizzle v0.0.dev187" href="../index.html" />
     <link rel="up" title="API Documentation" href="../drizzle/api.html" />
     <link rel="next" title="doblot" href="drizzle.doblot.doblot.html" />
     <link rel="prev" title="Drizzle" href="drizzle.drizzle.Drizzle.html" />
@@ -69,7 +69,7 @@
 	 |
       </li>
       <li>
-	<a href="../index.html">drizzle v0.0.dev185</a>
+	<a href="../index.html">drizzle v0.0.dev187</a>
 	 &raquo;
       </li>
       <li><a href="../drizzle/index.html" >The Drizzle Library</a> &raquo;</li>
@@ -89,77 +89,77 @@
 <h1>dodrizzle<a class="headerlink" href="#dodrizzle" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="drizzle.dodrizzle.dodrizzle">
-<tt class="descclassname">drizzle.dodrizzle.</tt><tt class="descname">dodrizzle</tt><big>(</big><em>insci</em>, <em>input_wcs</em>, <em>inwht</em>, <em>output_wcs</em>, <em>outsci</em>, <em>outwht</em>, <em>outcon</em>, <em>expin</em>, <em>in_units</em>, <em>wt_scl</em>, <em>wcslin_pscale=1.0</em>, <em>uniqid=1</em>, <em>xmin=0</em>, <em>xmax=0</em>, <em>ymin=0</em>, <em>ymax=0</em>, <em>pixfrac=1.0</em>, <em>kernel=u'square'</em>, <em>fillval=u'INDEF'</em>, <em>stepsize=10</em>, <em>wcsmap=None</em><big>)</big><a class="reference internal" href="../_modules/drizzle/dodrizzle.html#dodrizzle"><span class="viewcode-link">[source]</span></a><a class="reference external" href="http://github.com/spacetelescope/drizzle/tree/master/drizzle/dodrizzle.py#L11" title="Push the Edit button on the next page"><span class="edit-on-github viewcode-link">&nbsp;[edit on github]</span></a><a class="headerlink" href="#drizzle.dodrizzle.dodrizzle" title="Permalink to this definition">¶</a></dt>
-<dd><p>Low level routine for performing &#8216;drizzle&#8217; operation on a single input
-image. Interface is compatible with STScI code. All images are Python
+<tt class="descclassname">drizzle.dodrizzle.</tt><tt class="descname">dodrizzle</tt><big>(</big><em>insci</em>, <em>input_wcs</em>, <em>inwht</em>, <em>output_wcs</em>, <em>outsci</em>, <em>outwht</em>, <em>outcon</em>, <em>expin</em>, <em>in_units</em>, <em>wt_scl</em>, <em>wcslin_pscale=1.0</em>, <em>uniqid=1</em>, <em>xmin=0</em>, <em>xmax=0</em>, <em>ymin=0</em>, <em>ymax=0</em>, <em>pixfrac=1.0</em>, <em>kernel=u'square'</em>, <em>fillval=u'INDEF'</em>, <em>stepsize=10</em>, <em>wcsmap=None</em><big>)</big><a class="reference internal" href="../_modules/drizzle/dodrizzle.html#dodrizzle"><span class="viewcode-link">[source]</span></a><a class="reference external" href="http://github.com/spacetelescope/drizzle/tree/master/drizzle/dodrizzle.py#L15" title="Push the Edit button on the next page"><span class="edit-on-github viewcode-link">&nbsp;[edit on github]</span></a><a class="headerlink" href="#drizzle.dodrizzle.dodrizzle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Low level routine for performing &#8216;drizzle&#8217; operation.on one image.</p>
+<p>The interface is compatible with STScI code. All images are Python
 ndarrays, instead of filenames. File handling (input and output) is
 performed by the calling routine.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>insci:</strong></p>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>insci</strong> : 2d array</p>
 <blockquote>
 <div><p>A 2d numpy array containing the input image to be drizzled.
 it is an error to not supply an image.</p>
 </div></blockquote>
-<p><strong>input_wcs:</strong></p>
+<p><strong>input_wcs</strong> : 2d array</p>
 <blockquote>
 <div><p>The world coordinate system of the input image.</p>
 </div></blockquote>
-<p><strong>inwht:</strong></p>
+<p><strong>inwht</strong> : 2d array</p>
 <blockquote>
 <div><p>A 2d numpy array containing the pixel by pixel weighting.
 Must have the same dimenstions as insci. If none is supplied,
 the weghting is set to one.</p>
 </div></blockquote>
-<p><strong>output_wcs:</strong></p>
+<p><strong>output_wcs</strong> : wcs</p>
 <blockquote>
 <div><p>The world coordinate system of the output image.</p>
 </div></blockquote>
-<p><strong>outsci:</strong></p>
+<p><strong>outsci</strong> : 2d array</p>
 <blockquote>
 <div><p>A 2d numpy array containing the output image produced by
 drizzling. On the first call it should be set to zero.
 Subsequent calls it will hold the intermediate results</p>
 </div></blockquote>
-<p><strong>outwht:</strong></p>
+<p><strong>outwht</strong> : 2d array</p>
 <blockquote>
 <div><p>A 2d numpy array containing the output counts. On the first
 call it should be set to zero. On subsequent calls it will
 hold the intermediate results.</p>
 </div></blockquote>
-<p><strong>outcon:</strong></p>
+<p><strong>outcon</strong> : 2d array</p>
 <blockquote>
 <div><p>A 3d numpy array holding a bitmap of which image was input
 for each output pixel. Should be integer zero on first call.
 Subsequent calls hold intermediate results.</p>
 </div></blockquote>
-<p><strong>expin:</strong></p>
+<p><strong>expin</strong> : float</p>
 <blockquote>
 <div><p>The exposure time of the input image, a positive number. The
 exposure time is used to scale the image if the units are counts.</p>
 </div></blockquote>
-<p><strong>in_units:</strong></p>
+<p><strong>in_units</strong> : str</p>
 <blockquote>
 <div><p>The units of the input image. The units can either be &#8220;counts&#8221; 
 or &#8220;cps&#8221; (counts per second.)</p>
 </div></blockquote>
-<p><strong>wt_scl:</strong></p>
+<p><strong>wt_scl</strong> : float</p>
 <blockquote>
 <div><p>A scaling factor for the pixel by pixel weighting.</p>
 </div></blockquote>
-<p><strong>wcslin_pscale:</strong></p>
+<p><strong>wcslin_pscale</strong> : float, optional</p>
 <blockquote>
 <div><p>The pixel scale of the input image.</p>
 </div></blockquote>
-<p><strong>uniqid:</strong></p>
+<p><strong>uniqid</strong> : int, optional</p>
 <blockquote>
 <div><p>The id number of the input image. Should be one the first time
 this function is called and incremented by one on each subsequent
 call.</p>
 </div></blockquote>
-<p><strong>xmin:</strong></p>
+<p><strong>xmin</strong> : float, optional</p>
 <blockquote>
 <div><p>This and the following three parameters set a bounding rectangle
 on the output image. Only pixels on the output image inside this
@@ -169,25 +169,25 @@ quickest on the image. If the value is zero or less, no minimum will
 be set in the x dimension. All four parameters are zero based,
 counting starts at zero.</p>
 </div></blockquote>
-<p><strong>xmax:</strong></p>
+<p><strong>xmax</strong> : float, optional</p>
 <blockquote>
 <div><p>Sets the maximum value of the x dimension on the bounding box
 of the ouput image. If the value is zero or less, no maximum will 
 be set in the x dimension.</p>
 </div></blockquote>
-<p><strong>ymin:</strong></p>
+<p><strong>ymin</strong> : float, optional</p>
 <blockquote>
 <div><p>Sets the minimum value in the y dimension on the bounding box. The
 y dimension varies less rapidly than the x and represents the line
 index on the output image. If the value is zero or less, no minimum 
 will be set in the y dimension.</p>
 </div></blockquote>
-<p><strong>ymax:</strong></p>
+<p><strong>ymax</strong> : float, optional</p>
 <blockquote>
 <div><p>Sets the maximum value in the y dimension. If the value is zero or
 less, no maximum will be set in the y dimension.</p>
 </div></blockquote>
-<p><strong>pixfrac:</strong></p>
+<p><strong>pixfrac</strong> : float, optional</p>
 <blockquote>
 <div><p>The fraction of a pixel that the pixel flux is confined to. The
 default value of 1 has the pixel flux evenly spread across the image.
@@ -195,33 +195,36 @@ A value of 0.5 confines it to half a pixel in the linear dimension,
 so the flux is confined to a quarter of the pixel area when the square
 kernel is used.</p>
 </div></blockquote>
-<p><strong>kernel:</strong></p>
+<p><strong>kernel: str, optional</strong></p>
 <blockquote>
 <div><p>The name of the kernel used to combine the input. The choice of
 kernel controls the distribution of flux over the kernel. The kernel
 names are: &#8220;square&#8221;, &#8220;gaussian&#8221;, &#8220;point&#8221;, &#8220;tophat&#8221;, &#8220;turbo&#8221;, &#8220;lanczos2&#8221;,
 and &#8220;lanczos3&#8221;. The square kernel is the default.</p>
 </div></blockquote>
-<p><strong>fillval:</strong></p>
+<p><strong>fillval: str, optional</strong></p>
 <blockquote>
 <div><p>The value a pixel is set to in the output if the input image does
 not overlap it. The default value of INDEF does not set a value.</p>
-</div></blockquote>
-<p><strong>stepsize:</strong></p>
-<blockquote>
-<div><p>Was used when input to output mapping was computed
-internally. Is no longer used and only here for backwards compatibility.</p>
-</div></blockquote>
-<p><strong>wcsmap:</strong></p>
-<blockquote>
-<div><p>Was used when input to output mapping was computed
-internally. Is no longer used and only here for backwards compatibility.</p>
 </div></blockquote>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A tuple with three values: a version string, the number of pixels</p>
 <p>on the input image that are not on the output image, and the number</p>
-<p class="last">of complete lines on the input image not on the output image.</p>
+<p>of complete lines on the input image not on the output image.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">Other Parameters:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body"><p class="first"><strong>stepsize</strong></p>
+<blockquote>
+<div><p>Was used when input to output mapping was computed
+internally. Is no longer used and only here for backwards compatibility.</p>
+</div></blockquote>
+<p><strong>wcsmap</strong></p>
+<blockquote class="last">
+<div><p>Was used when input to output mapping was computed
+internally. Is no longer used and only here for backwards compatibility.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
@@ -252,9 +255,9 @@ internally. Is no longer used and only here for backwards compatibility.</p>
        rel="nofollow">Page Source</a> &nbsp;
     <a href="#">Back to Top</a></p>
   <p>
-    &copy; Copyright 2015, Bernie Simmon.<br/>
+    &copy; Copyright 2015, Bernie Simon.<br/>
     Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2. &nbsp;
-    Last built 14 Jan 2015. <br/>
+    Last built 15 Jan 2015. <br/>
   </p>
 </footer>
   </body>
