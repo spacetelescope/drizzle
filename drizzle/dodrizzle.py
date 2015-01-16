@@ -5,8 +5,8 @@ import numpy as np
 
 # LOCAL
 from . import util
-from . import cdrizzle
 from . import calc_pixmap
+from . import cdrizzle
 
 """
 STScI Python compatable drizzle module
