@@ -57,7 +57,6 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   struct driz_error_t error;
   struct driz_param_t p;
   integer_t osize[2];
-  int i; /* DBG */
 
   driz_error_init(&error);
   
@@ -240,7 +239,6 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
   int istat = 0;
   struct driz_error_t error;
   struct driz_param_t p;
-  double maxdiff = 0.0;
   integer_t osize[2];
 
   driz_error_init(&error);
