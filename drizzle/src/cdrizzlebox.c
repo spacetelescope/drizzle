@@ -175,7 +175,7 @@ sgarea(const double x1, const double y1, const double x2, const double y2) {
  * y:  y coordinates of endpoints of quadrilateral containing flux of input pixel
  */
 
-static inline_macro double
+double
 boxer(double is, double js,
       const double x[4], const double y[4]) {
   integer_t i;
@@ -202,6 +202,115 @@ boxer(double is, double js,
   }
 
   return sum;
+}
+
+/** --------------------------------------------------------------------------------------------------
+ * Compute area of box overlap. Calculate the area common to input clockwise polygon x(n), y(n) with
+ * square (is, js) to (is+1, js+1). This version is for a quadrilateral. Used by do_square_kernel.
+ *
+ * is: x coordinate of a pixel on the output image
+ * js: y coordinate of a pixel on the output image
+ * x:  x coordinates of endpoints of quadrilateral containing flux of input pixel
+ * y:  y coordinates of endpoints of quadrilateral containing flux of input pixel
+ */
+
+double
+compute_area(double is, double js, const double x[4], const double y[4]) {
+  int ipoint, jpoint, idim, jdim, iside, iseg, outside, count;
+  double area, width;
+  double midpoint[2], delta[2], positive[2];
+  double border[2][2], segment[2][2];
+
+  area = 0.0;
+
+  border[0][0] = is - 0.5;
+  border[0][1] = is + 0.5;
+  border[1][0] = js - 0.5;
+  border[1][1] = js + 0.5;
+  
+  for (ipoint = 0; ipoint < 4; ++ ipoint) {
+    jpoint = (ipoint + 1) & 03; /* Next point in cyclical order */
+
+    segment[0][0] = x[ipoint];
+    segment[0][1] = y[ipoint];
+    segment[1][0] = x[jpoint];
+    segment[1][1] = y[jpoint];
+  
+    /* Compute the endpoints of the line segment that 
+     * lie inside the border (possibly the whole segment) 
+     */
+    
+    for (idim = 0, count = 3; idim < 2; ++ idim) {
+      for (iside = 0; iside < 2; ++ iside, -- count) {
+	
+        for (iseg = 0; iseg < 2; ++ iseg) { 
+          delta[iseg] = segment[iseg][idim] - border[iside][idim];
+          positive[iseg] = delta[iseg] >= 0.0;
+        }
+
+        if (positive[0] == positive[1]) {
+          if (positive[0] == iside) {
+            /* Segment is entirely outside the boundary */
+            if (count) {
+              goto _nextsegment;
+            } else {
+              outside = 0;
+            }
+	    
+          } else {
+            /* Segment entirely within the boundary */
+            outside = 1;
+          }
+	  
+        } else {
+          /* If both line segments are on opposite sides of the
+          * boundary, calculate midpoint, the point of intersection
+          */
+
+          outside = positive[iside];
+          jdim = (idim + 1) & 01; /* the other dimension */
+
+          midpoint[idim] = border[iside][idim];
+	  
+          midpoint[jdim] =
+            (delta[1] * segment[0][jdim] - delta[0] * segment[1][jdim]) /
+            (delta[1] - delta[0]);
+
+          if (count) {
+            /* Clip segment against each boundary except the first */
+            segment[outside][0] = midpoint[0];
+            segment[outside][1] = midpoint[1];
+          }
+        }
+      }
+    }
+
+    /* Add the area under the line segment to the total area */
+    
+    for (iseg = 0; iseg < 2; ++ iseg) {
+      if (iseg) {
+        width = segment[1][0] - midpoint[0];
+      } else {
+        width = midpoint[0] - segment[0][0];
+      }
+
+      if (width != 0.0) {
+        if (iseg == outside) {
+          /* Implicitly multiplied by 1.0, the square height */
+          area += width; 
+
+        } else {
+          /* Delta is the distance to the top of the square and 
+           * is negative or zero for the segment inside the square */
+          area += 0.5 * width * (1.0 + delta[0]) * (1.0 + delta[1]);
+        }
+      }
+    }
+
+    _nextsegment: continue;
+  }
+
+  return area;
 }
 
 /** --------------------------------------------------------------------------------------------------
