@@ -16,14 +16,19 @@ def find_keyword_extn(fimg, keyword, value=None):
     
     Parameters
     ----------
-    fimg: A list of header data units
     
-    keyword: The keyword to search for
+    fimg : hdulist
+        A list of header data units
     
-    value: If set, the value the keyword must have to match
+    keyword : str
+        The keyword to search for
+    
+    value : str or number, optional
+        If set, the value the keyword must have to match
     
     Returns
     -------
+    
     The index of the extension
     """
 
@@ -56,12 +61,16 @@ def get_extn(fimg, extn=''):
     
     Parameters
     ----------
-    fimg: A list of header data units
+    
+    fimg : hdulist
+        A list of header data units
 
-    extn: The extension name and version to match
+    extn : str
+        The extension name and version to match
     
     Returns
     -------
+
     The matching header data unit
     """
 
@@ -102,14 +111,19 @@ def get_keyword(fimg, keyword, default=None):
     
     Parameters
     ----------
-    fimg: A list of header data units
+
+    fimg : hdulist
+        A list of header data units
     
-    keyword: The keyword value to search for
+    keyword : hdulist
+        The keyword value to search for
     
-    default: The default value if not found
+    default : str or number, optional
+        The default value if not found
     
     Returns
     -------
+
     The value if found or default if not
     """
 
@@ -132,10 +146,13 @@ def is_blank(value):
     
     Parameters
     ----------
-    value: The value to check
+    
+    value : str
+        The value to check
     
     Returns
     -------
+
     True or False
     """
     return value.strip() == ""
@@ -158,7 +175,8 @@ def parse_extn(extn=''):
         
     Parameters
     ----------
-    extn: The extension name
+    extn : str
+        The extension name
     
     Returns
     -------
@@ -186,10 +204,13 @@ def parse_filename(filename):
     
     Parameters
     ----------
-    filename: The filename to be parsed
+    
+    filename : str
+        The filename to be parsed
     
     Returns
     -------
+    
     A tuple with the filename root and extension
     """
     # Parse out any extension specified in filename
@@ -212,7 +233,9 @@ def set_pscale(the_wcs):
     
     Parameters
     ----------
-    the_wcs: A WCS object
+    
+    the_wcs : wcs
+        A WCS object
     """
     cd = the_wcs.pixel_scale_matrix
     the_wcs.pscale = \

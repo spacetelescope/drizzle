@@ -8,14 +8,18 @@ def calc_pixmap(first_wcs, second_wcs):
     
     Parameters
     ----------
-    first_wcs: A WCS object representing the coordinate system you are
+    
+    first_wcs : wcs
+        A WCS object representing the coordinate system you are
         converting from
     
-    seond_wcs: A WCS object representing the coordinate system you are
+    seond_wcs : wcs
+        A WCS object representing the coordinate system you are
         converting to
         
     Returns
     -------
+    
     A three dimensional array representing the transformation between
     the two. The last dimension is of length two and contains the x and
     y coordinates of a pixel center, repectively. The other two coordinates
