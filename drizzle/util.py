@@ -227,8 +227,8 @@ def parse_filename(filename):
 
 def set_pscale(the_wcs):
     """
-    Calculates the plate scale from the CD matrix and adds it to
-    the WCS. Plate scale is not part of the WCS standard, but is
+    Calculates the plate scale from cdelt and the pc  matrix and adds 
+    it to the WCS. Plate scale is not part of the WCS standard, but is
     required by the drizzle code
     
     Parameters
@@ -237,6 +237,22 @@ def set_pscale(the_wcs):
     the_wcs : wcs
         A WCS object
     """
-    cd = the_wcs.pixel_scale_matrix
-    the_wcs.pscale = \
-        np.sqrt(np.power(cd[0][0],2)+np.power(cd[1][0],2)) * 3600.
+    try:
+        cdelt = np.matrix(np.diag(the_wcs.wcs.get_cdelt()))
+        pc = np.matrix(the_wcs.wcs.get_pc())
+
+    except InconsistentAxisTypesError:
+        try:
+            # for non-celestial axes, get_cdelt doesnt work
+            cdelt = np.matrix(the_wcs.wcs.cd) * np.matrix(np.diag(the_wcs.wcs.cdelt))
+        except AttributeError:
+            cdelt = np.matrix(np.diag(the_wcs.wcs.cdelt))
+
+        try:
+            pc = np.matrix(the_wcs.wcs.pc)
+        except AttributeError:
+            pc = 1
+
+    pccd = np.array(cdelt * pc)
+    scales = np.sqrt((pccd ** 2).sum(axis=0, dtype=np.float))
+    the_wcs.pscale = scales[0]
