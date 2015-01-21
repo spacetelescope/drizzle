@@ -750,7 +750,7 @@ do_kernel_turbo(struct driz_param_t* p) {
 
 int
 do_kernel_square(struct driz_param_t* p) {
-  integer_t bv, i, j, ii, jj, min_ii, max_ii, min_jj, max_jj, nhit, n;
+  integer_t bv, i, j, ii, jj, min_ii, max_ii, min_jj, max_jj, nhit;
   integer_t xbounds[2], ybounds[2];
   float scale2, vc, d, dow;
   double dh, jaco, tem, dover, w;

@@ -106,8 +106,6 @@ driz_param_dump(struct driz_param_t* p) {
 
 void
 driz_param_init(struct driz_param_t* p) {
-  integer_t i;
-
   assert(p);
 
   /* Kernel shape and size */

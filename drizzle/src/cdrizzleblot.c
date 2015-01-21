@@ -881,9 +881,7 @@ doblot(struct driz_param_t* p) {
   const size_t nlut = 2048;
   const float space = 0.01;
   integer_t isize[2], osize[2];
-  double yv;
   float scale2, xo, yo, v;
-  float nx, ny;
   integer_t i, j;
   interp_function* interpolate;
   struct sinc_param_t sinc;
