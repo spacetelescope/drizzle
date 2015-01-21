@@ -474,7 +474,7 @@ FCT_BGN_FN(utest_cdrizzle)
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_compute_aligned_area_01)
+        FCT_TEST_BGN(utest_compute_area_01)
         {
             /* Test compute area with square aligned with sides */
             int i, j;
@@ -497,8 +497,49 @@ FCT_BGN_FN(utest_cdrizzle)
                 for (i = 0; i <= 6; ++i) {
                     x[0] = 0.25 * (double) i;
                     y[0] = 0.25 * (double) j;
-                    x[1] = x[0] + 0.5;
-                    y[1] = y[1] + 0.5;
+                    x[1] = x[0];
+                    y[1] = y[0] + 0.5;
+                    x[2] = x[0] + 0.5;
+                    y[2] = y[0] + 0.5;
+                    x[3] = x[0] + 0.5;
+                    y[3] = y[0];
+
+                    area = compute_area(is, js, x, y);
+                    fct_chk_eq_dbl(area, area_ok[j][i]);
+                }
+            }
+        }
+        FCT_TEST_END();
+
+        FCT_TEST_BGN(utest_compute_area_02)
+        {
+            /* Test compute area with diagonal square */
+            int i, j;
+            double area;
+            double is, js, x[4], y[4];
+
+            double area_ok[7][7] = {
+            {0.0, 0.0,     0.0,    0.0,    0.0,    0.0,    0.0},
+            {0.0, 0.03125, 0.0625, 0.0625, 0.0625, 0.03125, 0.0},
+            {0.0, 0.0625,  0.125,  0.125,  0.125,  0.0625,  0.0},
+            {0.0, 0.0625,  0.125,  0.125,  0.125,  0.0625,  0.0},
+            {0.0, 0.0625,  0.125,  0.125,  0.125,  0.0625,  0.0},
+            {0.0, 0.03125, 0.0625, 0.0625, 0.0625, 0.03125, 0.0},
+            {0.0, 0.0,     0.0,    0.0,    0.0,    0.0,     0.0}
+            };
+            
+            is = 1.0;
+            js = 1.0;
+            for (j = 0; j <= 6; ++j) {
+                for (i = 0; i <= 6; ++i) {
+                    x[0] = 0.25 * (double) i;
+                    y[0] = 0.25 * (double) (j + 1);
+                    x[1] = 0.25 * (double) (i + 1);
+                    y[1] = 0.25 * (double) j;
+                    x[2] = 0.25 * (double) (i + 2);
+                    y[2] = 0.25 * (double) (j + 1);
+                    x[3] = 0.25 * (double) (i + 1);
+                    y[3] = 0.25 * (double) (j + 2);
 
                     area = compute_area(is, js, x, y);
                     fct_chk_eq_dbl(area, area_ok[j][i]);
