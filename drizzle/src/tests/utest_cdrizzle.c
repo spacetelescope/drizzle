@@ -474,6 +474,39 @@ FCT_BGN_FN(utest_cdrizzle)
         }
         FCT_TEST_END();
 
+        FCT_TEST_BGN(utest_compute_aligned_area_01)
+        {
+            /* Test compute area with square aligned with sides */
+            int i, j;
+            double area;
+            double is, js, x[4], y[4];
+
+            double area_ok[7][7] = {
+            {0.0, 0.0,    0.0,    0.0,  0.0,   0.0,    0.0},
+            {0.0, 0.0625, 0.125, 0.125, 0.125, 0.0625, 0.0},
+            {0.0, 0.125,  0.25,  0.25,  0.25,  0.125,  0.0},
+            {0.0, 0.125,  0.25,  0.25,  0.25,  0.125,  0.0},
+            {0.0, 0.125,  0.25,  0.25,  0.25,  0.125,  0.0},
+            {0.0, 0.0625, 0.125, 0.125, 0.125, 0.0625, 0.0},
+            {0.0, 0.0,    0.0,   0.0,   0.0,   0.0,    0.0}
+            };
+            
+            is = 1.0;
+            js = 1.0;
+            for (j = 0; j <= 6; ++j) {
+                for (i = 0; i <= 6; ++i) {
+                    x[0] = 0.25 * (double) i;
+                    y[0] = 0.25 * (double) j;
+                    x[1] = x[0] + 0.5;
+                    y[1] = y[1] + 0.5;
+
+                    area = compute_area(is, js, x, y);
+                    fct_chk_eq_dbl(area, area_ok[j][i]);
+                }
+            }
+        }
+        FCT_TEST_END();
+
         FCT_TEST_BGN(utest_do_kernel_square_01)
         {
             /* Simplest case */
