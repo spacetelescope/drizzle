@@ -17,6 +17,20 @@
 
 static PyObject *gl_Error;
 
+#if PY_MAJOR_VERSION >= 3
+static struct PyModuleDef moduledef = {
+  PyModuleDef_HEAD_INIT,
+  "cdrizzle",          /* m_name */
+  "C Drizzle module",  /* m_doc */
+  -1,                  /* m_size */
+  cdrizzle_methods,    /* m_methods */
+  NULL,                /* m_reload */
+  NULL,                /* m_traverse */
+  NULL,                /* m_clear */
+  NULL,                /* m_free */
+};
+#endif
+
 /** --------------------------------------------------------------------------------------------------
  * Top level function for drizzling, interfaces with python code
  */
@@ -393,13 +407,22 @@ static PyMethodDef cdrizzle_methods[] =
 /** --------------------------------------------------------------------------------------------------
  */
 
-void initcdrizzle(void)
+PyMODINIT_FUNC
+#if PY_MAJOR_VERSION >= 3
+PyInit_cdrizzle(void)
+#else
+initcdrizzle(void)
+#endif
 {
   PyObject* m;
+  import_array();
 
-  m = Py_InitModule("cdrizzle", cdrizzle_methods);
+#if PY_MAJOR_VERSION >= 3
+  m = PyModule_Create(&moduledef);
+  return m;
+#else
+  m = Py_InitModule3("cdrizzle", cdrizzle_methods, "C Drizzle module");
   if (m == NULL)
     return;
-
-  import_array();
+#endif
 }
