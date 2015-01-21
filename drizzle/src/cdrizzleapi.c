@@ -17,20 +17,6 @@
 
 static PyObject *gl_Error;
 
-#if PY_MAJOR_VERSION >= 3
-static struct PyModuleDef moduledef = {
-  PyModuleDef_HEAD_INIT,
-  "cdrizzle",          /* m_name */
-  "C Drizzle module",  /* m_doc */
-  -1,                  /* m_size */
-  cdrizzle_methods,    /* m_methods */
-  NULL,                /* m_reload */
-  NULL,                /* m_traverse */
-  NULL,                /* m_clear */
-  NULL,                /* m_free */
-};
-#endif
-
 /** --------------------------------------------------------------------------------------------------
  * Top level function for drizzling, interfaces with python code
  */
@@ -403,6 +389,23 @@ static PyMethodDef cdrizzle_methods[] =
     "test_cdrizzle(data, weights, pixmap, output_data, output_counts)"},
     {0, 0, 0, 0}                             /* sentinel */
   };
+
+/** --------------------------------------------------------------------------------------------------
+ */
+
+#if PY_MAJOR_VERSION >= 3
+static struct PyModuleDef moduledef = {
+  PyModuleDef_HEAD_INIT,
+  "cdrizzle",          /* m_name */
+  "C Drizzle module",  /* m_doc */
+  -1,                  /* m_size */
+  cdrizzle_methods,    /* m_methods */
+  NULL,                /* m_reload */
+  NULL,                /* m_traverse */
+  NULL,                /* m_clear */
+  NULL,                /* m_free */
+};
+#endif
 
 /** --------------------------------------------------------------------------------------------------
  */
