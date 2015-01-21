@@ -14,7 +14,7 @@ env:
         # to repeat them for all configurations.
         - NUMPY_VERSION=1.8
         - ASTROPY_VERSION=stable
-	- OPTIONAL_DEPS=true
+        - OPTIONAL_DEPS=true
         - CONDA_INSTALL='conda install -c astropy-ci-extras --yes'
         - PIP_INSTALL='pip install'
     matrix:
