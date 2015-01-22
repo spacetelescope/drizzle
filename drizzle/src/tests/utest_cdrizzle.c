@@ -534,8 +534,8 @@ FCT_BGN_FN(utest_cdrizzle)
             /* Single pixel set */
             
             struct driz_param_t *p;     /* parameter structure */
-            integer_t i, j;
-            int k, n, status;
+            integer_t j;
+            int k, n;
             double offset, value;
             
             n = 100;
@@ -549,7 +549,7 @@ FCT_BGN_FN(utest_cdrizzle)
             }
             
             k = 3;
-            status = do_kernel_square(p);
+            do_kernel_square(p);
             
             fct_chk_eq_dbl(get_pixel(p->output_data, (k+2), k), get_pixel(p->data, k, k));
 
@@ -563,10 +563,8 @@ FCT_BGN_FN(utest_cdrizzle)
             
             struct driz_param_t *p;     /* parameter structure */
             integer_t i, j, k;
-            int n, status;
             double offset, value;
             
-            n = 100;
             offset = 2.5;
             value = 4.0;
             p = setup_parameters();
@@ -575,7 +573,7 @@ FCT_BGN_FN(utest_cdrizzle)
             k = 1;
             set_pixel(p->data, k, k, value);
             
-            status = do_kernel_square(p);
+            do_kernel_square(p);
 
             for (i = 2; i <= 3; ++i) {
                 for (j = 2; j <= 3; ++j) {
@@ -593,7 +591,7 @@ FCT_BGN_FN(utest_cdrizzle)
             
             struct driz_param_t *p;     /* parameter structure */
             integer_t i,j;
-            int k, n, status;
+            int k, n;
             double offset, value;
             
             n = 100;
@@ -606,9 +604,9 @@ FCT_BGN_FN(utest_cdrizzle)
                 set_pixel(p->data, j, j, value);
             }
             
-           status = do_kernel_square(p);
+            do_kernel_square(p);
 
-            for (i = 4; i < 100; ++i) {
+            for (i = 4; i < n; ++i) {
                 fct_chk_eq_dbl(get_pixel(p->output_data, i, i), value/2.0);
                 fct_chk_eq_dbl(get_pixel(p->output_data, i-1, i), value/4.0);
                 fct_chk_eq_dbl(get_pixel(p->output_data, i, i-1), value/4.0);
@@ -624,11 +622,10 @@ FCT_BGN_FN(utest_cdrizzle)
             
             struct driz_param_t *p;     /* parameter structure */
             integer_t i,j;
-            int k, n, status;
+            int k;
             double offset, value;
             
             k = 2;
-            n = 100;
             offset = 2.0;
             value = 4.0;
             p = setup_parameters();
@@ -640,7 +637,7 @@ FCT_BGN_FN(utest_cdrizzle)
                 }
             }
             
-            status = do_kernel_square(p);
+            do_kernel_square(p);
 
             for (i = 0; i < k; ++i) {
                 for (j = 0; j < k; ++j) {
@@ -658,11 +655,10 @@ FCT_BGN_FN(utest_cdrizzle)
             
             struct driz_param_t *p;     /* parameter structure */
             integer_t i, j;
-            int k, n, status;
+            int k;
             double offset, value;
             
             k = 2;
-            n = 100;
             offset = 2.5;
             value = 4.0;
             p = setup_parameters();
@@ -674,7 +670,7 @@ FCT_BGN_FN(utest_cdrizzle)
                 }
             }
             
-            status = do_kernel_square(p);
+            do_kernel_square(p);
 
             fct_chk_eq_dbl(get_pixel(p->output_data, 3, 3), 1.0);
             fct_chk_eq_dbl(get_pixel(p->output_data, 3, 5), 1.0);
@@ -695,11 +691,10 @@ FCT_BGN_FN(utest_cdrizzle)
             /* Single pixel set, whole number offset */
             
             struct driz_param_t *p;     /* parameter structure */
-            int k, n, status;
+            int k;
             double offset, value;
             
             k = 2;
-            n = 100;
             offset = 2.0;
             value = 44.0;
 
@@ -708,7 +703,7 @@ FCT_BGN_FN(utest_cdrizzle)
             p->kernel = kernel_turbo;
 
             set_pixel(p->data, k, k, value);
-            status = dobox(p);
+            dobox(p);
  
             fct_chk_eq_dbl(get_pixel(p->output_data, (k+2), (k+2)), get_pixel(p->data, k, k));
             fct_chk_eq_int(p->nskip, 0);
@@ -720,11 +715,10 @@ FCT_BGN_FN(utest_cdrizzle)
             /* Single pixel, fractional pixel offset */
 
             struct driz_param_t *p;     /* parameter structure */
-            int i, j, k, n, status;
+            int i, j, k;
             double offset, value;
             
             k = 2;
-            n = 100;
             offset = 2.5;
             value = 44.0;
 
@@ -733,7 +727,7 @@ FCT_BGN_FN(utest_cdrizzle)
             p->kernel = kernel_turbo;
 
             set_pixel(p->data, k, k, value);
-            status = dobox(p);
+            dobox(p);
 
             for (i = 2; i <= 3; ++i) {
                 for (j = 2; j <= 3; ++j) {
@@ -748,10 +742,9 @@ FCT_BGN_FN(utest_cdrizzle)
             /* Turbo mode kernel, diagonal line of pixels set */
             
             struct driz_param_t *p;     /* parameter structure */
-            int i, j, k, n, status;
+            int i, j, n;
             double offset, value;
             
-            k = 2;
             n = 100;
             offset = 2.5;
             value = 4.0;
@@ -764,9 +757,9 @@ FCT_BGN_FN(utest_cdrizzle)
                 set_pixel(p->data, j, j, value);
             }
 
-            status = dobox(p);
+            dobox(p);
             
-            for (i = 4; i < 100; ++i) {
+            for (i = 4; i < n; ++i) {
                 fct_chk_eq_dbl(get_pixel(p->output_data, i, i), value/2.0);
                 fct_chk_eq_dbl(get_pixel(p->output_data, i-1, i), value/4.0);
                 fct_chk_eq_dbl(get_pixel(p->output_data, i, i-1), value/4.0);
@@ -781,11 +774,10 @@ FCT_BGN_FN(utest_cdrizzle)
             /* Check that context map is set for the affected pixels */
             
             struct driz_param_t *p;     /* parameter structure */
-            int i, j, k, n, status;
+            int i, j, n;
             double offset, value;
             integer_t bv;
             
-            k = 2;
             n = 100;
             offset = 2.5;
             value = 4.0;
@@ -798,7 +790,7 @@ FCT_BGN_FN(utest_cdrizzle)
                 set_pixel(p->data, j, j, value);
             }
 
-            status = dobox(p);
+            dobox(p);
 
             bv = compute_bit_value(p->uuid);
             for (i = 4; i < 100; ++i) {
@@ -814,11 +806,10 @@ FCT_BGN_FN(utest_cdrizzle)
             /* Single pixel set blinear interpolation */
             
             struct driz_param_t *p;     /* parameter structure */
-            int k, n, status;
+            int k;
             double offset, value;
             
             k = 2;
-            n = 100;
             offset = -2.0;
             value = 5.0;
 
@@ -828,7 +819,7 @@ FCT_BGN_FN(utest_cdrizzle)
             offset_pixmap(p, offset, offset);
 
             set_pixel(p->data, k, k, value);
-            status = doblot(p);
+            doblot(p);
 
            fct_chk_eq_dbl(get_pixel(p->output_data, (k+2), (k+2)), get_pixel(p->data, k, k));
         }
@@ -839,11 +830,10 @@ FCT_BGN_FN(utest_cdrizzle)
             /* Single pixel set quintic interpolation*/
             
             struct driz_param_t *p;     /* parameter structure */
-            int k, n, status;
+            int k;
             double offset, value;
             
             k = 2;
-            n = 100;
             offset = -2.0;
             value = 5.0;
 
@@ -853,7 +843,7 @@ FCT_BGN_FN(utest_cdrizzle)
             offset_pixmap(p, offset, offset);
 
             set_pixel(p->data, k, k, value);
-            status = doblot(p);
+            doblot(p);
 
             fct_chk_eq_dbl(get_pixel(p->output_data, (k+2), (k+2)), get_pixel(p->data, k, k));
         }

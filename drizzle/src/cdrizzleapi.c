@@ -18,6 +18,27 @@
 static PyObject *gl_Error;
 
 /** --------------------------------------------------------------------------------------------------
+ * Multiply each pixel in an image by a scale factor
+ */
+
+static void
+scale_image(PyArrayObject *image, double scale_factor) {
+  long  i, size;
+  float *imptr;
+  
+  assert(image);
+  imptr = (float *) PyArray_DATA(image);
+
+  size = PyArray_DIMS(image)[0] * PyArray_DIMS(image)[1];
+
+  for (i = size; i > 0; --i) {
+    *imptr++ *= scale_factor;
+  }
+  
+  return;
+}
+
+/** --------------------------------------------------------------------------------------------------
  * Top level function for drizzling, interfaces with python code
  */
 

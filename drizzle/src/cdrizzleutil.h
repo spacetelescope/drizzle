@@ -230,23 +230,6 @@ unset_bit(PyArrayObject *image, integer_t xpix, integer_t ypix) {
   return;
 }
 
-static void
-scale_image(PyArrayObject *image, double scale_factor) {
-  long  i, size;
-  float *imptr;
-  
-  assert(image);
-  imptr = (float *) PyArray_DATA(image);
-
-  size = PyArray_DIMS(image)[0] * PyArray_DIMS(image)[1];
-
-  for (i = size; i > 0; --i) {
-    *imptr++ *= scale_factor;
-  }
-  
-  return;
-}
-
 /*****************************************************************
  STRING TO ENUMERATION CONVERSIONS
 */
