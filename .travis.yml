@@ -70,13 +70,15 @@ before_install:
     - ./miniconda.sh -b
     - export PATH=/home/travis/miniconda/bin:$PATH
     - conda update --yes conda
+    - pip install astropy --upgrade
 
     # UPDATE APT-GET LISTINGS
     - sudo apt-get update
 
     # DOCUMENTATION DEPENDENCIES
     - if [[ $SETUP_CMD == build_sphinx* ]]; then sudo apt-get install graphviz texlive-latex-extra dvipng; fi
-
+    - pip install jinja2
+	
 install:
 
     # CONDA
@@ -92,7 +94,7 @@ install:
     - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION astropy; fi
 
     # OPTIONAL DEPENDENCIES
-    - if $OPTIONAL_DEPS; then $CONDA_INSTALL jinja2 scipy; fi
+    - if $OPTIONAL_DEPS; then $CONDA_INSTALL scipy; fi
     
     # DOCUMENTATION DEPENDENCIES
     # build_sphinx needs sphinx and matplotlib (for plot_directive). Note that
