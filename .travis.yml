@@ -78,7 +78,7 @@ before_install:
     # DOCUMENTATION DEPENDENCIES
     - if [[ $SETUP_CMD == build_sphinx* ]]; then sudo apt-get install graphviz texlive-latex-extra dvipng; fi
     - pip install jinja2
-	
+    
 install:
 
     # CONDA
@@ -91,7 +91,7 @@ install:
 
     # ASTROPY
     - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == development ]]; then $PIP_INSTALL git+http://github.com/astropy/astropy.git#egg=astropy; fi
-    - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION astropy; fi
+    - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION astropy=0.4.4; fi
 
     # OPTIONAL DEPENDENCIES
     - if $OPTIONAL_DEPS; then $CONDA_INSTALL scipy; fi
