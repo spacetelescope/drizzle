@@ -258,6 +258,7 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
         if (positive[0] == positive[1]) {
           if (positive[0] == iside) {
             /* Segment is entirely outside the boundary */
+            fprintf(fd, "No intersect - outside boundary\ncount = %d\n", count);
             if (count) {
               goto _nextsegment;
             } else {
@@ -266,9 +267,9 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
 	    
           } else {
             /* Segment entirely within the boundary */
+            fprintf(fd, "No intersect - inside boundary\ncount = %d\n", count);
             outside = 1;
           }
-          fprintf(fd, "outside = %d\n", outside);
           
         } else {
           /* If both line segments are on opposite sides of the
@@ -284,7 +285,7 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
             (delta[1] * segment[0][jdim] - delta[0] * segment[1][jdim]) /
             (delta[1] - delta[0]);
 
-          fprintf(fd, "outside = %d midpoint = (%f, %f)\n", outside, midpoint[0], midpoint[1]);
+          fprintf(fd, "Intersect\noutside = %d midpoint = (%f, %f)\n", outside, midpoint[0], midpoint[1]);
           if (count) {
             /* Clip segment against each boundary except the first */
             segment[outside][0] = midpoint[0];
