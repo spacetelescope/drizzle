@@ -167,8 +167,8 @@ def make_grid_image(input_image, spacing, value):
     
     shape = output_image.shape
     half_space = int(spacing/2)
-    for y in xrange(half_space, shape[0], spacing):
-        for x in xrange(half_space, shape[1], spacing):
+    for y in range(half_space, shape[0], spacing):
+        for x in range(half_space, shape[1], spacing):
             output_image[y,x] = value
 
     return output_image   
