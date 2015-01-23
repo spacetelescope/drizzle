@@ -85,15 +85,15 @@ install:
     # CORE DEPENDENCIES
     - if [[ $SETUP_CMD != egg_info ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION pytest pip Cython; fi
     - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL pytest-xdist; fi
-
+    - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL scipy; fi
+    - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL jinja2; fi
+ 
     # ASTROPY
     - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == development ]]; then $PIP_INSTALL git+http://github.com/astropy/astropy.git#egg=astropy; fi
     - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION astropy; fi
 
     # OPTIONAL DEPENDENCIES
-    - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL scipy; fi
-    - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL jinja2; fi
-    
+
     # DOCUMENTATION DEPENDENCIES
     # build_sphinx needs sphinx and matplotlib (for plot_directive). Note that
     # this matplotlib will *not* work with py 3.x, but our sphinx build is
