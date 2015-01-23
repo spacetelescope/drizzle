@@ -91,7 +91,7 @@ install:
     - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION astropy; fi
 
     # OPTIONAL DEPENDENCIES
-    - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL scipy; fi
+    - if [[ $SETUP_CMD != egg_info ]]; then $CONDA_INSTALL scipy; fi
     - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL jinja2; fi
     
     # DOCUMENTATION DEPENDENCIES
