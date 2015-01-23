@@ -13,8 +13,7 @@ env:
         # overidden underneath. They are defined here in order to save having
         # to repeat them for all configurations.
         - NUMPY_VERSION=1.8
-        - ASTROPY_VERSION=stable
-        - OPTIONAL_DEPS=true
+        - ASTROPY_VERSION=development
         - CONDA_INSTALL='conda install -c astropy-ci-extras --yes'
         - PIP_INSTALL='pip install'
     matrix:
@@ -92,7 +91,8 @@ install:
     - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION astropy; fi
 
     # OPTIONAL DEPENDENCIES
-    - if $OPTIONAL_DEPS; then $CONDA_INSTALL scipy; fi
+    - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL scipy; fi
+    - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL jinja2; fi
     
     # DOCUMENTATION DEPENDENCIES
     # build_sphinx needs sphinx and matplotlib (for plot_directive). Note that
