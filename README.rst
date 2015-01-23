@@ -14,7 +14,7 @@ greatly simplified.
 Requirements
 ------------
 
-- Python 2.6, 2.7, 3.2, 3.3 or 3.4
+- Python 2.6, 2.7, 3.3 or 3.4
 
 - Numpy 1.5.0 or later
 
