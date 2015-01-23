@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Drizzle &mdash; drizzle v0.0.dev187</title>
+    <title>Drizzle &mdash; drizzle v0.0.dev206</title>
     
     <link rel="stylesheet" href="../_static/bootstrap-astropy.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.0.dev187',
+        VERSION:     '0.0.dev206',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="../_static/sidebar.js"></script>
     <link rel="shortcut icon" href="../_static/astropy_logo.ico"/>
-    <link rel="top" title="drizzle v0.0.dev187" href="../index.html" />
+    <link rel="top" title="drizzle v0.0.dev206" href="../index.html" />
     <link rel="up" title="API Documentation" href="../drizzle/api.html" />
     <link rel="next" title="dodrizzle" href="drizzle.dodrizzle.dodrizzle.html" />
     <link rel="prev" title="doblot" href="drizzle.doblot.doblot.html" />
@@ -69,7 +69,7 @@
 	 |
       </li>
       <li>
-	<a href="../index.html">drizzle v0.0.dev187</a>
+	<a href="../index.html">drizzle v0.0.dev206</a>
 	 &raquo;
       </li>
       <li><a href="../drizzle/index.html" >The Drizzle Library</a> &raquo;</li>
@@ -89,7 +89,7 @@
 <h1>Drizzle<a class="headerlink" href="#drizzle" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="drizzle.drizzle.Drizzle">
-<em class="property">class </em><tt class="descclassname">drizzle.drizzle.</tt><tt class="descname">Drizzle</tt><big>(</big><em>infile=u''</em>, <em>outwcs=None</em>, <em>wt_scl=u'exptime'</em>, <em>pixfrac=1.0</em>, <em>kernel=u'square'</em>, <em>fillval=u'INDEF'</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle"><span class="viewcode-link">[source]</span></a><a class="reference external" href="http://github.com/spacetelescope/drizzle/tree/master/drizzle/drizzle.py#L27" title="Push the Edit button on the next page"><span class="edit-on-github viewcode-link">&nbsp;[edit on github]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">drizzle.drizzle.</tt><tt class="descname">Drizzle</tt><big>(</big><em>infile=u''</em>, <em>outwcs=None</em>, <em>wt_scl=u'exptime'</em>, <em>pixfrac=1.0</em>, <em>kernel=u'square'</em>, <em>fillval=u'INDEF'</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="http://docs.python.org/3/library/functions.html#object" title="(in Python v3.4)"><tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></a></p>
 <p>Combine images using the drizzle algorithm</p>
 <p>Create a new Drizzle output object and set the drizzle parameters.</p>
@@ -173,7 +173,7 @@ not overlap it. The default value of INDEF does not set a value.</p>
 <p class="rubric">Methods Documentation</p>
 <dl class="method">
 <dt id="drizzle.drizzle.Drizzle.add_fits_file">
-<tt class="descname">add_fits_file</tt><big>(</big><em>infile</em>, <em>inweight=u''</em>, <em>xmin=0</em>, <em>xmax=0</em>, <em>ymin=0</em>, <em>ymax=0</em>, <em>unitkey=u''</em>, <em>expkey=u''</em>, <em>wt_scl=1.0</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle.add_fits_file"><span class="viewcode-link">[source]</span></a><a class="reference external" href="http://github.com/spacetelescope/drizzle/tree/master/drizzle/drizzle.py#L176" title="Push the Edit button on the next page"><span class="edit-on-github viewcode-link">&nbsp;[edit on github]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle.add_fits_file" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">add_fits_file</tt><big>(</big><em>infile</em>, <em>inweight=u''</em>, <em>xmin=0</em>, <em>xmax=0</em>, <em>ymin=0</em>, <em>ymax=0</em>, <em>unitkey=u''</em>, <em>expkey=u''</em>, <em>wt_scl=1.0</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle.add_fits_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle.add_fits_file" title="Permalink to this definition">¶</a></dt>
 <dd><p>Combine a fits file with the output drizzled image.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -249,7 +249,7 @@ will be ignored.</p>
 
 <dl class="method">
 <dt id="drizzle.drizzle.Drizzle.add_image">
-<tt class="descname">add_image</tt><big>(</big><em>insci</em>, <em>inwcs</em>, <em>inwht=None</em>, <em>xmin=0</em>, <em>xmax=0</em>, <em>ymin=0</em>, <em>ymax=0</em>, <em>expin=1.0</em>, <em>in_units=u'cps'</em>, <em>wt_scl=1.0</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle.add_image"><span class="viewcode-link">[source]</span></a><a class="reference external" href="http://github.com/spacetelescope/drizzle/tree/master/drizzle/drizzle.py#L276" title="Push the Edit button on the next page"><span class="edit-on-github viewcode-link">&nbsp;[edit on github]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle.add_image" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">add_image</tt><big>(</big><em>insci</em>, <em>inwcs</em>, <em>inwht=None</em>, <em>xmin=0</em>, <em>xmax=0</em>, <em>ymin=0</em>, <em>ymax=0</em>, <em>expin=1.0</em>, <em>in_units=u'cps'</em>, <em>wt_scl=1.0</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle.add_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle.add_image" title="Permalink to this definition">¶</a></dt>
 <dd><p>Combine an input image with the output drizzled image.</p>
 <p>Instead of reading the parameters from a fits file, you can set
 them by calling this lower level method. <tt class="xref py py-obj docutils literal"><span class="pre">Add_fits_file</span></tt> calls
@@ -331,7 +331,7 @@ will be ignored.</p>
 
 <dl class="method">
 <dt id="drizzle.drizzle.Drizzle.blot_fits_file">
-<tt class="descname">blot_fits_file</tt><big>(</big><em>infile</em>, <em>interp=u'poly5'</em>, <em>sinscl=1.0</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle.blot_fits_file"><span class="viewcode-link">[source]</span></a><a class="reference external" href="http://github.com/spacetelescope/drizzle/tree/master/drizzle/drizzle.py#L369" title="Push the Edit button on the next page"><span class="edit-on-github viewcode-link">&nbsp;[edit on github]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle.blot_fits_file" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">blot_fits_file</tt><big>(</big><em>infile</em>, <em>interp=u'poly5'</em>, <em>sinscl=1.0</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle.blot_fits_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle.blot_fits_file" title="Permalink to this definition">¶</a></dt>
 <dd><p>Resample the output using another image&#8217;s world coordinate system.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -364,7 +364,7 @@ interpolation), and &#8220;lan5&#8221; (5th order Lanczos interpolation).</p>
 
 <dl class="method">
 <dt id="drizzle.drizzle.Drizzle.blot_image">
-<tt class="descname">blot_image</tt><big>(</big><em>blotwcs</em>, <em>interp=u'poly5'</em>, <em>sinscl=1.0</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle.blot_image"><span class="viewcode-link">[source]</span></a><a class="reference external" href="http://github.com/spacetelescope/drizzle/tree/master/drizzle/drizzle.py#L409" title="Push the Edit button on the next page"><span class="edit-on-github viewcode-link">&nbsp;[edit on github]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle.blot_image" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">blot_image</tt><big>(</big><em>blotwcs</em>, <em>interp=u'poly5'</em>, <em>sinscl=1.0</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle.blot_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle.blot_image" title="Permalink to this definition">¶</a></dt>
 <dd><p>Resample the output image using an input world coordinate system.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -395,7 +395,7 @@ interpolation), and &#8220;lan5&#8221; (5th order Lanczos interpolation).</p>
 
 <dl class="method">
 <dt id="drizzle.drizzle.Drizzle.write">
-<tt class="descname">write</tt><big>(</big><em>outfile</em>, <em>out_units=u'cps'</em>, <em>outheader=None</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle.write"><span class="viewcode-link">[source]</span></a><a class="reference external" href="http://github.com/spacetelescope/drizzle/tree/master/drizzle/drizzle.py#L437" title="Push the Edit button on the next page"><span class="edit-on-github viewcode-link">&nbsp;[edit on github]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle.write" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">write</tt><big>(</big><em>outfile</em>, <em>out_units=u'cps'</em>, <em>outheader=None</em><big>)</big><a class="reference internal" href="../_modules/drizzle/drizzle.html#Drizzle.write"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#drizzle.drizzle.Drizzle.write" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write the output from a set of drizzled images to a file.</p>
 <p>The output file will contain three extensions. The &#8220;SCI&#8221; extension
 contains the resulting image. The &#8220;WHT&#8221; extension contains the
@@ -451,14 +451,13 @@ header of the output image.</p>
     </div>
 <footer class="footer">
   <p class="pull-right">
-    <a href="http://github.com/spacetelescope/drizzle/tree/master/docs/api/drizzle.drizzle.Drizzle.rst">Edit This Page on Github</a> &nbsp;
     <a href="../_sources/api/drizzle.drizzle.Drizzle.txt"
        rel="nofollow">Page Source</a> &nbsp;
     <a href="#">Back to Top</a></p>
   <p>
     &copy; Copyright 2015, Bernie Simon.<br/>
     Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2. &nbsp;
-    Last built 15 Jan 2015. <br/>
+    Last built 23 Jan 2015. <br/>
   </p>
 </footer>
   </body>
