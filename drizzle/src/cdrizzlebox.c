@@ -227,8 +227,8 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
   area = 0.0;
 
   border[0][0] = is - 0.5;
-  border[0][1] = is + 0.5;
-  border[1][0] = js - 0.5;
+  border[0][1] = js - 0.5;
+  border[1][0] = is + 0.5;
   border[1][1] = js + 0.5;
   
   for (ipoint = 0; ipoint < 4; ++ ipoint) {
@@ -251,7 +251,7 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
           delta[iseg] = segment[iseg][idim] - border[iside][idim];
           positive[iseg] = delta[iseg] >= 0.0;
           fprintf(fd, "segment[%d][%d] = %f\n", iseg, idim, segment[iseg][idim]);
-          fprintf(fd, "border[%d][%d] = %f\n", iside, idim, segment[iside][idim]);
+          fprintf(fd, "border[%d][%d] = %f\n", iside, idim, border[iside][idim]);
           fprintf(fd, "delta[%d] = %f positive[%d] = %d\n", iseg, delta[iseg], iseg, positive[iseg]);
         }
 
@@ -270,6 +270,10 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
             fprintf(fd, "No intersect - inside boundary\ncount = %d\n", count);
             outside = 1;
           }
+
+          midpoint[0] = segment[outside][0];
+          midpoint[1] = segment[outside][1];
+          fprintf(fd, "midpoint[0] = %f midpoint[1] = %f\n", midpoint[0], midpoint[1]);
           
         } else {
           /* If both line segments are on opposite sides of the
@@ -304,7 +308,8 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
       } else {
         width = midpoint[0] - segment[0][0];
       }
-      fprintf(fd, "width = %f\n", width);
+      fprintf(fd, "\nsegment[0][0] = %f midpoint[0] = %f segment[1][0] = %f width = %f\n",
+              segment[0][0], midpoint[0], segment[1][0], width);
       if (width != 0.0) {
         if (iseg == outside) {
           /* Implicitly multiplied by 1.0, the square height */
@@ -313,7 +318,7 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
         } else {
           /* Delta is the distance to the top of the square and 
            * is negative or zero for the segment inside the square */
-          area += 0.5 * width * (1.0 + delta[0]) * (1.0 + delta[1]);
+          area += 0.5 * width * ((1.0 + delta[0]) + (1.0 + delta[1]));
           fprintf(fd, "delta = (%f, %f) area = %f\n", delta[0], delta[1], area);
         }
       }
@@ -323,7 +328,7 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
   }
 
   fclose(fd); /* DBG */
-  return area;
+  return fabs(area);
 }
 
 /** --------------------------------------------------------------------------------------------------

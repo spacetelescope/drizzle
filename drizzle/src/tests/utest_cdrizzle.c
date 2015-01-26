@@ -476,94 +476,142 @@ FCT_BGN_FN(utest_cdrizzle)
 
         FCT_TEST_BGN(utest_compute_area_01)
         {
-            /* Test compute area with square aligned with sides */
-            int i, j, k;
+            /* Test compute area with aligned square entirely inside */
+            int k;
             double area;
             double is, js, x[4], y[4];
             FILE *fd; /*DBG */
 
-            double area_ok[7][7] = {
-            {0.0, 0.0,    0.0,    0.0,  0.0,   0.0,    0.0},
-            {0.0, 0.0625, 0.125, 0.125, 0.125, 0.0625, 0.0},
-            {0.0, 0.125,  0.25,  0.25,  0.25,  0.125,  0.0},
-            {0.0, 0.125,  0.25,  0.25,  0.25,  0.125,  0.0},
-            {0.0, 0.125,  0.25,  0.25,  0.25,  0.125,  0.0},
-            {0.0, 0.0625, 0.125, 0.125, 0.125, 0.0625, 0.0},
-            {0.0, 0.0,    0.0,   0.0,   0.0,   0.0,    0.0}
-            };
-            
             fd = fopen("/tmp/drizzle.log", "a"); /* DBG */
             is = 1.0;
             js = 1.0;
-            for (j = 0; j <= 6; ++j) {
-                for (i = 0; i <= 6; ++i) {
-                    x[0] = 0.25 * (double) i;
-                    y[0] = 0.25 * (double) j;
-                    x[1] = x[0];
-                    y[1] = y[0] + 0.5;
-                    x[2] = x[0] + 0.5;
-                    y[2] = y[0] + 0.5;
-                    x[3] = x[0] + 0.5;
-                    y[3] = y[0];
 
-                    area = compute_area(is, js, x, y);
-                    /* DBG */
-                    fprintf(fd, "\nAligned square\n");
-                    for (k = 0; k < 4; ++ k) {
-                        fprintf(fd, "(%f,%f) ", x[k], y[k]);
-                    }
-                    fprintf(fd, "area = %f ok = %f\n", area, area_ok[j][i]);
-                    /* DBG */
-                    fct_chk_eq_dbl(area, area_ok[j][i]);
-                }
+            x[0] = 1.25;
+            y[0] = 1.25;
+            x[1] = 1.25;
+            y[1] = 0.75;
+            x[2] = 0.75;
+            y[2] = 0.75;
+            x[3] = 0.75;
+            y[3] = 1.25;
+
+            area = compute_area(is, js, x, y);
+            /* DBG */
+            fprintf(fd, "\nAligned square\n");
+            for (k = 0; k < 4; ++ k) {
+                fprintf(fd, "(%f,%f) ", x[k], y[k]);
             }
+            fprintf(fd, "area = %f ok = %f\n", area, 0.25);
+            /* DBG */
+            fct_chk_eq_dbl(area, 0.25);
+
             fclose(fd); /* DBG */
         }
         FCT_TEST_END();
 
         FCT_TEST_BGN(utest_compute_area_02)
         {
-            /* Test compute area with diagonal square */
+            /* Test compute area with diagonal square entirely inside */
             int i, j, k;
             double area;
             double is, js, x[4], y[4];
             FILE *fd; /*DBG */
     
-            double area_ok[7][7] = {
-            {0.0, 0.0,     0.0,    0.0,    0.0,    0.0,    0.0},
-            {0.0, 0.03125, 0.0625, 0.0625, 0.0625, 0.03125, 0.0},
-            {0.0, 0.0625,  0.125,  0.125,  0.125,  0.0625,  0.0},
-            {0.0, 0.0625,  0.125,  0.125,  0.125,  0.0625,  0.0},
-            {0.0, 0.0625,  0.125,  0.125,  0.125,  0.0625,  0.0},
-            {0.0, 0.03125, 0.0625, 0.0625, 0.0625, 0.03125, 0.0},
-            {0.0, 0.0,     0.0,    0.0,    0.0,    0.0,     0.0}
-            };
-            
+
             fd = fopen("/tmp/drizzle.log", "a"); /* DBG */
             is = 1.0;
             js = 1.0;
-            for (j = 0; j <= 6; ++j) {
-                for (i = 0; i <= 6; ++i) {
-                    x[0] = 0.25 * (double) i;
-                    y[0] = 0.25 * (double) (j + 1);
-                    x[1] = 0.25 * (double) (i + 1);
-                    y[1] = 0.25 * (double) j;
-                    x[2] = 0.25 * (double) (i + 2);
-                    y[2] = 0.25 * (double) (j + 1);
-                    x[3] = 0.25 * (double) (i + 1);
-                    y[3] = 0.25 * (double) (j + 2);
 
-                    area = compute_area(is, js, x, y);
-                    /* DBG */
-                    fprintf(fd, "\nDiagonal square\n");
-                    for (k = 0; k < 4; ++ k) {
-                        fprintf(fd, "(%f,%f) ", x[k], y[k]);
-                    }
-                    fprintf(fd, "area = %f ok = %f\n", area, area_ok[j][i]);
-                    /* DBG */
-                    fct_chk_eq_dbl(area, area_ok[j][i]);
-                }
+            x[0] = 1.0;
+            y[0] = 1.25;
+            x[1] = 0.75;
+            y[1] = 1.0;
+            x[2] = 1.0;
+            y[2] = 0.75;
+            x[3] = 1.25;
+            y[3] = 1.0;
+
+            area = compute_area(is, js, x, y);
+            /* DBG */
+            fprintf(fd, "\nDiagonal square\n");
+            for (k = 0; k < 4; ++ k) {
+                fprintf(fd, "(%f,%f) ", x[k], y[k]);
             }
+            fprintf(fd, "area = %f ok = %f\n", area, 0.125);
+            /* DBG */
+            fct_chk_eq_dbl(area, 0.125);
+
+            fclose(fd); /* DBG */
+        }
+        FCT_TEST_END();
+
+        FCT_TEST_BGN(utest_compute_area_03)
+        {
+            /* Test compute area with aligned square with overlap */
+            int k;
+            double area;
+            double is, js, x[4], y[4];
+            FILE *fd; /*DBG */
+
+            fd = fopen("/tmp/drizzle.log", "a"); /* DBG */
+            is = 1.0;
+            js = 1.0;
+
+            x[0] = 0.0;
+            y[0] = 0.0;
+            x[1] = 1.0;
+            y[1] = 0.0;
+            x[2] = 1.0;
+            y[2] = 1.0;
+            x[3] = 1.0;
+            y[3] = 0.0;
+
+            area = compute_area(is, js, x, y);
+            /* DBG */
+            fprintf(fd, "\nAligned square with overlap\n");
+            for (k = 0; k < 4; ++ k) {
+                fprintf(fd, "(%f,%f) ", x[k], y[k]);
+            }
+            fprintf(fd, "area = %f ok = %f\n", area, 0.5);
+            /* DBG */
+            fct_chk_eq_dbl(area, 0.5);
+
+            fclose(fd); /* DBG */
+        }
+        FCT_TEST_END();
+
+        FCT_TEST_BGN(utest_compute_area_04)
+        {
+            /* Test compute area with diagonal square with overlap */
+            int i, j, k;
+            double area;
+            double is, js, x[4], y[4];
+            FILE *fd; /*DBG */
+    
+
+            fd = fopen("/tmp/drizzle.log", "a"); /* DBG */
+            is = 1.0;
+            js = 1.0;
+
+            x[0] = 1.0;
+            y[0] = 2.25;
+            x[1] = 0.75;
+            y[1] = 2.0;
+            x[2] = 1.0;
+            y[2] = 1.75;
+            x[3] = 1.25;
+            y[3] = 2.0;
+
+            area = compute_area(is, js, x, y);
+            /* DBG */
+            fprintf(fd, "\nDiagonal square with overlap\n");
+            for (k = 0; k < 4; ++ k) {
+                fprintf(fd, "(%f,%f) ", x[k], y[k]);
+            }
+            fprintf(fd, "area = %f ok = %f\n", area, 0.125);
+            /* DBG */
+            fct_chk_eq_dbl(area, 0.0625);
+
             fclose(fd); /* DBG */
         }
         FCT_TEST_END();
