@@ -478,10 +478,8 @@ FCT_BGN_FN(utest_cdrizzle)
         FCT_TEST_BGN(utest_compute_area_01)
         {
             /* Test compute area with aligned square entirely inside */
-            int k;
             double area;
             double is, js, x[4], y[4];
-            FILE *fd; /*DBG */
 
             is = 1.0;
             js = 1.0;
@@ -496,16 +494,6 @@ FCT_BGN_FN(utest_cdrizzle)
             y[3] = 1.25;
 
             area = compute_area(is, js, x, y);
-            /* DBG */
-            fd = fopen("/tmp/drizzle.log", "a"); /* DBG */
-            setbuf(fd, NULL);
-            fprintf(fd, "\nAligned square\n");
-            for (k = 0; k < 4; ++ k) {
-                fprintf(fd, "(%f,%f) ", x[k], y[k]);
-            }
-            fprintf(fd, "area = %f ok = %f\n", area, 0.25);
-            fclose(fd); /* DBG */
-            /* DBG */
             fct_chk_eq_dbl(area, 0.25);
 
         }
@@ -514,10 +502,8 @@ FCT_BGN_FN(utest_cdrizzle)
         FCT_TEST_BGN(utest_compute_area_02)
         {
             /* Test compute area with diagonal square entirely inside */
-            int k;
             double area;
             double is, js, x[4], y[4];
-            FILE *fd; /*DBG */
     
             is = 1.0;
             js = 1.0;
@@ -532,16 +518,6 @@ FCT_BGN_FN(utest_cdrizzle)
             y[3] = 1.0;
 
             area = compute_area(is, js, x, y);
-            /* DBG */
-            fd = fopen("/tmp/drizzle.log", "a"); /* DBG */
-            setbuf(fd, NULL);
-            fprintf(fd, "\nDiagonal square\n");
-            for (k = 0; k < 4; ++ k) {
-                fprintf(fd, "(%f,%f) ", x[k], y[k]);
-            }
-            fprintf(fd, "area = %f ok = %f\n", area, 0.125);
-            fclose(fd); /* DBG */
-            /* DBG */
             fct_chk_eq_dbl(area, 0.125);
 
         }
@@ -550,10 +526,8 @@ FCT_BGN_FN(utest_cdrizzle)
         FCT_TEST_BGN(utest_compute_area_03)
         {
             /* Test compute area with aligned square with overlap */
-            int k;
             double area;
             double is, js, x[4], y[4];
-            FILE *fd; /*DBG */
 
             is = 1.0;
             js = 1.0;
@@ -568,16 +542,6 @@ FCT_BGN_FN(utest_cdrizzle)
             y[3] = 1.0;
 
             area = compute_area(is, js, x, y);
-            /* DBG */
-            fd = fopen("/tmp/drizzle.log", "a"); /* DBG */
-            setbuf(fd, NULL);
-            fprintf(fd, "\nAligned square with overlap\n");
-            for (k = 0; k < 4; ++ k) {
-                fprintf(fd, "(%f,%f) ", x[k], y[k]);
-            }
-            fprintf(fd, "area = %f ok = %f\n", area, 0.25);
-            fclose(fd); /* DBG */
-            /* DBG */
             fct_chk_eq_dbl(area, 0.25);
 
         }
@@ -589,7 +553,6 @@ FCT_BGN_FN(utest_cdrizzle)
             int i, j, k;
             double area;
             double is, js, x[4], y[4];
-            FILE *fd; /*DBG */
     
 
             is = 1.0;
@@ -605,16 +568,6 @@ FCT_BGN_FN(utest_cdrizzle)
             y[3] = 1.5;
 
             area = compute_area(is, js, x, y);
-            /* DBG */
-            fd = fopen("/tmp/drizzle.log", "a"); /* DBG */
-            setbuf(fd, NULL);
-            fprintf(fd, "\nDiagonal square with overlap\n");
-            for (k = 0; k < 4; ++ k) {
-                fprintf(fd, "(%f,%f) ", x[k], y[k]);
-            }
-            fprintf(fd, "area = %f ok = %f\n", area, 0.0625);
-            fclose(fd); /* DBG */
-            /* DBG */
             fct_chk_eq_dbl(area, 0.0625);
 
         }
@@ -623,8 +576,7 @@ FCT_BGN_FN(utest_cdrizzle)
         FCT_TEST_BGN(utest_compute_area_05)
         {
             /* Test compute area with marching diagonal square */
-            FILE *fd; /*DBG */
-            int i, j, k;
+            int i, j;
             double is, js, x[4], y[4], area;
             double area_ok[7][7] =
                 {{0.125000, 0.218750, 0.250000, 0.218750, 0.125000, 0.031250, 0.000000},
@@ -651,23 +603,7 @@ FCT_BGN_FN(utest_cdrizzle)
                     y[3] = 0.25 * (double) j + 1.0;
         
                     area = compute_area(is, js, x, y);
-                    
-                    /* DBG */
-                    fd = fopen("/tmp/drizzle.log", "a"); /* DBG */
-                    /* fprintf(fd, "\nMarching diagonal square\n"); */
-                    for (k = 0; k < 4; ++ k) {
-                        fprintf(fd, "(%f,%f) ", x[k], y[k]);
-                    }
-                    if (area == area_ok[i][j]) {
-                        error = "OK";
-                    } else {
-                        error = "** ERROR **";
-                    }
-                    fprintf(fd, "area = %f ok = %f\n%s\n",
-                            area, area_ok[i][j], error);
-                    fclose(fd); /* DBG */
-                     
-                    
+
                     /* DBG */
                     fct_chk_eq_dbl(area, area_ok[i][j]);
                 }
