@@ -19,7 +19,7 @@ env:
         - SETUP_CMD='egg_info'
 
 matrix:
-    include:
+ /   include:
 
         # Do a coverage test in Python 2. 
         - python: 2.7

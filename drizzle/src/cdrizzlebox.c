@@ -60,112 +60,6 @@ compute_bit_value(integer_t uuid) {
 }
 
 /** --------------------------------------------------------------------------------------------------
- * Calculate area under a line segment within unit square at origin. This is used by boxer.
- * NOTE: This is the single most frequently called function.  Ripe for optimization.
- * The inputs are a line segment bordering a square on the input image containing the pixel flux.
- *
- * x1: The x coordinate of first point defining line segment
- * y1: The y coordinate of first point defining line segment
- * x2: The x coordinate of second point defining line segment
- * y2: The y coordinate of second point defining line segment
- */
-
-static inline_macro double
-sgarea(const double x1, const double y1, const double x2, const double y2) {
-  double m, c, dx, dy, xlo, xhi, ylo, yhi, xtop;
-  int negdx;
-
-  dy = y2 - y1;
-
-  dx = x2 - x1;
-  /* Trap vertical line */
-  if (dx == 0.0)
-    return 0.0;
-
-  negdx = (int)(dx < 0.0);
-  if (negdx) {
-    xlo = x2;
-    xhi = x1;
-  } else {
-    xlo = x1;
-    xhi = x2;
-  }
-
-  /* And determine the bounds ignoring y for now */
-  if (xlo >= 1.0 || xhi <= 0.0)
-    return 0.0;
-
-  xlo = MAX(xlo, 0.0);
-  xhi = MIN(xhi, 1.0);
-
-  /* Now look at y */
-  m = dy / dx;
-  assert(m != 0.0);
-  c = y1 - m * x1;
-  ylo = m * xlo + c;
-  yhi = m * xhi + c;
-
-  /* Trap segment entirely below axis */
-  if (ylo <= 0.0 && yhi <= 0.0)
-    return 0.0;
-
-  /* Adjust bounds if segment crosses axis (to exclude anything below
-     axis) */
-  if (ylo < 0.0) {
-    ylo = 0.0;
-    xlo = -c / m;
-  }
-
-  if (yhi < 0.0) {
-    yhi = 0.0;
-    xhi = -c / m;
-  }
-
-  /* There are four possibilities: both y below 1, both y above 1 and
-     one of each. */
-  if (ylo >= 1.0 && yhi >= 1.0) {
-    /* Line segment is entirely above square */
-    if (negdx) {
-      return xlo - xhi;
-    } else {
-      return xhi - xlo;
-    }
-  }
-
-  if (ylo <= 1.0) {
-    if (yhi <= 1.0) {
-      /* Segment is entirely within square */
-      if (negdx) {
-        return 0.5 * (xlo - xhi) * (yhi + ylo);
-      } else {
-        return 0.5 * (xhi - xlo) * (yhi + ylo);
-      }
-    }
-
-    /* Otherwise, it must cross the top of the square */
-    xtop = (1.0 - c) / m;
-
-    if (negdx) {
-      return -(0.5 * (xtop - xlo) * (1.0 + ylo) + xhi - xtop);
-    } else {
-      return 0.5 * (xtop - xlo) * (1.0 + ylo) + xhi - xtop;
-    }
-  }
-
-  xtop = (1.0 - c) / m;
-
-  if (negdx) {
-    return -(0.5 * (xhi - xtop) * (1.0 + yhi) + xtop - xlo);
-  } else {
-    return 0.5 * (xhi - xtop) * (1.0 + yhi) + xtop - xlo;
-  }
-
-  /* Shouldn't ever get here */
-  assert(FALSE);
-  return 0.0;
-}
-
-/** --------------------------------------------------------------------------------------------------
  * Compute area of box overlap. Calculate the area common to input clockwise polygon x(n), y(n) with
  * square (is, js) to (is+1, js+1). This version is for a quadrilateral. Used by do_square_kernel.
  *
@@ -175,33 +69,102 @@ sgarea(const double x1, const double y1, const double x2, const double y2) {
  * y:  y coordinates of endpoints of quadrilateral containing flux of input pixel
  */
 
-static inline_macro double
-boxer(double is, double js,
-      const double x[4], const double y[4]) {
-  integer_t i;
-  double sum;
-  double px[4], py[4];
+double
+compute_area(double is, double js, const double x[4], const double y[4]) {
+  int ipoint, jpoint, idim, jdim, iside, iseg, outside, count;
+  int positive[2];
+  double area, width;
+  double midpoint[2], delta[2];
+  double border[2][2], segment[2][2];
+  
+  area = 0.0;
 
-  is -= 0.5;
-  js -= 0.5;
-  /* Set up coords relative to unit square at origin Note that the
-     +0.5s were added when this code was included in DRIZZLE */
+  border[0][0] = is - 0.5;
+  border[0][1] = js - 0.5;
+  border[1][0] = is + 0.5;
+  border[1][1] = js + 0.5;
+  
+  for (ipoint = 0; ipoint < 4; ++ ipoint) {
+    jpoint = (ipoint + 1) & 03; /* Next point in cyclical order */
 
-  for (i = 0; i < 4; ++i) {
-    px[i] = x[i] - is;
-    py[i] = y[i] - js;
+    segment[0][0] = x[ipoint];
+    segment[0][1] = y[ipoint];
+    segment[1][0] = x[jpoint];
+    segment[1][1] = y[jpoint];
+  
+    /* Compute the endpoints of the line segment that 
+     * lie inside the border (possibly the whole segment) 
+     */
+    
+    for (idim = 0, count = 3; idim < 2; ++ idim) {
+      for (iside = 0; iside < 2; ++ iside, -- count) {
+	
+        for (iseg = 0; iseg < 2; ++ iseg) { 
+          delta[iseg] = segment[iseg][idim] - border[iside][idim];
+          positive[iseg] = delta[iseg] >= 0.0;
+        }
+
+        if (positive[0] == positive[1]) {
+          if (positive[0] == iside) {
+            /* Segment is entirely outside the boundary */
+            if (count == 0) {
+              /* Implicitly multiplied by 1.0, the square height */
+              width = segment[0][0] - segment[1][0];
+              area += width;
+            } else {
+              goto _nextsegment;
+            }
+	    
+          } else {
+            /* Segment entirely within the boundary */
+            if (count == 0) {
+              /* Delta is the distance to the top of the square and 
+               * is negative or zero for the segment inside the square */
+              width = segment[0][0] - segment[1][0];
+              area += 0.5 * width * ((1.0 + delta[0]) + (1.0 + delta[1]));
+            }
+          }
+
+        } else {
+          /* If both line segments are on opposite sides of the
+          * boundary, calculate midpoint, the point of intersection
+          */
+
+          outside = positive[iside];
+          jdim = (idim + 1) & 01; /* the other dimension */
+
+          midpoint[idim] = border[iside][idim];
+	  
+          midpoint[jdim] =
+            (delta[1] * segment[0][jdim] - delta[0] * segment[1][jdim]) /
+            (delta[1] - delta[0]);
+
+          if (count == 0) {
+            if (outside == 0) {
+              width = segment[0][0] - midpoint[0];
+              area += width;
+              width = midpoint[0] - segment[1][0];
+              area += 0.5 * width * (1.0 + (1.0 + delta[1]));
+            } else {
+              width = midpoint[0] - segment[1][0];
+              area += width;
+              width =  segment[0][0] - midpoint[0];
+              area += 0.5 * width * ((1.0 + delta[0]) + 1.0);
+            }
+
+          } else {
+            /* Clip segment against each boundary except the last */
+            segment[outside][0] = midpoint[0];
+            segment[outside][1] = midpoint[1];
+          }
+        }
+      }
+    }
+
+    _nextsegment: continue;
   }
 
-  /* For each line in the polygon (or at this stage, input
-     quadrilateral) calculate the area common to the unit square
-     (allow negative area for subsequent `vector' addition of
-     subareas). */
-  sum = 0.0;
-  for (i = 0; i < 4; ++i) {
-    sum += sgarea(px[i], py[i], px[(i+1) & 0x3], py[(i+1) & 0x3]);
-  }
-
-  return sum;
+   return area;
 }
 
 /** --------------------------------------------------------------------------------------------------
@@ -835,8 +798,8 @@ do_kernel_square(struct driz_param_t* p) {
   
       for (jj = min_jj; jj <= max_jj; ++jj) {
         for (ii = min_ii; ii <= max_ii; ++ii) {
-          /* Call boxer to calculate overlap */
-          dover = boxer((double)ii, (double)jj, xout, yout);
+          /* Call compute_area to calculate overlap */
+          dover = compute_area((double)ii, (double)jj, xout, yout);
   
           if (dover > 0.0) {
             /* Re-normalise the area overlap using the Jacobian */

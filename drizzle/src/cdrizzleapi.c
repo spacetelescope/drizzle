@@ -17,6 +17,20 @@
 
 static PyObject *gl_Error;
 
+#if PY_MAJOR_VERSION >= 3
+static struct PyModuleDef moduledef = {
+  PyModuleDef_HEAD_INIT,
+  "cdrizzle",          /* m_name */
+  "C Drizzle module",  /* m_doc */
+  -1,                  /* m_size */
+  cdrizzle_methods,    /* m_methods */
+  NULL,                /* m_reload */
+  NULL,                /* m_traverse */
+  NULL,                /* m_clear */
+  NULL,                /* m_free */
+};
+#endif
+
 /** --------------------------------------------------------------------------------------------------
  * Multiply each pixel in an image by a scale factor
  */
@@ -414,6 +428,7 @@ static PyMethodDef cdrizzle_methods[] =
 /** --------------------------------------------------------------------------------------------------
  */
 
+<<<<<<< HEAD
 #if PY_MAJOR_VERSION >= 3
 static struct PyModuleDef moduledef = {
   PyModuleDef_HEAD_INIT,
@@ -431,6 +446,8 @@ static struct PyModuleDef moduledef = {
 /** --------------------------------------------------------------------------------------------------
  */
 
+=======
+>>>>>>> carea
 PyMODINIT_FUNC
 #if PY_MAJOR_VERSION >= 3
 PyInit_cdrizzle(void)
