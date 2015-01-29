@@ -428,7 +428,6 @@ static PyMethodDef cdrizzle_methods[] =
 /** --------------------------------------------------------------------------------------------------
  */
 
-<<<<<<< HEAD
 #if PY_MAJOR_VERSION >= 3
 static struct PyModuleDef moduledef = {
   PyModuleDef_HEAD_INIT,
@@ -446,8 +445,6 @@ static struct PyModuleDef moduledef = {
 /** --------------------------------------------------------------------------------------------------
  */
 
-=======
->>>>>>> carea
 PyMODINIT_FUNC
 #if PY_MAJOR_VERSION >= 3
 PyInit_cdrizzle(void)
