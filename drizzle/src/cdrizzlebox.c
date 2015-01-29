@@ -221,8 +221,6 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
   double area, width;
   double midpoint[2], delta[2];
   double border[2][2], segment[2][2];
-  FILE *fd; /*DBG */
-  fd = fopen("/tmp/drizzle.log", "a"); /* DBG */
   
   area = 0.0;
 
@@ -246,35 +244,32 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
     for (idim = 0, count = 3; idim < 2; ++ idim) {
       for (iside = 0; iside < 2; ++ iside, -- count) {
 	
-        fprintf(fd, "\n");
         for (iseg = 0; iseg < 2; ++ iseg) { 
           delta[iseg] = segment[iseg][idim] - border[iside][idim];
           positive[iseg] = delta[iseg] >= 0.0;
-          fprintf(fd, "segment[%d][%d] = %f\n", iseg, idim, segment[iseg][idim]);
-          fprintf(fd, "border[%d][%d] = %f\n", iside, idim, border[iside][idim]);
-          fprintf(fd, "delta[%d] = %f positive[%d] = %d\n", iseg, delta[iseg], iseg, positive[iseg]);
         }
 
         if (positive[0] == positive[1]) {
           if (positive[0] == iside) {
             /* Segment is entirely outside the boundary */
-            fprintf(fd, "No intersect - outside boundary\ncount = %d\n", count);
-            if (count) {
-              goto _nextsegment;
+            if (count == 0) {
+              /* Implicitly multiplied by 1.0, the square height */
+              width = segment[0][0] - segment[1][0];
+              area += width;
             } else {
-              outside = 0;
+              goto _nextsegment;
             }
 	    
           } else {
             /* Segment entirely within the boundary */
-            fprintf(fd, "No intersect - inside boundary\ncount = %d\n", count);
-            outside = 1;
+            if (count == 0) {
+              /* Delta is the distance to the top of the square and 
+               * is negative or zero for the segment inside the square */
+              width = segment[0][0] - segment[1][0];
+              area += 0.5 * width * ((1.0 + delta[0]) + (1.0 + delta[1]));
+            }
           }
 
-          midpoint[0] = segment[outside][0];
-          midpoint[1] = segment[outside][1];
-          fprintf(fd, "midpoint[0] = %f midpoint[1] = %f\n", midpoint[0], midpoint[1]);
-          
         } else {
           /* If both line segments are on opposite sides of the
           * boundary, calculate midpoint, the point of intersection
@@ -289,37 +284,24 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
             (delta[1] * segment[0][jdim] - delta[0] * segment[1][jdim]) /
             (delta[1] - delta[0]);
 
-          fprintf(fd, "Intersect\noutside = %d midpoint = (%f, %f)\n", outside, midpoint[0], midpoint[1]);
-          if (count) {
-            /* Clip segment against each boundary except the first */
+          if (count == 0) {
+            if (outside == 0) {
+              width = segment[0][0] - midpoint[0];
+              area += width;
+              width = midpoint[0] - segment[1][0];
+              area += 0.5 * width * (1.0 + (1.0 + delta[1]));
+            } else {
+              width = midpoint[0] - segment[1][0];
+              area += width;
+              width =  segment[0][0] - midpoint[0];
+              area += 0.5 * width * ((1.0 + delta[0]) + 1.0);
+            }
+
+          } else {
+            /* Clip segment against each boundary except the last */
             segment[outside][0] = midpoint[0];
             segment[outside][1] = midpoint[1];
-            fprintf(fd, "segment = (%f, %f)\n", segment[outside][0], segment[outside][1]);
           }
-        }
-      }
-    }
-
-    /* Add the area under the line segment to the total area */
-    
-    for (iseg = 0; iseg < 2; ++ iseg) {
-      if (iseg) {
-        width = segment[1][0] - midpoint[0];
-      } else {
-        width = midpoint[0] - segment[0][0];
-      }
-      fprintf(fd, "\nsegment[0][0] = %f midpoint[0] = %f segment[1][0] = %f width = %f\n",
-              segment[0][0], midpoint[0], segment[1][0], width);
-      if (width != 0.0) {
-        if (iseg == outside) {
-          /* Implicitly multiplied by 1.0, the square height */
-          area += width; 
-          fprintf(fd, "area = %f\n", area);
-        } else {
-          /* Delta is the distance to the top of the square and 
-           * is negative or zero for the segment inside the square */
-          area += 0.5 * width * ((1.0 + delta[0]) + (1.0 + delta[1]));
-          fprintf(fd, "delta = (%f, %f) area = %f\n", delta[0], delta[1], area);
         }
       }
     }
@@ -327,8 +309,7 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
     _nextsegment: continue;
   }
 
-  fclose(fd); /* DBG */
-  return fabs(area);
+   return area;
 }
 
 /** --------------------------------------------------------------------------------------------------
@@ -962,8 +943,8 @@ do_kernel_square(struct driz_param_t* p) {
   
       for (jj = min_jj; jj <= max_jj; ++jj) {
         for (ii = min_ii; ii <= max_ii; ++ii) {
-          /* Call boxer to calculate overlap */
-          dover = boxer((double)ii, (double)jj, xout, yout);
+          /* Call compute_area to calculate overlap */
+          dover = compute_area((double)ii, (double)jj, xout, yout);
   
           if (dover > 0.0) {
             /* Re-normalise the area overlap using the Jacobian */
