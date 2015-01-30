@@ -71,12 +71,18 @@ compute_bit_value(integer_t uuid) {
 
 double
 compute_area(double is, double js, const double x[4], const double y[4]) {
-  int ipoint, jpoint, idim, jdim, iside, iseg, outside, count;
+  int ipoint, jpoint, idim, jdim, iside, outside, count;
   int positive[2];
   double area, width;
   double midpoint[2], delta[2];
   double border[2][2], segment[2][2];
   
+  /* The area for a qadrilareal clipped to a square of unit length whose sides are
+   * aligned with the axes. The area is computed by computing the area under each
+   * line segment clipped to the boundary of three sides of the sqaure. Since the 
+   * computed width is positive for two of the sides and negative for the other two,
+   * we subtract the area outside the quadrilateral without any extra code.
+   */
   area = 0.0;
 
   border[0][0] = is - 0.5;
@@ -99,12 +105,18 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
     for (idim = 0, count = 3; idim < 2; ++ idim) {
       for (iside = 0; iside < 2; ++ iside, -- count) {
 	
-        for (iseg = 0; iseg < 2; ++ iseg) { 
-          delta[iseg] = segment[iseg][idim] - border[iside][idim];
-          positive[iseg] = delta[iseg] >= 0.0;
-        }
+        delta[0] = segment[0][idim] - border[iside][idim];
+        delta[1] = segment[1][idim] - border[iside][idim];
 
+        positive[0] = delta[0] > 0.0;
+        positive[1] = delta[1] > 0.0;
+
+        /* If both deltas have the same signe there is no baondary crossing
+         */
         if (positive[0] == positive[1]) {
+          /* A diagram will convince that you decide a point is
+           * inside or outside the boundary by the following test
+           */
           if (positive[0] == iside) {
             /* Segment is entirely outside the boundary */
             if (count == 0) {
@@ -118,8 +130,10 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
           } else {
             /* Segment entirely within the boundary */
             if (count == 0) {
-              /* Delta is the distance to the top of the square and 
-               * is negative or zero for the segment inside the square */
+              /* Use the trapezoid formula to compute the area under the 
+               * segment. Delta is the distance to the top of the square 
+               * and is negative or zero for the segment inside the square
+               */
               width = segment[0][0] - segment[1][0];
               area += 0.5 * width * ((1.0 + delta[0]) + (1.0 + delta[1]));
             }
@@ -129,7 +143,6 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
           /* If both line segments are on opposite sides of the
           * boundary, calculate midpoint, the point of intersection
           */
-
           outside = positive[iside];
           jdim = (idim + 1) & 01; /* the other dimension */
 
@@ -140,15 +153,21 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
             (delta[1] - delta[0]);
 
           if (count == 0) {
+            /* If a segment cross the boundary the formula for its area
+             * is a combination of the formulas for segments entirely
+             * inside and outside.
+             */
             if (outside == 0) {
               width = segment[0][0] - midpoint[0];
               area += width;
               width = midpoint[0] - segment[1][0];
+              /* Delta[0] is at the crossing point and thus zero */
               area += 0.5 * width * (1.0 + (1.0 + delta[1]));
             } else {
               width = midpoint[0] - segment[1][0];
               area += width;
               width =  segment[0][0] - midpoint[0];
+              /* Delta[1] is at the crossing point and thus zero */
               area += 0.5 * width * ((1.0 + delta[0]) + 1.0);
             }
 
