@@ -140,7 +140,7 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
           }
 
         } else {
-          /* If both line segments are on opposite sides of the
+          /* If ends of the line segment are on opposite sides of the
           * boundary, calculate midpoint, the point of intersection
           */
           outside = positive[iside];
@@ -188,7 +188,8 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
 
 /** --------------------------------------------------------------------------------------------------
  * Calculate overlap between an arbitrary rectangle, aligned with the axes, and a pixel.
- * This is a simplified version of the boxer code. Used by do_kernel_turbo
+ * This is a simplified version of the compute_area, only valid if axes are nearly aligned.
+ * Used by do_kernel_turbo.
  *
  * i:    the x coordinate of a pixel on the output image
  * j:    the y coordinate of a pixel on the output image
@@ -719,13 +720,9 @@ do_kernel_turbo(struct driz_param_t* p) {
 }
 
 /** --------------------------------------------------------------------------------------------------
- * This module does the actual mapping of input flux to output images using "boxer",
- * a code written by Bill Sparks for FOC geometric distortion correction, rather than the
- * "drizzling" approximation.
- *
- * This works by calculating the positions of the four corners of a quadrilateral on the output grid
- * corresponding to the corners of the input pixel and then working out exactly how much of each pixel
- * in the output is covered, or not.
+ * This module does the actual mapping of input flux to output images. It works by calculating the
+ * positions of the four corners of a quadrilateral on the output grid corresponding to the corners
+ * of the input pixel and then working out exactly how much of each pixel in the output is covered, or not.
  *
  * p: structure containing options, input, and output
  */
