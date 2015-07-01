@@ -22,7 +22,7 @@
  * dow: new contribution to weighted counts
  */
 
-inline_macro static void
+inline_macro static int
 update_data(struct driz_param_t* p, const integer_t ii, const integer_t jj,
             const float d, const float vc, const float dow) {
 
@@ -30,15 +30,32 @@ update_data(struct driz_param_t* p, const integer_t ii, const integer_t jj,
 
   /* Just a simple calculation without logical tests */
   if (vc == 0.0) {
-    set_pixel(p->output_data, ii, jj, d);
+    if (oob_pixel(p->output_data, ii, jj)) {
+      driz_error_format_message(p->error, "OOB in output_data[%d,%d]", ii, jj);
+      return 1;
+    } else {
+      set_pixel(p->output_data, ii, jj, d);
+    }
 
   } else if (vc_plus_dow != 0.0) {
-    double value;
-    value = (get_pixel(p->output_data, ii, jj) * vc + dow * d) / (vc_plus_dow);
-    set_pixel(p->output_data, ii, jj, value);
+    if (oob_pixel(p->output_data, ii, jj)) {
+      driz_error_format_message(p->error, "OOB in output_data[%d,%d]", ii, jj);
+      return 1;
+    } else {
+      double value;
+      value = (get_pixel(p->output_data, ii, jj) * vc + dow * d) / (vc_plus_dow);
+      set_pixel(p->output_data, ii, jj, value);
+    }
   }
 
-  set_pixel(p->output_counts, ii, jj, vc_plus_dow);
+  if (oob_pixel(p->output_counts, ii, jj)) {
+    driz_error_format_message(p->error, "OOB in output_counts[%d,%d]", ii, jj);
+    return 1;
+  } else {
+    set_pixel(p->output_counts, ii, jj, vc_plus_dow);
+  }
+
+  return 0;
 }
 
 /** --------------------------------------------------------------------------------------------------
@@ -111,7 +128,7 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
         positive[0] = delta[0] > 0.0;
         positive[1] = delta[1] > 0.0;
 
-        /* If both deltas have the same signe there is no baondary crossing
+        /* If both deltas have the same signe there is no baundary crossing
          */
         if (positive[0] == positive[1]) {
           /* A diagram will convince that you decide a point is
@@ -121,7 +138,7 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
             /* Segment is entirely outside the boundary */
             if (count == 0) {
               /* Implicitly multiplied by 1.0, the square height */
-              width = segment[0][0] - segment[1][0];
+              width = segment[1][0] - segment[0][0];
               area += width;
             } else {
               goto _nextsegment;
@@ -134,7 +151,7 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
                * segment. Delta is the distance to the top of the square 
                * and is negative or zero for the segment inside the square
                */
-              width = segment[0][0] - segment[1][0];
+              width = segment[1][0] - segment[0][0];
               area += 0.5 * width * ((1.0 + delta[0]) + (1.0 + delta[1]));
             }
           }
@@ -158,15 +175,15 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
              * inside and outside.
              */
             if (outside == 0) {
-              width = segment[0][0] - midpoint[0];
+              width = midpoint[0] - segment[0][0];
               area += width;
-              width = midpoint[0] - segment[1][0];
+              width = segment[1][0] - midpoint[0];
               /* Delta[0] is at the crossing point and thus zero */
               area += 0.5 * width * (1.0 + (1.0 + delta[1]));
             } else {
-              width = midpoint[0] - segment[1][0];
+              width = segment[1][0] - midpoint[0];
               area += width;
-              width =  segment[0][0] - midpoint[0];
+              width =  midpoint[0] - segment[0][0];
               /* Delta[1] is at the crossing point and thus zero */
               area += 0.5 * width * ((1.0 + delta[0]) + 1.0);
             }
@@ -183,7 +200,7 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
     _nextsegment: continue;
   }
 
-   return area;
+   return fabs(area);
 }
 
 /** --------------------------------------------------------------------------------------------------
@@ -257,15 +274,32 @@ do_kernel_point(struct driz_param_t* p) {
       /* Check it is on the output image */
       if (ii >= p->xmin && ii < p->xmax &&
           jj >= p->ymin && jj < p->ymax) {
-        vc = get_pixel(p->output_counts, ii, jj);
-  
+
+        if (oob_pixel(p->output_counts, ii, jj)) {
+          driz_error_format_message(p->error, "OOB in output_counts[%d,%d]", ii, jj);
+          return 1;
+        } else {
+          vc = get_pixel(p->output_counts, ii, jj);
+        }
+
         /* Allow for stretching because of scale change */
-        d = get_pixel(p->data, i, j) * scale2;
-  
+        if (oob_pixel(p->data, i, j)) {
+          driz_error_format_message(p->error, "OOB in data[%d,%d]", i, j);
+          return 1;
+        } else {
+          d = get_pixel(p->data, i, j) * scale2;
+        }
+        
         /* Scale the weighting mask by the scale factor.  Note that we
            DON'T scale by the Jacobian as it hasn't been calculated */
         if (p->weights) {
-          dow = get_pixel(p->weights, i, j) * p->weight_scale;
+          if (oob_pixel(p->weights, i, j)) {
+            driz_error_format_message(p->error, "OOB in weights[%d,%d]", i, j);
+            return 1;
+          } else {
+            dow = get_pixel(p->weights, i, j) * p->weight_scale;
+          }
+    
         } else {
           dow = 1.0;
         }
@@ -276,7 +310,9 @@ do_kernel_point(struct driz_param_t* p) {
           set_bit(p->output_context, ii, jj, bv);
         }
   
-        update_data(p, ii, jj, d, vc, dow);
+        if (update_data(p, ii, jj, d, vc, dow)) {
+          return 1;
+        }
       } else {
   
         ++ p->nmiss;
@@ -340,12 +376,23 @@ do_kernel_tophat(struct driz_param_t* p) {
       nhit = 0;
   
       /* Allow for stretching because of scale change */
-      d = get_pixel(p->data, i, j) * scale2;
-  
+      if (oob_pixel(p->data, i, j)) {
+        driz_error_format_message(p->error, "OOB in data[%d,%d]", i, j);
+        return 1;
+      } else {
+        d = get_pixel(p->data, i, j) * scale2;
+      }
+
       /* Scale the weighting mask by the scale factor and inversely by
          the Jacobian to ensure conservation of weight in the output */
       if (p->weights) {
-        dow = get_pixel(p->weights, i, j) * p->weight_scale;
+        if (oob_pixel(p->weights, i, j)) {
+          driz_error_format_message(p->error, "OOB in weights[%d,%d]", i, j);
+          return 1;
+        } else {
+          dow = get_pixel(p->weights, i, j) * p->weight_scale;
+        }
+        
       } else {
         dow = 1.0;
       }
@@ -366,7 +413,12 @@ do_kernel_tophat(struct driz_param_t* p) {
           if (r2 <= pfo2) {
             /* Count the hits */
             nhit++;
-            vc = get_pixel(p->output_counts, ii, jj);
+            if (oob_pixel(p->output_counts, ii, jj)) {
+              driz_error_format_message(p->error, "OOB in output_counts[%d,%d]", ii, jj);
+              return 1;
+            } else {
+              vc = get_pixel(p->output_counts, ii, jj);
+            }
   
             /* If we are create or modifying the context image,
                we do so here. */
@@ -374,7 +426,9 @@ do_kernel_tophat(struct driz_param_t* p) {
               set_bit(p->output_context, ii, jj, bv);
             }
   
-            update_data(p, ii, jj, d, vc, dow);
+            if (update_data(p, ii, jj, d, vc, dow)) {
+              return 1;
+            }
           }
         }
       }
@@ -450,12 +504,23 @@ do_kernel_gaussian(struct driz_param_t* p) {
       nhit = 0;
   
       /* Allow for stretching because of scale change */
-      d = get_pixel(p->data, i, j) * scale2;
-  
+      if (oob_pixel(p->data, i, j)) {
+        driz_error_format_message(p->error, "OOB in data[%d,%d]", i, j);
+        return 1;
+      } else {
+        d = get_pixel(p->data, i, j) * scale2;
+      }
+
       /* Scale the weighting mask by the scale factor and inversely by
          the Jacobian to ensure conservation of weight in the output */
       if (p->weights) {
-        w = get_pixel(p->weights, i, j) * p->weight_scale;
+        if (oob_pixel(p->weights, i, j)) {
+          driz_error_format_message(p->error, "OOB in weights[%d,%d]", i, j);
+          return 1;
+        } else {
+          w = get_pixel(p->weights, i, j) * p->weight_scale;
+        }
+
       } else {
         w = 1.0;
       }
@@ -475,7 +540,13 @@ do_kernel_gaussian(struct driz_param_t* p) {
           /* Count the hits */
           ++nhit;
   
-          vc = get_pixel(p->output_counts, ii, jj);
+          if (oob_pixel(p->output_counts, ii, jj)) {
+            driz_error_format_message(p->error, "OOB in output_counts[%d,%d]", ii, jj);
+            return 1;
+          } else {
+            vc = get_pixel(p->output_counts, ii, jj);
+          }
+
           dow = (float)dover * w;
   
           /* If we are create or modifying the context image, we do so
@@ -484,7 +555,9 @@ do_kernel_gaussian(struct driz_param_t* p) {
             set_bit(p->output_context, ii, jj, bv);
           }
   
-          update_data(p, ii, jj, d, vc, dow);
+          if (update_data(p, ii, jj, d, vc, dow)) {
+            return 1;
+          }
         }
       }
 
@@ -566,12 +639,23 @@ do_kernel_lanczos(struct driz_param_t* p) {
       nhit = 0;
   
       /* Allow for stretching because of scale change */
-      d = get_pixel(p->data, i, j) * scale2;
-  
+      if (oob_pixel(p->data, i, j)) {
+        driz_error_format_message(p->error, "OOB in data[%d,%d]", i, j);
+        return 1;
+      } else {
+        d = get_pixel(p->data, i, j) * scale2;
+      }
+
       /* Scale the weighting mask by the scale factor and inversely by
          the Jacobian to ensure conservation of weight in the output */
       if (p->weights) {
-        w = get_pixel(p->weights, i, j) * p->weight_scale;
+        if (oob_pixel(p->weights, i, j)) {
+          driz_error_format_message(p->error, "OOB in weights[%d,%d]", i, j);
+          return 1;
+        } else {
+          w = get_pixel(p->weights, i, j) * p->weight_scale;
+        }
+
       } else {
         w = 1.0;
       }
@@ -591,7 +675,12 @@ do_kernel_lanczos(struct driz_param_t* p) {
   
           /* VALGRIND REPORTS: Address is 1 bytes after a block of size
              435 */
-          vc = get_pixel(p->output_counts, ii, jj);
+          if (oob_pixel(p->output_counts, ii, jj)) {
+            driz_error_format_message(p->error, "OOB in output_counts[%d,%d]", ii, jj);
+            return 1;
+          } else {
+            vc = get_pixel(p->output_counts, ii, jj);
+          }
           dow = (float)(dover * w);
   
           /* If we are create or modifying the context image, we do so
@@ -600,7 +689,9 @@ do_kernel_lanczos(struct driz_param_t* p) {
             set_bit(p->output_context, ii, jj, bv);
           }
   
-          update_data(p, ii, jj, d, vc, dow);
+          if (update_data(p, ii, jj, d, vc, dow)) {
+            return 1;
+          }
         }
       }
   
@@ -673,12 +764,23 @@ do_kernel_turbo(struct driz_param_t* p) {
       nhit = 0;
   
       /* Allow for stretching because of scale change */
-      d = get_pixel(p->data, i, j) * (float)scale2;
-  
+      if (oob_pixel(p->data, i, j)) {
+        driz_error_format_message(p->error, "OOB in data[%d,%d]", i, j);
+        return 1;
+      } else {
+        d = get_pixel(p->data, i, j) * (float)scale2;
+      }
+
       /* Scale the weighting mask by the scale factor and inversely by
          the Jacobian to ensure conservation of weight in the output. */
       if (p->weights) {
-        w = get_pixel(p->weights, i, j) * p->weight_scale;
+        if (oob_pixel(p->weights, i, j)) {
+          driz_error_format_message(p->error, "OOB in weights[%d,%d]", i, j);
+          return 1;
+        } else {
+          w = get_pixel(p->weights, i, j) * p->weight_scale;
+        }
+
       } else {
         w = 1.0;
       }
@@ -697,7 +799,12 @@ do_kernel_turbo(struct driz_param_t* p) {
             /* Count the hits */
             ++nhit;
   
-            vc = get_pixel(p->output_counts, ii, jj);
+            if (oob_pixel(p->output_counts, ii, jj)) {
+              driz_error_format_message(p->error, "OOB in output_counts[%d,%d]", ii, jj);
+              return 1;
+            } else{
+              vc = get_pixel(p->output_counts, ii, jj);
+            }
             dow = (float)(dover * w);
   
             /* If we are create or modifying the context image,
@@ -706,7 +813,9 @@ do_kernel_turbo(struct driz_param_t* p) {
               set_bit(p->output_context, ii, jj, bv);
             }
   
-            update_data(p, ii, jj, d, vc, dow);
+            if (update_data(p, ii, jj, d, vc, dow)) {
+              return 1;
+            }
           }
         }
       }
@@ -751,12 +860,13 @@ do_kernel_square(struct driz_param_t* p) {
   p->nmiss = p->nskip * (p->ymax - p->ymin);
   
   /* This is the outer loop over all the lines in the input image */
-
+  
   for (j = ybounds[0]; j < ybounds[1]; ++j) {
     /* Check the overlap with the output */
     if (check_line_overlap(p, margin, j, xbounds)) return 1;
     
     /* We know there may be some misses */
+
     p->nmiss += (p->xmax - p->xmin) - (xbounds[1] - xbounds[0]);
     if (xbounds[0] == xbounds[1]) ++ p->nskip;
 
@@ -796,12 +906,22 @@ do_kernel_square(struct driz_param_t* p) {
       nhit = 0;
   
       /* Allow for stretching because of scale change */
-      d = get_pixel(p->data, i, j) * scale2;
-  
+      if (oob_pixel(p->data, i, j)) {
+        driz_error_format_message(p->error, "OOB in data[%d,%d]", i, j);
+        return 1;
+      } else {
+        d = get_pixel(p->data, i, j) * scale2;
+      }
+      
       /* Scale the weighting mask by the scale factor and inversely by
          the Jacobian to ensure conservation of weight in the output */
       if (p->weights) {
-        w = get_pixel(p->weights, i, j) * p->weight_scale;
+        if (oob_pixel(p->weights, i, j)) {
+          driz_error_format_message(p->error, "OOB in weights[%d,%d]", i, j);
+          return 1;
+        } else {
+          w = get_pixel(p->weights, i, j) * p->weight_scale;
+        }
       } else {
         w = 1.0;
       }
@@ -816,24 +936,36 @@ do_kernel_square(struct driz_param_t* p) {
         for (ii = min_ii; ii <= max_ii; ++ii) {
           /* Call compute_area to calculate overlap */
           dover = compute_area((double)ii, (double)jj, xout, yout);
-  
+
           if (dover > 0.0) {
+            if (oob_pixel(p->output_counts, ii, jj)) {
+              driz_error_format_message(p->error, "OOB in output_counts[%d,%d]", ii, jj);
+              return 1;
+            } else {
+              vc = get_pixel(p->output_counts, ii, jj);
+            }
+  
             /* Re-normalise the area overlap using the Jacobian */
             dover /= jaco;
-  
-            /* Count the hits */
-            ++nhit;
-  
-            vc = get_pixel(p->output_counts, ii, jj);
             dow = (float)(dover * w);
+
+            /* Count the hits */
+            ++nhit;  
   
             /* If we are creating or modifying the context image we do
                so here */
             if (p->output_context && dow > 0.0) {
-              set_bit(p->output_context, ii, jj, bv);
+              if (oob_pixel(p->output_context, ii, jj)) {
+                driz_error_format_message(p->error, "OOB in output_context[%d,%d]", ii, jj);
+                return 1;
+              } else{
+                set_bit(p->output_context, ii, jj, bv);
+              }
             }
   
-            update_data(p, ii, jj, d, vc, dow);
+            if (update_data(p, ii, jj, d, vc, dow)) {
+              return 1;
+            }
           }
         }
       }

@@ -192,6 +192,16 @@ get_pixmap(PyArrayObject *pixmap, integer_t xpix, integer_t ypix) {
   return (double*) PyArray_GETPTR3(pixmap, ypix, xpix, 0);
 }
 
+static inline_macro int
+oob_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
+
+  npy_intp *ndim = PyArray_DIMS(image);
+  if (xpix < 0 || xpix >= ndim[1]) return 1;
+  if (ypix < 0 || ypix >= ndim[0]) return 1;
+
+  return 0;
+}
+
 static inline_macro float
 get_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
   return *(float*) PyArray_GETPTR2(image, ypix, xpix);
@@ -205,8 +215,7 @@ get_pixel_at_pos(PyArrayObject *image, integer_t pos) {
 }
 
 static inline_macro void
-set_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix, double value) {
-  
+set_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix, double value) {  
   *(float*) PyArray_GETPTR2(image, ypix, xpix) = value;
   return;
 }

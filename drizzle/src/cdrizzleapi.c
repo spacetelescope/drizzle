@@ -222,7 +222,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   if (dobox(&p)) {
     goto _exit;
   }
-
+  
   /* Put in the fill values (if defined) */
   if (do_fill) {
     put_fill(&p, fill_value);
@@ -230,8 +230,8 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
 
  _exit:
   Py_XDECREF(con);
-  Py_XDECREF(img);
-  Py_XDECREF(wei);
+  Py_XDECREF(img); 
+  Py_XDECREF(wei); 
   Py_XDECREF(out);
   Py_XDECREF(wht);
   Py_XDECREF(map);

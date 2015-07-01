@@ -140,6 +140,8 @@ map_point(PyArrayObject *pixmap,
     pix[idim]  = frac[idim];
     pix[idim]  = CLAMP(pix[idim], 0, xydim[idim] - 2);
     frac[idim] = frac[idim] - pix[idim];
+
+    assert(pix[idim] >= 0 && pix[idim] < xydim[idim]);
   }
   
   if (frac[0] == 0.0 && frac[1] == 0.0) {
@@ -286,7 +288,6 @@ int
 check_line_overlap(struct driz_param_t* p, int margin, integer_t j, integer_t *xbounds) {
   struct segment xylimit, xybounds;
   integer_t isize[2];
-
   initialize_segment(&xylimit, p->xmin - margin, p->ymin - margin,
                                p->xmax + margin, p->ymax + margin);
 
@@ -302,6 +303,7 @@ check_line_overlap(struct driz_param_t* p, int margin, integer_t j, integer_t *x
   
   xbounds[0] = floor(xybounds.point[0][0]);
   xbounds[1] = ceil(xybounds.point[1][0]);
+  
   if (xybounds.invalid) xbounds[1] = xbounds[0];
 
   if (driz_error_check(p->error, "xbounds must be inside input image",
