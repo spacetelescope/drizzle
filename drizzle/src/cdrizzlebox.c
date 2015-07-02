@@ -94,7 +94,7 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
   double midpoint[2], delta[2];
   double border[2][2], segment[2][2];
   
-  /* The area for a qadrilareal clipped to a square of unit length whose sides are
+  /* The area for a qadrilateral clipped to a square of unit length whose sides are
    * aligned with the axes. The area is computed by computing the area under each
    * line segment clipped to the boundary of three sides of the sqaure. Since the 
    * computed width is positive for two of the sides and negative for the other two,

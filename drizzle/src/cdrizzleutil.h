@@ -192,6 +192,9 @@ get_pixmap(PyArrayObject *pixmap, integer_t xpix, integer_t ypix) {
   return (double*) PyArray_GETPTR3(pixmap, ypix, xpix, 0);
 }
 
+#ifdef NDEBUG
+#define oob_pixel(image, xpix, ypix)   0
+#else
 static inline_macro int
 oob_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
 
@@ -201,6 +204,7 @@ oob_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
 
   return 0;
 }
+#endif
 
 static inline_macro float
 get_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
