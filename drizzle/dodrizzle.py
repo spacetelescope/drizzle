@@ -38,7 +38,7 @@ def dodrizzle(insci, input_wcs, inwht,
         
     inwht : 2d array
         A 2d numpy array containing the pixel by pixel weighting.
-        Must have the same dimenstions as insci. If none is supplied,
+        Must have the same dimensions as insci. If none is supplied,
         the weghting is set to one.
         
     output_wcs : wcs
@@ -55,7 +55,7 @@ def dodrizzle(insci, input_wcs, inwht,
         hold the intermediate results.
 
     outcon : 2d array
-        A 3d numpy array holding a bitmap of which image was input
+        A 3d numpy array holding a bitmap of which image was an input
         for each output pixel. Should be integer zero on first call.
         Subsequent calls hold intermediate results.
 
@@ -68,10 +68,13 @@ def dodrizzle(insci, input_wcs, inwht,
         or "cps" (counts per second.) 
         
     wt_scl : float
-        A scaling factor for the pixel by pixel weighting.
+        A scaling factor applied to the pixel by pixel weighting.
     
     wcslin_pscale : float, optional
-        The pixel scale of the input image.
+        The pixel scale of the input image. Conceptually, this is the
+        linear dimension of a side of a pixel in the input image, but it
+        is not limited to this and can be set to change how the drizzling
+        algorithm operates.
 
     uniqid : int, optional
         The id number of the input image. Should be one the first time
@@ -83,24 +86,26 @@ def dodrizzle(insci, input_wcs, inwht,
         on the output image. Only pixels on the output image inside this
         rectangle will have their flux updated. Xmin sets the minimum value
         of the x dimension. The x dimension is the dimension that varies
-        quickest on the image. If the value is zero or less, no minimum will
+        quickest on the image. If the value is zero, no minimum will
         be set in the x dimension. All four parameters are zero based,
         counting starts at zero.
         
     xmax : float, optional
         Sets the maximum value of the x dimension on the bounding box
-        of the ouput image. If the value is zero or less, no maximum will 
-        be set in the x dimension.
+        of the ouput image. If the value is zero, no maximum will 
+        be set in the x dimension, the full x dimension of the output
+        image is the bounding box.
 
     ymin : float, optional
         Sets the minimum value in the y dimension on the bounding box. The
         y dimension varies less rapidly than the x and represents the line
-        index on the output image. If the value is zero or less, no minimum 
+        index on the output image. If the value is zero, no minimum 
         will be set in the y dimension.
         
     ymax : float, optional
-        Sets the maximum value in the y dimension. If the value is zero or
-        less, no maximum will be set in the y dimension.
+        Sets the maximum value in the y dimension. If the value is zero, no
+        maximum will be set in the y dimension,  the full x dimension
+        of the output image is the bounding box.
             
     pixfrac : float, optional
         The fraction of a pixel that the pixel flux is confined to. The
@@ -131,11 +136,14 @@ def dodrizzle(insci, input_wcs, inwht,
     
     stepsize
         Was used when input to output mapping was computed
-        internally. Is no longer used and only here for backwards compatibility.
+        inside the cdrizzle code. Is no longer used and only here for
+        backwards compatibility. It may be re-used in the future if we
+        need to use a subsampled pixel map to improve speed.
 
     wcsmap
         Was used when input to output mapping was computed
-        internally. Is no longer used and only here for backwards compatibility.
+        inside the cdrizzle code. Is no longer used and only here for
+        backwards compatibility.
     """
     
     # Insure that the fillval parameter gets properly interpreted for use with tdriz
