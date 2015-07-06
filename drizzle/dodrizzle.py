@@ -127,8 +127,9 @@ def dodrizzle(insci, input_wcs, inwht,
     Returns
     -------
     A tuple with three values: a version string, the number of pixels
-    on the input image that are not on the output image, and the number
-    of complete lines on the input image not on the output image.
+    on the output image that were not covered by the input image, and the
+    number of complete lines on the output image that were not covered by
+    the input input image.
     
     
     Other Parameters
