@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>dodrizzle &mdash; drizzle v0.0.dev206</title>
+    <title>dodrizzle &mdash; drizzle v0.0.dev240</title>
     
     <link rel="stylesheet" href="../_static/bootstrap-astropy.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.0.dev206',
+        VERSION:     '0.0.dev240',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="../_static/sidebar.js"></script>
     <link rel="shortcut icon" href="../_static/astropy_logo.ico"/>
-    <link rel="top" title="drizzle v0.0.dev206" href="../index.html" />
+    <link rel="top" title="drizzle v0.0.dev240" href="../index.html" />
     <link rel="up" title="API Documentation" href="../drizzle/api.html" />
     <link rel="next" title="doblot" href="drizzle.doblot.doblot.html" />
     <link rel="prev" title="Drizzle" href="drizzle.drizzle.Drizzle.html" />
@@ -69,7 +69,7 @@
 	 |
       </li>
       <li>
-	<a href="../index.html">drizzle v0.0.dev206</a>
+	<a href="../index.html">drizzle v0.0.dev240</a>
 	 &raquo;
       </li>
       <li><a href="../drizzle/index.html" >The Drizzle Library</a> &raquo;</li>
@@ -110,7 +110,7 @@ it is an error to not supply an image.</p>
 <p><strong>inwht</strong> : 2d array</p>
 <blockquote>
 <div><p>A 2d numpy array containing the pixel by pixel weighting.
-Must have the same dimenstions as insci. If none is supplied,
+Must have the same dimensions as insci. If none is supplied,
 the weghting is set to one.</p>
 </div></blockquote>
 <p><strong>output_wcs</strong> : wcs</p>
@@ -131,7 +131,7 @@ hold the intermediate results.</p>
 </div></blockquote>
 <p><strong>outcon</strong> : 2d array</p>
 <blockquote>
-<div><p>A 3d numpy array holding a bitmap of which image was input
+<div><p>A 3d numpy array holding a bitmap of which image was an input
 for each output pixel. Should be integer zero on first call.
 Subsequent calls hold intermediate results.</p>
 </div></blockquote>
@@ -147,11 +147,14 @@ or &#8220;cps&#8221; (counts per second.)</p>
 </div></blockquote>
 <p><strong>wt_scl</strong> : float</p>
 <blockquote>
-<div><p>A scaling factor for the pixel by pixel weighting.</p>
+<div><p>A scaling factor applied to the pixel by pixel weighting.</p>
 </div></blockquote>
 <p><strong>wcslin_pscale</strong> : float, optional</p>
 <blockquote>
-<div><p>The pixel scale of the input image.</p>
+<div><p>The pixel scale of the input image. Conceptually, this is the
+linear dimension of a side of a pixel in the input image, but it
+is not limited to this and can be set to change how the drizzling
+algorithm operates.</p>
 </div></blockquote>
 <p><strong>uniqid</strong> : int, optional</p>
 <blockquote>
@@ -162,30 +165,32 @@ call.</p>
 <p><strong>xmin</strong> : float, optional</p>
 <blockquote>
 <div><p>This and the following three parameters set a bounding rectangle
-on the output image. Only pixels on the output image inside this
-rectangle will have their flux updated. Xmin sets the minimum value
-of the x dimension. The x dimension is the dimension that varies
-quickest on the image. If the value is zero or less, no minimum will
-be set in the x dimension. All four parameters are zero based,
-counting starts at zero.</p>
+on the input image. Only pixels on the input image inside this
+rectangle will have their flux added to the output image. Xmin
+sets the minimum value of the x dimension. The x dimension is the
+dimension that varies quickest on the image. If the value is zero,
+no minimum will be set in the x dimension. All four parameters are
+zero based, counting starts at zero.</p>
 </div></blockquote>
 <p><strong>xmax</strong> : float, optional</p>
 <blockquote>
 <div><p>Sets the maximum value of the x dimension on the bounding box
-of the ouput image. If the value is zero or less, no maximum will 
-be set in the x dimension.</p>
+of the input image. If the value is zero, no maximum will 
+be set in the x dimension, the full x dimension of the output
+image is the bounding box.</p>
 </div></blockquote>
 <p><strong>ymin</strong> : float, optional</p>
 <blockquote>
 <div><p>Sets the minimum value in the y dimension on the bounding box. The
 y dimension varies less rapidly than the x and represents the line
-index on the output image. If the value is zero or less, no minimum 
-will be set in the y dimension.</p>
+index on the input image. If the value is zero, no minimum  will be
+set in the y dimension.</p>
 </div></blockquote>
 <p><strong>ymax</strong> : float, optional</p>
 <blockquote>
-<div><p>Sets the maximum value in the y dimension. If the value is zero or
-less, no maximum will be set in the y dimension.</p>
+<div><p>Sets the maximum value in the y dimension. If the value is zero, no
+maximum will be set in the y dimension,  the full x dimension
+of the output image is the bounding box.</p>
 </div></blockquote>
 <p><strong>pixfrac</strong> : float, optional</p>
 <blockquote>
@@ -210,20 +215,24 @@ not overlap it. The default value of INDEF does not set a value.</p>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A tuple with three values: a version string, the number of pixels</p>
-<p>on the input image that are not on the output image, and the number</p>
-<p>of complete lines on the input image not on the output image.</p>
+<p>on the input image that do not overlap the output image, and the</p>
+<p>number of complete lines on the input image that do not overlap the</p>
+<p>output input image.</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name" colspan="2">Other Parameters:</th></tr>
 <tr class="field-odd field"><td>&nbsp;</td><td class="field-body"><p class="first"><strong>stepsize</strong></p>
 <blockquote>
 <div><p>Was used when input to output mapping was computed
-internally. Is no longer used and only here for backwards compatibility.</p>
+inside the cdrizzle code. Is no longer used and only here for
+backwards compatibility. It may be re-used in the future if we
+need to use a subsampled pixel map to improve speed.</p>
 </div></blockquote>
 <p><strong>wcsmap</strong></p>
 <blockquote class="last">
 <div><p>Was used when input to output mapping was computed
-internally. Is no longer used and only here for backwards compatibility.</p>
+inside the cdrizzle code. Is no longer used and only here for
+backwards compatibility.</p>
 </div></blockquote>
 </td>
 </tr>
@@ -256,7 +265,7 @@ internally. Is no longer used and only here for backwards compatibility.</p>
   <p>
     &copy; Copyright 2015, Bernie Simon.<br/>
     Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2. &nbsp;
-    Last built 23 Jan 2015. <br/>
+    Last built 13 Jul 2015. <br/>
   </p>
 </footer>
   </body>
