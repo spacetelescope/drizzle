@@ -287,12 +287,13 @@ clip_bounds(PyArrayObject *pixmap, struct segment *xylimit, struct segment *xybo
 int
 check_line_overlap(struct driz_param_t* p, int margin, integer_t j, integer_t *xbounds) {
   struct segment xylimit, xybounds;
-  integer_t isize[2];
-  initialize_segment(&xylimit, p->xmin - margin, p->ymin - margin,
-                               p->xmax + margin, p->ymax + margin);
+  integer_t isize[2], osize[2];
+  
+  get_dimensions(p->output_data, osize);  
+  initialize_segment(&xylimit, - margin, - margin,
+                     osize[0] + margin, osize[1] + margin);
 
-  get_dimensions(p->pixmap, isize);
-  initialize_segment(&xybounds, 0, j, isize[0], j);
+  initialize_segment(&xybounds, p->xmin, j, p->xmax, j);
 
   if (clip_bounds(p->pixmap, &xylimit, &xybounds)) {
     driz_error_set_message(p->error, "cannot compute xbounds");
@@ -303,9 +304,8 @@ check_line_overlap(struct driz_param_t* p, int margin, integer_t j, integer_t *x
   
   xbounds[0] = floor(xybounds.point[0][0]);
   xbounds[1] = ceil(xybounds.point[1][0]);
-  
-  if (xybounds.invalid) xbounds[1] = xbounds[0];
 
+  get_dimensions(p->pixmap, isize);
   if (driz_error_check(p->error, "xbounds must be inside input image",
                        xbounds[0] >= 0 && xbounds[1] <= isize[0])) {
     return 1;
@@ -329,19 +329,19 @@ int
 check_image_overlap(struct driz_param_t* p, const int margin, integer_t *ybounds) {
 
   struct segment xylimit, xybounds[2];
-  integer_t isize[2];
+  integer_t isize[2], osize[2];
   int ipoint;
   
-  get_dimensions(p->pixmap, isize);
-
-  ybounds[0] = 0;
-  ybounds[1] = isize[0];
+  ybounds[0] = p->xmin;
+  ybounds[1] = p->xmax;
   
-  initialize_segment(&xylimit, p->xmin - margin, p->ymin - margin,
-                               p->xmax + margin, p->ymax + margin);
+  get_dimensions(p->output_data, osize);  
+  initialize_segment(&xylimit, - margin, - margin,
+                     osize[0] + margin, osize[1] + margin);
 
   for (ipoint = 0; ipoint < 2; ++ipoint) {
-    initialize_segment(&xybounds[ipoint], ybounds[ipoint], 0, ybounds[ipoint], isize[1]);
+    initialize_segment(&xybounds[ipoint], ybounds[ipoint], p->ymin,
+                                          ybounds[ipoint], p->ymax);
     
     if (clip_bounds(p->pixmap, &xylimit, &xybounds[ipoint])) {
       driz_error_set_message(p->error, "cannot compute ybounds");
@@ -351,6 +351,7 @@ check_image_overlap(struct driz_param_t* p, const int margin, integer_t *ybounds
 
   union_of_segments(2, 1, xybounds, ybounds);
 
+  get_dimensions(p->pixmap, isize);
   if (driz_error_check(p->error, "ybounds must be inside input image",
                        ybounds[0] >= 0 && ybounds[1] <= isize[1])) {
     return 1;

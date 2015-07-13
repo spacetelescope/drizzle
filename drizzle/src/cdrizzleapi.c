@@ -91,7 +91,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   float inv_exposure_time;
   struct driz_error_t error;
   struct driz_param_t p;
-  integer_t osize[2];
+  integer_t isize[2];
 
   driz_error_init(&error);
   
@@ -166,9 +166,9 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
 
   /* Set the area to be processed */
   
-  get_dimensions(out, osize);
-  if (xmax == 0) xmax = osize[0];
-  if (ymax == 0) ymax = osize[1];
+  get_dimensions(img, isize);
+  if (xmax == 0) xmax = isize[0];
+  if (ymax == 0) ymax = isize[1];
   
   /* Convert strings to enumerations */
   
@@ -240,7 +240,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
     PyErr_SetString(PyExc_ValueError, driz_error_get_message(&error));
     return NULL;
   } else {
-    return Py_BuildValue("sii", "Callable C-based DRIZZLE Version 0.9 (2nd July 2015)", p.nmiss, p.nskip);
+    return Py_BuildValue("sii", "Callable C-based DRIZZLE Version 0.9 (10th July 2015)", p.nmiss, p.nskip);
   }
 }
 

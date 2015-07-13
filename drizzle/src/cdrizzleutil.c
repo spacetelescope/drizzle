@@ -286,11 +286,12 @@ create_lanczos_lut(const int kernel_order, const size_t npix,
 
 void
 put_fill(struct driz_param_t* p, const float fill_value) {
-  integer_t i, j;
+  integer_t i, j, osize[2];
 
   assert(p);
-  for (j = p->ymin; j < p->ymax; ++j) {
-    for (i = p->xmin; i < p->xmax; ++i) {
+  get_dimensions(p->output_data, osize);
+  for (j = 0; j < osize[1]; ++j) {
+    for (i = 0; i < osize[0]; ++i) {
       if (oob_pixel(p->output_counts, i, j)) {
         driz_error_format_message(p->error, "OOB in output_counts[%d,%d]", i, j);
         return;

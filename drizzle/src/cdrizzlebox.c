@@ -243,7 +243,7 @@ over(const integer_t i, const integer_t j,
 static int
 do_kernel_point(struct driz_param_t* p) {
   integer_t i, j, ii, jj;
-  integer_t xbounds[2], ybounds[2];
+  integer_t xbounds[2], ybounds[2], osize[2];
   float scale2, vc, d, dow;
   integer_t bv;
   int margin;
@@ -255,10 +255,11 @@ do_kernel_point(struct driz_param_t* p) {
   if (check_image_overlap(p, margin, ybounds)) return 1;
 
   p->nskip = (p->ymax - p->ymin) - (ybounds[1] - ybounds[0]);
-  p->nmiss = p->nskip * (p->ymax - p->ymin);
+  p->nmiss = p->nskip * (p->xmax - p->xmin);
 
   /* This is the outer loop over all the lines in the input image */
   
+  get_dimensions(p->output_data, osize);
   for (j = ybounds[0]; j < ybounds[1]; ++j) {
     /* Check the overlap with the output */
     if (check_line_overlap(p, margin, j, xbounds)) return 1;
@@ -272,8 +273,7 @@ do_kernel_point(struct driz_param_t* p) {
       jj = fortran_round(get_pixmap(p->pixmap, i, j)[1]);
   
       /* Check it is on the output image */
-      if (ii >= p->xmin && ii < p->xmax &&
-          jj >= p->ymin && jj < p->ymax) {
+      if (ii >= 0 && ii < osize[0] && jj >= 0 && jj < osize[1]) {
 
         if (oob_pixel(p->output_counts, ii, jj)) {
           driz_error_format_message(p->error, "OOB in output_counts[%d,%d]", ii, jj);
@@ -332,7 +332,7 @@ do_kernel_point(struct driz_param_t* p) {
 static int
 do_kernel_tophat(struct driz_param_t* p) {
   integer_t bv, i, j, ii, jj, nhit, nxi, nxa, nyi, nya;
-  integer_t xbounds[2], ybounds[2];
+  integer_t xbounds[2], ybounds[2], osize[2];
   float scale2, pfo, pfo2, vc, d, dow;
   double xx, yy, xxi, xxa, yyi, yya, ddx, ddy, r2;
   int margin;
@@ -346,10 +346,11 @@ do_kernel_tophat(struct driz_param_t* p) {
   if (check_image_overlap(p, margin, ybounds)) return 1;
 
   p->nskip = (p->ymax - p->ymin) - (ybounds[1] - ybounds[0]);
-  p->nmiss = p->nskip * (p->ymax - p->ymin);
+  p->nmiss = p->nskip * (p->xmax - p->xmin);
   
   /* This is the outer loop over all the lines in the input image */
 
+  get_dimensions(p->output_data, osize);
   for (j = ybounds[0]; j < ybounds[1]; ++j) {
     /* Check the overlap with the output */
     if (check_line_overlap(p, margin, j, xbounds)) return 1;
@@ -368,10 +369,10 @@ do_kernel_tophat(struct driz_param_t* p) {
       yyi = yy - pfo;
       yya = yy + pfo;
   
-      nxi = MAX(fortran_round(xxi), p->xmin);
-      nxa = MIN(fortran_round(xxa), p->xmax-1);
-      nyi = MAX(fortran_round(yyi), p->ymin);
-      nya = MIN(fortran_round(yya), p->ymax-1);
+      nxi = MAX(fortran_round(xxi), 0);
+      nxa = MIN(fortran_round(xxa), osize[0]-1);
+      nyi = MAX(fortran_round(yyi), 0);
+      nya = MIN(fortran_round(yya), osize[1]-1);
   
       nhit = 0;
   
@@ -450,7 +451,7 @@ do_kernel_tophat(struct driz_param_t* p) {
 static int
 do_kernel_gaussian(struct driz_param_t* p) {
   integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit;
-  integer_t xbounds[2], ybounds[2];
+  integer_t xbounds[2], ybounds[2], osize[2];
   float vc, d, dow;
   double gaussian_efac, gaussian_es;
   double pfo, ac,  scale2, xx, yy, xxi, xxa, yyi, yya, w, ddx, ddy, r2, dover;
@@ -475,10 +476,11 @@ do_kernel_gaussian(struct driz_param_t* p) {
   if (check_image_overlap(p, margin, ybounds)) return 1;
 
   p->nskip = (p->ymax - p->ymin) - (ybounds[1] - ybounds[0]);
-  p->nmiss = p->nskip * (p->ymax - p->ymin);
+  p->nmiss = p->nskip * (p->xmax - p->xmin);
  
   /* This is the outer loop over all the lines in the input image */
 
+  get_dimensions(p->output_data, osize);
   for (j = ybounds[0]; j < ybounds[1]; ++j) {
     /* Check the overlap with the output */
     if (check_line_overlap(p, margin, j, xbounds)) return 1;
@@ -496,10 +498,10 @@ do_kernel_gaussian(struct driz_param_t* p) {
       yyi = yy - pfo;
       yya = yy + pfo;
   
-      nxi = MAX(fortran_round(xxi), p->xmin);
-      nxa = MIN(fortran_round(xxa), p->xmax-1);
-      nyi = MAX(fortran_round(yyi), p->ymin);
-      nya = MIN(fortran_round(yya), p->ymax-1);
+      nxi = MAX(fortran_round(xxi), 0);
+      nxa = MIN(fortran_round(xxa), osize[0]-1);
+      nyi = MAX(fortran_round(yyi), 0);
+      nya = MIN(fortran_round(yya), osize[1]-1);
   
       nhit = 0;
   
@@ -578,7 +580,7 @@ do_kernel_gaussian(struct driz_param_t* p) {
 static int
 do_kernel_lanczos(struct driz_param_t* p) {
   integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit, ix, iy;
-  integer_t xbounds[2], ybounds[2];
+  integer_t xbounds[2], ybounds[2], osize[2];
   float scale2, vc, d, dow;
   double pfo, xx, yy, xxi, xxa, yyi, yya, w, dx, dy, dover;
   int kernel_order;
@@ -610,10 +612,11 @@ do_kernel_lanczos(struct driz_param_t* p) {
   if (check_image_overlap(p, margin, ybounds)) return 1;
 
   p->nskip = (p->ymax - p->ymin) - (ybounds[1] - ybounds[0]);
-  p->nmiss = p->nskip * (p->ymax - p->ymin);
+  p->nmiss = p->nskip * (p->xmax - p->xmin);
   
   /* This is the outer loop over all the lines in the input image */
 
+  get_dimensions(p->output_data, osize);
   for (j = ybounds[0]; j < ybounds[1]; ++j) {
     /* Check the overlap with the output */
     if (check_line_overlap(p, margin, j, xbounds)) return 1;
@@ -631,10 +634,10 @@ do_kernel_lanczos(struct driz_param_t* p) {
       yyi = yy - dy - pfo;
       yya = yy - dy + pfo;
   
-      nxi = MAX(fortran_round(xxi), p->xmin);
-      nxa = MIN(fortran_round(xxa), p->xmax-1);
-      nyi = MAX(fortran_round(yyi), p->ymin);
-      nya = MIN(fortran_round(yya), p->ymax-1);
+      nxi = MAX(fortran_round(xxi), 0);
+      nxa = MIN(fortran_round(xxa), osize[0]-1);
+      nyi = MAX(fortran_round(yyi), 0);
+      nya = MIN(fortran_round(yya), osize[1]-1);
   
       nhit = 0;
   
@@ -673,8 +676,6 @@ do_kernel_lanczos(struct driz_param_t* p) {
           /* Count the hits */
           ++nhit;
   
-          /* VALGRIND REPORTS: Address is 1 bytes after a block of size
-             435 */
           if (oob_pixel(p->output_counts, ii, jj)) {
             driz_error_format_message(p->error, "OOB in output_counts[%d,%d]", ii, jj);
             return 1;
@@ -716,7 +717,7 @@ do_kernel_lanczos(struct driz_param_t* p) {
 static int
 do_kernel_turbo(struct driz_param_t* p) {
   integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit, iis, iie, jjs, jje;
-  integer_t xbounds[2], ybounds[2];
+  integer_t xbounds[2], ybounds[2], osize[2];
   float vc, d, dow;
   double pfo, scale2, ac;
   double xxi, xxa, yyi, yya, w, dover, xoi, yoi;
@@ -731,10 +732,11 @@ do_kernel_turbo(struct driz_param_t* p) {
   if (check_image_overlap(p, margin, ybounds)) return 1;
 
   p->nskip = (p->ymax - p->ymin) - (ybounds[1] - ybounds[0]);
-  p->nmiss = p->nskip * (p->ymax - p->ymin);
+  p->nmiss = p->nskip * (p->xmax - p->xmin);
   
   /* This is the outer loop over all the lines in the input image */
-
+  
+  get_dimensions(p->output_data, osize);
   for (j = ybounds[0]; j < ybounds[1]; ++j) {
     /* Check the overlap with the output */
     if (check_line_overlap(p, margin, j, xbounds)) return 1;
@@ -756,10 +758,10 @@ do_kernel_turbo(struct driz_param_t* p) {
       nxa = fortran_round(xxa);
       nyi = fortran_round(yyi);
       nya = fortran_round(yya);
-      iis = MAX(nxi, p->xmin);  /* Needed to be set to 0 to avoid edge effects */
-      iie = MIN(nxa, p->xmax-1);
-      jjs = MAX(nyi, p->ymin);  /* Needed to be set to 0 to avoid edge effects */
-      jje = MIN(nya, p->ymax-1);
+      iis = MAX(nxi, 0);  /* Needed to be set to 0 to avoid edge effects */
+      iie = MIN(nxa, osize[0]-1);
+      jjs = MAX(nyi, 0);  /* Needed to be set to 0 to avoid edge effects */
+      jje = MIN(nya, osize[1]-1);
   
       nhit = 0;
   
@@ -839,12 +841,12 @@ do_kernel_turbo(struct driz_param_t* p) {
 int
 do_kernel_square(struct driz_param_t* p) {
   integer_t bv, i, j, ii, jj, min_ii, max_ii, min_jj, max_jj, nhit;
-  integer_t xbounds[2], ybounds[2];
+  integer_t xbounds[2], ybounds[2], osize[2];
   float scale2, vc, d, dow;
   double dh, jaco, tem, dover, w;
   double xyin[4][2], xyout[2], xout[4], yout[4];
   int margin;
-
+  
   dh = 0.5 * p->pixel_fraction;
   bv = compute_bit_value(p->uuid);
   scale2 = p->scale * p->scale;
@@ -857,10 +859,11 @@ do_kernel_square(struct driz_param_t* p) {
   if (check_image_overlap(p, margin, ybounds)) return 1;
 
   p->nskip = (p->ymax - p->ymin) - (ybounds[1] - ybounds[0]);
-  p->nmiss = p->nskip * (p->ymax - p->ymin);
+  p->nmiss = p->nskip * (p->xmax - p->xmin);
   
   /* This is the outer loop over all the lines in the input image */
-  
+
+  get_dimensions(p->output_data, osize);  
   for (j = ybounds[0]; j < ybounds[1]; ++j) {
     /* Check the overlap with the output */
     if (check_line_overlap(p, margin, j, xbounds)) return 1;
@@ -927,10 +930,10 @@ do_kernel_square(struct driz_param_t* p) {
       }
   
       /* Loop over output pixels which could be affected */
-      min_jj = MAX(fortran_round(min_doubles(yout, 4)), p->ymin);
-      max_jj = MIN(fortran_round(max_doubles(yout, 4)), p->ymax-1);
-      min_ii = MAX(fortran_round(min_doubles(xout, 4)), p->xmin);
-      max_ii = MIN(fortran_round(max_doubles(xout, 4)), p->xmax-1);
+      min_jj = MAX(fortran_round(min_doubles(yout, 4)), 0);
+      max_jj = MIN(fortran_round(max_doubles(yout, 4)), osize[1]-1);
+      min_ii = MAX(fortran_round(min_doubles(xout, 4)), 0);
+      max_ii = MIN(fortran_round(max_doubles(xout, 4)), osize[0]-1);
   
       for (jj = min_jj; jj <= max_jj; ++jj) {
         for (ii = min_ii; ii <= max_ii; ++ii) {
@@ -971,7 +974,9 @@ do_kernel_square(struct driz_param_t* p) {
       }
   
       /* Count cases where the pixel is off the output image */
-      if (nhit == 0) ++ p->nmiss;
+      if (nhit == 0) {
+        ++ p->nmiss;
+      }
     }
   }
 

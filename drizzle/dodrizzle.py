@@ -83,24 +83,24 @@ def dodrizzle(insci, input_wcs, inwht,
 
     xmin : float, optional
         This and the following three parameters set a bounding rectangle
-        on the output image. Only pixels on the output image inside this
-        rectangle will have their flux updated. Xmin sets the minimum value
-        of the x dimension. The x dimension is the dimension that varies
-        quickest on the image. If the value is zero, no minimum will
-        be set in the x dimension. All four parameters are zero based,
-        counting starts at zero.
+        on the input image. Only pixels on the input image inside this
+        rectangle will have their flux added to the output image. Xmin
+        sets the minimum value of the x dimension. The x dimension is the
+        dimension that varies quickest on the image. If the value is zero,
+        no minimum will be set in the x dimension. All four parameters are
+        zero based, counting starts at zero.
         
     xmax : float, optional
         Sets the maximum value of the x dimension on the bounding box
-        of the ouput image. If the value is zero, no maximum will 
+        of the input image. If the value is zero, no maximum will 
         be set in the x dimension, the full x dimension of the output
         image is the bounding box.
 
     ymin : float, optional
         Sets the minimum value in the y dimension on the bounding box. The
         y dimension varies less rapidly than the x and represents the line
-        index on the output image. If the value is zero, no minimum 
-        will be set in the y dimension.
+        index on the input image. If the value is zero, no minimum  will be
+        set in the y dimension.
         
     ymax : float, optional
         Sets the maximum value in the y dimension. If the value is zero, no
@@ -127,9 +127,9 @@ def dodrizzle(insci, input_wcs, inwht,
     Returns
     -------
     A tuple with three values: a version string, the number of pixels
-    on the output image that were not covered by the input image, and the
-    number of complete lines on the output image that were not covered by
-    the input input image.
+    on the input image that do not overlap the output image, and the
+    number of complete lines on the input image that do not overlap the
+    output input image.
     
     
     Other Parameters
