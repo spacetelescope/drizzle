@@ -163,7 +163,7 @@ def dodrizzle(insci, input_wcs, inwht,
     else:
         nplanes = 0
         
-    if nplanes < planeid:
+    if nplanes <= planeid:
         raise IndexError("Not enough planes in drizzle context image")
 
     # Alias context image to the requested plane if 3d
