@@ -135,6 +135,19 @@ class Drizzle(object):
                 try:
                     hdu = handle[self.ctxext]
                     self.outcon = hdu.data.copy().astype(np.int32)
+                    if self.outcon.ndim == 2:
+                        self.outcon = np.reshape(self.outcon, (1, 
+                                                 self.outcon.shape[0],
+                                                 self.outcon.shape[1]))
+
+                    elif self.outcon.ndim == 3:
+                        pass
+
+                    else:
+                        msg = ("Drizzle context image has wrong dimensions: " +
+                               infile)
+                        raise ValueError(msg)
+                        
                 except KeyError:
                     pass
 
@@ -169,9 +182,11 @@ class Drizzle(object):
                                     self.outwcs._naxis1),
                                     dtype=np.float32)
         if self.outcon is None:
-            self.outcon = np.zeros((self.outwcs._naxis2,
+            self.outcon = np.zeros((1,
+                                    self.outwcs._naxis2,
                                     self.outwcs._naxis1),
                                     dtype=np.int32)
+
 
     def add_fits_file(self, infile, inweight="",
                       xmin=0, xmax=0, ymin=0, ymax=0,
@@ -273,6 +288,7 @@ class Drizzle(object):
                        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax,
                        expin=expin, in_units=in_units, wt_scl=wt_scl)
 
+
     def add_image(self, insci, inwcs, inwht=None, 
                   xmin=0, xmax=0, ymin=0, ymax=0,
                   expin=1.0, in_units="cps", wt_scl=1.0):
@@ -355,7 +371,7 @@ class Drizzle(object):
         elif self.wt_scl == "expsq":
             wt_scl = expin * expin
 
-        self.uniqid += 1
+        self.increment_id()
         self.outexptime += expin
         
         dodrizzle.dodrizzle(insci, inwcs, inwht, self.outwcs, 
@@ -366,6 +382,7 @@ class Drizzle(object):
                             pixfrac=self.pixfrac, kernel=self.kernel,
                             fillval=self.fillval)
 
+        
     def blot_fits_file(self, infile, interp='poly5', sinscl=1.0):
         """
         Resample the output using another image's world coordinate system.
@@ -434,6 +451,32 @@ class Drizzle(object):
 
         self.outwcs = blotwcs
         
+
+    def increment_id(self):
+        """
+        Increment the id count and add a plane to the context image if needed
+        
+        Drizzle tracks which input images contribute to the output image
+        by setting a bit in the corresponding pixel in the context image.
+        The uniqid indicates which bit. So it must be incremented each time
+        a new image is added. Each plane in the context image can hold 32 bits,
+        so after each 32 images, a new plane is added to the context.
+        """
+
+        # Compute what plane of the context image this input would
+        # correspond to:
+        planeid = int(self.uniqid / 32)
+
+        # Add a new plane to the context image if planeid overflows
+        
+        if self.outcon.shape[0] == planeid:
+            plane = np.zeros_like(self.outcon[0])
+            self.outcon = np.append(self.outcon, plane, axis=0)
+
+        # Increment the id
+        self.uniqid += 1
+
+
     def write(self, outfile, out_units="cps", outheader=None):
         """
         Write the output from a set of drizzled images to a file.
