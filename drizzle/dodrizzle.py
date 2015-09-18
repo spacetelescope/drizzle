@@ -17,8 +17,7 @@ def dodrizzle(insci, input_wcs, inwht,
               expin, in_units, wt_scl,
               wcslin_pscale=1.0, uniqid=1,
               xmin=0, xmax=0, ymin=0, ymax=0,
-              pixfrac=1.0, kernel='square', fillval="INDEF",
-              stepsize=10, wcsmap=None):
+              pixfrac=1.0, kernel='square', fillval="INDEF"):
     """
     Low level routine for performing 'drizzle' operation.on one image.
     
@@ -35,12 +34,12 @@ def dodrizzle(insci, input_wcs, inwht,
     
     input_wcs : 2d array
         The world coordinate system of the input image.
-        
+
     inwht : 2d array
         A 2d numpy array containing the pixel by pixel weighting.
         Must have the same dimensions as insci. If none is supplied,
         the weghting is set to one.
-        
+                
     output_wcs : wcs
         The world coordinate system of the output image. 
         
@@ -54,8 +53,8 @@ def dodrizzle(insci, input_wcs, inwht,
         call it should be set to zero. On subsequent calls it will
         hold the intermediate results.
 
-    outcon : 2d array
-        A 3d numpy array holding a bitmap of which image was an input
+    outcon : 2d or 3d array, optional
+        A 2d or 3d numpy array holding a bitmap of which image was an input
         for each output pixel. Should be integer zero on first call.
         Subsequent calls hold intermediate results.
 
@@ -130,21 +129,7 @@ def dodrizzle(insci, input_wcs, inwht,
     on the input image that do not overlap the output image, and the
     number of complete lines on the input image that do not overlap the
     output input image.
-    
-    
-    Other Parameters
-    ----------------
-    
-    stepsize
-        Was used when input to output mapping was computed
-        inside the cdrizzle code. Is no longer used and only here for
-        backwards compatibility. It may be re-used in the future if we
-        need to use a subsampled pixel map to improve speed.
 
-    wcsmap
-        Was used when input to output mapping was computed
-        inside the cdrizzle code. Is no longer used and only here for
-        backwards compatibility.
     """
     
     # Insure that the fillval parameter gets properly interpreted for use with tdriz
@@ -158,43 +143,34 @@ def dodrizzle(insci, input_wcs, inwht,
     else:
         expscale = expin
 
+    # Add input weight image if it was not passed in
+    
+    if (insci.dtype > np.float32):
+        insci = insci.astype(np.float32)
+
+    if inwht is None:
+        inwht = np.ones_like(insci)
+    
     # Compute what plane of the context image this input would
     # correspond to:
-    _planeid = int((uniqid-1) /32)
+    planeid = int((uniqid-1) / 32)
 
-    # Compute how many planes will be needed for the context image.
-    _nplanes = _planeid + 1
-
-    if outcon is not None and (outcon.ndim < 3 or (outcon.ndim == 3 and
-                                                   outcon.shape[0] < _nplanes)):
-        
-        # convert context image to 3-D array and pass along correct plane for drizzling
-        if outcon.ndim == 3:
-            nplanes = outcon.shape[0]+1
-        else:
-            nplanes = 1
-            
-        # We need to expand the context image here to accomodate the addition of
-        # this new image
-        newcon = np.zeros((nplanes,output_wcs._naxis2,output_wcs._naxis1),dtype=np.int32)
-
-        # now copy original outcon arrays into new array
-        if outcon.ndim == 3:
-            for n in range(outcon.shape[0]):
-                newcon[n] = outcon[n].copy()
-        else:
-            newcon[0] = outcon.copy()
+    # Check if the context image has this many planes
+    if outcon.ndim == 3:
+        nplanes = outcon.shape[0]
+    elif outcon.ndim == 2:
+        nplanes = 1
     else:
-        if outcon is None:
-            outcon = np.zeros((1,output_wcs._naxis2,output_wcs._naxis1),dtype=np.int32)
-            _planeid = 0
-        newcon = outcon
+        nplanes = 0
+        
+    if nplanes < planeid:
+        raise IndexError("Not enough planes in drizzle context image")
 
-    # At this point, newcon will always be a 3-D array, so only pass in
-    # correct plane to drizzle code
-    outctx = newcon[_planeid]
-
-    pix_ratio = output_wcs.pscale/wcslin_pscale
+    # Alias context image to the requested plane if 3d
+    if outcon.ndim == 3:
+        outcon = outcon[planeid]
+        
+    pix_ratio = output_wcs.pscale / wcslin_pscale
 
     # Compute the mapping between the input and output pixel coordinates
     pixmap = calc_pixmap.calc_pixmap(input_wcs, output_wcs)
@@ -203,11 +179,8 @@ def dodrizzle(insci, input_wcs, inwht,
     # Call 'drizzle' to perform image combination
     # This call to 'cdriz.tdriz' uses the new C syntax
     # 
-    if (insci.dtype > np.float32):
-        insci = insci.astype(np.float32)
-
     _vers, nmiss, nskip = cdrizzle.tdriz(
-        insci, inwht, pixmap, outsci, outwht, outctx, 
+        insci, inwht, pixmap, outsci, outwht, outcon, 
         uniqid=uniqid, xmin=xmin, xmax=xmax,
         ymin=ymin, ymax=ymax, scale=pix_ratio, pixfrac=pixfrac,
         kernel=kernel, in_units=in_units, expscale=expscale, 
