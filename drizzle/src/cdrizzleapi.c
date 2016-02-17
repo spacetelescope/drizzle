@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 #include <float.h>
+#include <stdio.h>
 
 #include <numpy/arrayobject.h>
 
@@ -16,20 +17,6 @@
 #include "tests/drizzletest.h"
 
 static PyObject *gl_Error;
-
-#if PY_MAJOR_VERSION >= 3
-static struct PyModuleDef moduledef = {
-  PyModuleDef_HEAD_INIT,
-  "cdrizzle",          /* m_name */
-  "C Drizzle module",  /* m_doc */
-  -1,                  /* m_size */
-  cdrizzle_methods,    /* m_methods */
-  NULL,                /* m_reload */
-  NULL,                /* m_traverse */
-  NULL,                /* m_clear */
-  NULL,                /* m_free */
-};
-#endif
 
 /** --------------------------------------------------------------------------------------------------
  * Multiply each pixel in an image by a scale factor
@@ -384,7 +371,7 @@ test_cdrizzle(PyObject *self, PyObject *args)
     return PyErr_Format(gl_Error, "Invalid weghts array.");
   }
 
-  map = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, PyArray_DOUBLE, 3, 3);
+  map = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, PyArray_DOUBLE, 2, 4);
   if (! map) {
     return PyErr_Format(gl_Error, "Invalid pixmap.");
   }
@@ -412,55 +399,55 @@ test_cdrizzle(PyObject *self, PyObject *args)
 
 /** --------------------------------------------------------------------------------------------------
  * Table of functions callable from python
-*/
+ */
 
-static PyMethodDef cdrizzle_methods[] =
-  {
+static struct PyMethodDef cdrizzle_methods[] = {
     {"tdriz",  (PyCFunction)tdriz, METH_VARARGS|METH_KEYWORDS,
     "tdriz(image, weight, output, outweight, context, uniqid,  xmin, ymin, scale, pfract, kernel, inun, expin, wtscl, fill, nmiss, nskip, pixmap)"},
     {"tblot",  (PyCFunction)tblot, METH_VARARGS|METH_KEYWORDS,
     "tblot(image, output, xmin, xmax, ymin, ymax, scale, kscale, interp, ef, misval, sinscl, pixmap)"},
     {"test_cdrizzle", test_cdrizzle, METH_VARARGS,
     "test_cdrizzle(data, weights, pixmap, output_data, output_counts)"},
-    {0, 0, 0, 0}                             /* sentinel */
-  };
-
-/** --------------------------------------------------------------------------------------------------
- */
-
-#if PY_MAJOR_VERSION >= 3
-static struct PyModuleDef moduledef = {
-  PyModuleDef_HEAD_INIT,
-  "cdrizzle",          /* m_name */
-  "C Drizzle module",  /* m_doc */
-  -1,                  /* m_size */
-  cdrizzle_methods,    /* m_methods */
-  NULL,                /* m_reload */
-  NULL,                /* m_traverse */
-  NULL,                /* m_clear */
-  NULL,                /* m_free */
+    {NULL,        NULL}        /* sentinel */
 };
-#endif
 
 /** --------------------------------------------------------------------------------------------------
  */
 
-PyMODINIT_FUNC
-#if PY_MAJOR_VERSION >= 3
-PyInit_cdrizzle(void)
-#else
-initcdrizzle(void)
-#endif
+#if PY_MAJOR_VERSION < 3
+void initcdrizzle(void)
 {
-  PyObject* m;
-  import_array();
+    /* Create the module and add the functions */
+    (void) Py_InitModule("cdrizzle", cdrizzle_methods);
 
-#if PY_MAJOR_VERSION >= 3
-  m = PyModule_Create(&moduledef);
-  return m;
-#else
-  m = Py_InitModule3("cdrizzle", cdrizzle_methods, "C Drizzle module");
-  if (m == NULL)
-    return;
-#endif
+    /* Check for errors */
+    if (PyErr_Occurred())
+        Py_FatalError("can't initialize module cdrizzle");
 }
+
+#else
+static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT,
+    "cdrizzle",
+    NULL,
+    -1,
+    cdrizzle_methods,
+    NULL,
+    NULL,
+    NULL,
+    NULL
+};
+
+PyObject *PyInit_cdrizzle(void)
+{
+    PyObject *m;
+    m = PyModule_Create(&moduledef);
+
+    /* Check for errors */
+    if (PyErr_Occurred())
+        Py_FatalError("can't initialize module cdrizzle");
+
+    return m;
+}
+
+#endif

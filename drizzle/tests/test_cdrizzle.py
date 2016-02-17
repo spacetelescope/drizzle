@@ -24,3 +24,6 @@ def test_cdrizzle():
     cdrizzle.test_cdrizzle(data, weights, pixmap,
                            output_data, output_counts,
                            output_context)
+
+if __name__ == "__main__":
+    test_cdrizzle()

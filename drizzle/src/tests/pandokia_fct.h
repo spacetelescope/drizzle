@@ -1,17 +1,17 @@
 /*
-* A Pandokia log file writer for FCTX
-*
-* See the fctx runner documentation for examples.
-*
-* BUG: the pipe handling deadlocks if the test writes too much to
-* the pipe.  You can reproduce this bug with the JUnit/XML reporter.
-* Maybe fix it to use tmp files.
-*/
+ * A Pandokia log file writer for FCTX
+ *
+ * See the fctx runner documentation for examples.
+ *
+ * BUG: the pipe handling deadlocks if the test writes too much to
+ * the pipe.  You can reproduce this bug with the JUnit/XML reporter.
+ * Maybe fix it to use tmp files.
+ */
 
 /*
-* Guard against multiple inclusion; also, use this to skip if FCT has
-* pandokia support built in someday
-*/
+ * Guard against multiple inclusion; also, use this to skip if FCT has
+ * pandokia support built in someday
+ */
 #ifndef FCT_PANDOKIA_LOGGER
 #define FCT_PANDOKIA_LOGGER
 
@@ -26,15 +26,15 @@
 #endif
 
 /*
-* Check for one or more compatible versions of fctx
-*/
+ * Check for one or more compatible versions of fctx
+ */
 #if ( FCT_VERSION_MAJOR == 1 ) && ( FCT_VERSION_MINOR == 6 )
 #define PANDOKIA_FCTX_INTERFACE_OK
 #endif
 
 /*
-* warn if not a known version, but continue anyway
-*/
+ * warn if not a known version, but continue anyway
+ */
 #ifndef PANDOKIA_FCTX_INTERFACE_OK
 #warning "FCTX version is not one that pandokia.h is tested with."
 #endif
@@ -42,8 +42,8 @@
 #include <sys/time.h>
 
 /*
-* each logger has to have one of these.
-*/
+ * each logger has to have one of these.
+ */
 struct _pandokia_logger
 {
 	_fct_logger_head;
@@ -56,8 +56,8 @@ struct _pandokia_logger
 
 
 /*
-*
-*/
+ *
+ */
 void
 log_name( struct _pandokia_logger *l, fct_logger_evt_t const *e )
 {
@@ -68,8 +68,8 @@ log_name( struct _pandokia_logger *l, fct_logger_evt_t const *e )
 }
 
 /*
-* happens before the start of the test:
-*/
+ * happens before the start of the test:
+ */
 void
 pandokia_test_start (fct_logger_i *li, fct_logger_evt_t const *e)
 {
@@ -91,14 +91,14 @@ pandokia_test_start (fct_logger_i *li, fct_logger_evt_t const *e)
 	FCT_SWITCH_STDOUT_TO_BUFFER ();
 	FCT_SWITCH_STDERR_TO_BUFFER ();
 	/*
-	* Flush log file so we have some clues if this test core dumps.
-	*/
+	 * Flush log file so we have some clues if this test core dumps.
+	  */
 	fflush (l->pdk_log);
 }
 
 /*
-* happens after the end of a test:
-*/
+ * happens after the end of a test:
+ */
 void
 pandokia_test_end (fct_logger_i * li, fct_logger_evt_t const *e)
 {
@@ -108,19 +108,19 @@ pandokia_test_end (fct_logger_i * li, fct_logger_evt_t const *e)
 	char std_buffer[16384];
 
 	/*
-	* the end time of the test
-	*/
+	 * the end time of the test
+	 */
 	gettimeofday (&end_time, NULL);
 	fprintf (l->pdk_log, "end_time=%ld.%06d\n", (long) end_time.tv_sec, (int) end_time.tv_usec);
 
 	/*
-	* fctx only seems to understand pass/fail as test status; hard to do more in C.
-	*/
+	 * fctx only seems to understand pass/fail as test status; hard to do more in C.
+	 */
 	fprintf (l->pdk_log, "status=%c\n", fct_test__is_pass (e->test) ? 'P' : 'F');
 
 	/*
-	* stop capturing stdout/stderr, gather it into the log
-	*/
+	 * stop capturing stdout/stderr, gather it into the log
+	 */
 	FCT_SWITCH_STDOUT_TO_STDOUT ();
 	FCT_SWITCH_STDERR_TO_STDERR ();
 
@@ -138,19 +138,19 @@ pandokia_test_end (fct_logger_i * li, fct_logger_evt_t const *e)
 	fprintf (l->pdk_log, "\n\n");
 
 	/*
-	* end of record
-	*/
+	 * end of record
+	 */
 	fprintf (l->pdk_log, "END\n\n");
 
 	/*
-	* Flush log file so it is consistent in case the next test core dumps.
-	*/
+	 * Flush log file so it is consistent in case the next test core dumps.
+	 */
 	fflush (l->pdk_log);
 }
 
 /*
-* invoked when a test is skipped
-*/
+ * invoked when a test is skipped
+ */
 void
 pandokia_skip (fct_logger_i * li, fct_logger_evt_t const *e)
 {
@@ -161,19 +161,19 @@ pandokia_skip (fct_logger_i * li, fct_logger_evt_t const *e)
 
 
 /*
-* pandokia_logger_object serves two purposes:
-* 
-* - a flag that indicates we are running in pandokia
-* - a shortcut to the actual pandokia data
-* 
-* Otherwise, you would have to walk some fairly complicated data
-* structures inside fctx to get to this single instance.
-*/
+ * pandokia_logger_object serves two purposes:
+ * 
+ * - a flag that indicates we are running in pandokia
+ * - a shortcut to the actual pandokia data
+ * 
+ * Otherwise, you would have to walk some fairly complicated data
+ * structures inside fctx to get to this single instance.
+ */
 struct _pandokia_logger *pandokia_logger_object = NULL;
 
 /*
-* creates/initializes a logger record - once before any test runs
-*/
+ * creates/initializes a logger record - once before any test runs
+ */
 
 fct_logger_i *
 pandokia_logger (void)
@@ -187,9 +187,9 @@ pandokia_logger (void)
 	l->vtable.on_test_start = pandokia_test_start;
 	l->vtable.on_test_end = pandokia_test_end;
 	/*
-	* do we need to do this?  I say just abandon the allocated memory at the end.
-	* l->vtable.on_delete = fct_pandokia_logger__on_delete;
-	*/
+	 * do we need to do this?  I say just abandon the allocated memory at the end.
+	 * l->vtable.on_delete = fct_pandokia_logger__on_delete;
+	 */
 
 	/* name of pandokia log file */
 	l->pdk_log_name = getenv("PDK_LOG");
@@ -224,24 +224,24 @@ pandokia_logger (void)
 }
 
 /*
-* If we are running in Pandokia, arrange for the default logger to be
-* the pandokia logger.  We do this by taking over slot 0 in the
-* FCT_LOGGER_TYPES table.  So, a user who has to use the "maker" test
-* runner does not have to remember to say "./a.out --logger pdk" -- they
-* just say "./a.out".
-*
-* We also implement a standard custom logger so that "a.out --logger pdk"
-* works when the user asks for it explicitly from outside pdkrun.
-*
-*/
+ * If we are running in Pandokia, arrange for the default logger to be
+ * the pandokia logger.  We do this by taking over slot 0 in the
+ * FCT_LOGGER_TYPES table.  So, a user who has to use the "maker" test
+ * runner does not have to remember to say "./a.out --logger pdk" -- they
+ * just say "./a.out".
+ *
+ * We also implement a standard custom logger so that "a.out --logger pdk"
+ * works when the user asks for it explicitly from outside pdkrun.
+ *
+ */
 
 static void
 pandokia_intercept_logger ()
 {
 	char *s;
 	/*
-	* presence of PDK_FILE is a proxy for running from pandokia.
-	*/
+	 * presence of PDK_FILE is a proxy for running from pandokia.
+	 */
 	s = getenv("PDK_FILE");
 	if (!s)
 		return;
@@ -253,8 +253,8 @@ pandokia_intercept_logger ()
 
 
 /*
-* Here how you add a custom logger taken from the fctx examples.
-*/
+ * Here how you add a custom logger taken from the fctx examples.
+ */
 static fct_logger_types_t custlogs[] =
 {
     {
@@ -266,10 +266,10 @@ static fct_logger_types_t custlogs[] =
 
 
 /*
-* Replace FCT_BGN_FN with our own modified FCT_BGN_FN in order to install
-* our custom logger.  pandokia_intercept_logger() implicitly does
-* --logger pdk if it sees the pandokia environment set up.
-*/
+ * Replace FCT_BGN_FN with our own modified FCT_BGN_FN in order to install
+ * our custom logger.  pandokia_intercept_logger() implicitly does
+ * --logger pdk if it sees the pandokia environment set up.
+ */
 
 #undef FCT_BGN_FN
 #define FCT_BGN_FN(_FNNAME_)            \
@@ -280,86 +280,19 @@ static fct_logger_types_t custlogs[] =
 	pandokia_intercept_logger();
 
 /*
-* These are the macros suggested when using custom loggers.  I find
-* that using different macros is not really a good idea because tests
-* don't switch between custom and non-custom environments well.  I
-* don't recommend these any more, but they are here for backward
-* compatibility.
-*/
+ * These are the macros suggested when using custom loggers.  I find
+ * that using different macros is not really a good idea because tests
+ * don't switch between custom and non-custom environments well.  I
+ * don't recommend these any more, but they are here for backward
+ * compatibility.
+ */
 #define CL_FCT_BGN() FCT_BGN()
 #define CL_FCT_END() FCT_END()
 
 /*
-*
-* Here is our support for okfiles
-*/
-
-FILE *pandokia_okfile_fp = NULL;		/* open okfile */
-char const *pandokia_current_test = NULL;	/* name of the last test we saw */
-
-
-#define pandokia_okfile( filename ) pandokia_okfile_real( fctkern_ptr__, filename )
-	/*
-	* fctkern_ptr__ is a critical data structure; unfortunately,
-	* it is also a local variable hidden inside main, so we use this
-	* macro to sneak it into our function.
-	*/
-
-pandokia_okfile_real( fctkern_t *fctkern_ptr__, char *filename)
-{
-	/*
-	* if the last test name we saw is not EQ to the one we seem to
-	* be working on now, then we are on a new test and it is time
-	* to open a new okfile.
-  	*/
-	if ( fctkern_ptr__->ns.curr_test_name != pandokia_current_test )
-		{
-		int n;
-		char *okfile_name;
-		pandokia_current_test = fctkern_ptr__->ns.curr_test_name;
-
-		if ( pandokia_okfile_fp )
-			fclose(pandokia_okfile_fp);
-
-		/*
-		* generate the okfile name
-		* 	pdk_basename is basename(PDK_FILE)
-		*	pandokia_current_test is the name of the test we are currently running
-		*	20 is clearly more bytes than we need for the constant part
-		*/
- 		n = strlen(pandokia_logger_object->pdk_basename) + strlen(pandokia_current_test) + 20;
-		okfile_name = malloc(n);	/* leaked */
-		snprintf(okfile_name,n,
-			"%s.%s.okfile",
-			pandokia_logger_object->pdk_basename,
-			pandokia_current_test
-			);
-
-		pandokia_okfile_fp=fopen(okfile_name,"w");
-
-		/*
-		* log the TDA about the okfile
-		*/
-		pandokia_attr("tda","_okfile",okfile_name);
-
-		/* */
-		free( okfile_name );
-		
-		}
-
-	/*
-	* okfile is lines of the form
-	*	output_file reference_file \n
-	* relative to the directory the okfile is in.
-	*/
-	fprintf(pandokia_okfile_fp, "%s ref/%s\n", filename, filename );
-	fflush(pandokia_okfile_fp);
-}
-
-/*
-* attributes
-*/
-pandokia_attr(char *kind, char *name, char *value)
+ * attributes
+ */
+void pandokia_attr(char *kind, char *name, char *value)
 {
 	if ( pandokia_logger_object )
 		{
@@ -374,18 +307,85 @@ pandokia_attr(char *kind, char *name, char *value)
 		}
 }
 
-pandokia_attr_double(char *kind, char *name, double value)
+void pandokia_attr_double(char *kind, char *name, double value)
 {
 	if ( pandokia_logger_object )
 		fprintf(pandokia_logger_object->pdk_log,
 			"%s_%s=%f\n",kind,name,value);
 }
 
-pandokia_attr_int(char *kind, char *name, int value)
+void pandokia_attr_int(char *kind, char *name, int value)
 {
 	if ( pandokia_logger_object )
 		fprintf(pandokia_logger_object->pdk_log,
 			"%s_%s=%d\n",kind,name,value);
+}
+
+/*
+ *
+ * Here is our support for okfiles
+ */
+
+FILE *pandokia_okfile_fp = NULL;		/* open okfile */
+char const *pandokia_current_test = NULL;	/* name of the last test we saw */
+
+
+#define pandokia_okfile( filename ) pandokia_okfile_real( fctkern_ptr__, filename )
+	/*
+	 * fctkern_ptr__ is a critical data structure; unfortunately,
+	 * it is also a local variable hidden inside main, so we use this
+	 * macro to sneak it into our function.
+	 */
+
+void pandokia_okfile_real( fctkern_t *fctkern_ptr__, char *filename)
+{
+	/*
+	 * if the last test name we saw is not EQ to the one we seem to
+	 * be working on now, then we are on a new test and it is time
+	 * to open a new okfile.
+  	 */
+	if ( fctkern_ptr__->ns.curr_test_name != pandokia_current_test )
+		{
+		int n;
+		char *okfile_name;
+		pandokia_current_test = fctkern_ptr__->ns.curr_test_name;
+
+		if ( pandokia_okfile_fp )
+			fclose(pandokia_okfile_fp);
+
+		/*
+		 * generate the okfile name
+		 * 	pdk_basename is basename(PDK_FILE)
+		 *	pandokia_current_test is the name of the test we are currently running
+		 *	20 is clearly more bytes than we need for the constant part
+		 */
+ 		n = strlen(pandokia_logger_object->pdk_basename) + strlen(pandokia_current_test) + 20;
+		okfile_name = malloc(n);	/* leaked */
+		snprintf(okfile_name,n,
+			"%s.%s.okfile",
+			pandokia_logger_object->pdk_basename,
+			pandokia_current_test
+			);
+
+		pandokia_okfile_fp=fopen(okfile_name,"w");
+
+		/*
+		 * log the TDA about the okfile
+		 */
+		pandokia_attr("tda","_okfile",okfile_name);
+
+		/* */
+		free( okfile_name );
+		
+		}
+
+	/*
+	 * okfile is lines of the form
+	 *	output_file reference_file \n
+	 * relative to the directory the okfile is in.
+	 */
+	fprintf(pandokia_okfile_fp, "%s ref/%s\n", filename, filename );
+	fflush(pandokia_okfile_fp);
 }
 
 #endif
