@@ -1,5 +1,5 @@
 # Compiled files
-*.py[co]
+*.py[cod]
 *.a
 *.o
 *.so
@@ -20,6 +20,9 @@ drizzle/tests/data/output_*
 # Sphinx
 _build
 
+# Pycharm editor project files
+.idea
+
 # Packages/installer info
 *.egg
 *.egg-info
@@ -35,7 +38,9 @@ develop-eggs
 distribute-*.tar.gz
 
 # Other
-.*.swp
+.cache
+.tox
+.*.sw[op]
 *~
 
 # Mac OSX

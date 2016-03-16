@@ -8,4 +8,3 @@ this package is under the following links:
   :maxdepth: 2
 
   drizzle/index.rst
-

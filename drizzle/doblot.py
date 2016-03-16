@@ -8,6 +8,7 @@ from . import util
 from . import calc_pixmap
 from . import cdrizzle
 
+
 """
 STScI Python compatable blot module
 """
