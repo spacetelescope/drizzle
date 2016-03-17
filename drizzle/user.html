@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>User documentation &mdash; drizzle v0.0.dev240</title>
+    <title>User documentation &mdash; drizzle v1.1</title>
     
     <link rel="stylesheet" href="../_static/bootstrap-astropy.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.0.dev240',
+        VERSION:     '1.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="../_static/sidebar.js"></script>
     <link rel="shortcut icon" href="../_static/astropy_logo.ico"/>
-    <link rel="top" title="drizzle v0.0.dev240" href="../index.html" />
+    <link rel="top" title="drizzle v1.1" href="../index.html" />
     <link rel="up" title="The Drizzle Library" href="index.html" />
     <link rel="next" title="API Documentation" href="api.html" />
     <link rel="prev" title="The Drizzle Library" href="index.html" />
@@ -34,7 +34,7 @@
 
 
   </head>
-  <body>
+  <body role="document">
 <div class="topbar">
   <a class="brand" title="Documentation Home" href="../index.html"><span id="logotext1">astro</span><span id="logotext2">py</span><span id="logotext3">:docs</span></a>
   <ul>
@@ -69,7 +69,7 @@
 	 |
       </li>
       <li>
-	<a href="../index.html">drizzle v0.0.dev240</a>
+	<a href="../index.html">drizzle v1.1</a>
 	 &raquo;
       </li>
       <li><a href="index.html" accesskey="U">The Drizzle Library</a> &raquo;</li>
@@ -82,17 +82,30 @@
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          <div class="body">
+          <div class="body" role="main">
             
   <div class="section" id="user-documentation">
 <h1>User documentation<a class="headerlink" href="#user-documentation" title="Permalink to this headline">¶</a></h1>
-<p>The <tt class="docutils literal"><span class="pre">drizzle</span></tt> library is a Python package for combining dithered images into a
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">alt:</th><td class="field-body">Powered by Astropy Badge</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>The <code class="docutils literal"><span class="pre">drizzle</span></code> library is a Python package for combining dithered images into a
 single image. This library is derived from code used in drizzlepac. Like
 drizzlepac, most of the code is implemented in the C language. The biggest
 change from drizzlepac is that this code passes an array that maps the input to
 output image into the C code, while the drizzlepac code computes the mapping by
 using a Python callback. Switching to using an array allowed the code to be
 greatly simplified.</p>
+<p>The drizzlepac code is currently used in the Space Telescope processing
+pipelines. This library is forward looking in that it can be used with
+the new gwcs code.</p>
 <div class="section" id="requirements">
 <h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
@@ -350,7 +363,7 @@ concerned with this compatibility.</p>
           </div>
         </div>
       </div>
-      <div class="sphinxsidebar">
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
 <ul>
 <li><a class="reference internal" href="#">User documentation</a><ul>
@@ -372,9 +385,9 @@ concerned with this compatibility.</p>
        rel="nofollow">Page Source</a> &nbsp;
     <a href="#">Back to Top</a></p>
   <p>
-    &copy; Copyright 2015, Bernie Simon.<br/>
-    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2. &nbsp;
-    Last built 13 Jul 2015. <br/>
+    &copy; Copyright 2016, Bernie Simon.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.5. &nbsp;
+    Last built 17 Mar 2016. <br/>
   </p>
 </footer>
   </body>
