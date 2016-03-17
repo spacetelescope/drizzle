@@ -1,15 +1,11 @@
 User documentation
 ==================
 
-<<<<<<< HEAD
 .. currentmodule:: drizzle
 =======
 .. image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
     :target: http://www.astropy.org
     :alt: Powered by Astropy Badge
-
-This is the template for affiliated packages of the Astropy project.
->>>>>>> b85440a8bbba05ac6c6a93c3aa25a1ed1b75b48d
 
 The ``drizzle`` library is a Python package for combining dithered images into a
 single image. This library is derived from code used in drizzlepac. Like
@@ -19,6 +15,10 @@ output image into the C code, while the drizzlepac code computes the mapping by
 using a Python callback. Switching to using an array allowed the code to be
 greatly simplified.
 
+The drizzlepac code is currently used in the Space Telescope processing
+pipelines. This library is forward looking in that it can be used with
+the new gwcs code.
+
 Requirements
 ------------
 
@@ -26,7 +26,6 @@ Requirements
 
 - Numpy 1.5.0 or later
 
-<<<<<<< HEAD
 - astropy 0.4.4 or later
 
 The Drizzle Algorithm
@@ -286,8 +285,3 @@ methods are called::
 The lower level funtion dodrizzle is present for backwards compatinility with
 the existing STScI drizzlepac code and should not be used unless you are also
 concerned with this compatibility.
-=======
-.. image:: https://travis-ci.org/astropy/package-template.svg
-    :target: https://travis-ci.org/astropy/package-template
-    :alt: Travis Status
->>>>>>> b85440a8bbba05ac6c6a93c3aa25a1ed1b75b48d
