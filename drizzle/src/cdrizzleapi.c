@@ -415,7 +415,7 @@ static struct PyMethodDef cdrizzle_methods[] = {
  */
 
 #if PY_MAJOR_VERSION < 3
-void initcdrizzle(void)
+PyMODINIT_FUNC initcdrizzle(void)
 {
     /* Create the module and add the functions */
     (void) Py_InitModule("cdrizzle", cdrizzle_methods);
@@ -423,6 +423,8 @@ void initcdrizzle(void)
     /* Check for errors */
     if (PyErr_Occurred())
         Py_FatalError("can't initialize module cdrizzle");
+
+    import_array();
 }
 
 #else
@@ -438,7 +440,7 @@ static struct PyModuleDef moduledef = {
     NULL
 };
 
-PyObject *PyInit_cdrizzle(void)
+PyMODINIT_FUNC *PyInit_cdrizzle(void)
 {
     PyObject *m;
     m = PyModule_Create(&moduledef);
@@ -447,6 +449,7 @@ PyObject *PyInit_cdrizzle(void)
     if (PyErr_Occurred())
         Py_FatalError("can't initialize module cdrizzle");
 
+    import_array();
     return m;
 }
 
