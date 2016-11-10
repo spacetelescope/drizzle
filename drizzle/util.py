@@ -166,11 +166,11 @@ def parse_extn(extn=''):
 
     Examples
     --------
-        >>>parse_extn('sci,2')
+        >>> parse_extn('sci,2')
         ('sci', 2)
-        >>>parse_extn('2')
+        >>> parse_extn('2')
         ('', 2)
-        >>>parse_extn('sci')
+        >>> parse_extn('sci')
         ('sci', 1)
         
     Parameters
