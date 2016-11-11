@@ -13,6 +13,7 @@ from astropy.io import fits
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
+OUTPUT_DIR = os.path.join(TEST_DIR, 'data')
 
 from .. import drizzle
 from .. import util
@@ -54,7 +55,7 @@ def test_null_run():
     """
     Create an empty drizzle image
     """
-    output_file = os.path.join(DATA_DIR, 'output_null_run.fits')
+    output_file = os.path.join(OUTPUT_DIR, 'output_null_run.fits')
     output_template = os.path.join(DATA_DIR, 'reference_square_point.fits')
 
     output_wcs = read_wcs(output_template)
@@ -86,8 +87,8 @@ def test_file_init():
     """
     Initialize drizzle object from a file
     """
-    input_file = os.path.join(DATA_DIR, 'output_null_run.fits')        
-    output_file = os.path.join(DATA_DIR, 'output_null_run.fits')
+    input_file = os.path.join(OUTPUT_DIR, 'output_null_run.fits')
+    output_file = os.path.join(OUTPUT_DIR, 'output_null_run.fits')
 
     driz = drizzle.Drizzle(infile=input_file)
     driz.write(output_file)
@@ -103,7 +104,7 @@ def test_add_header():
     Add extra keywords read from the header
     """
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')        
-    output_file = os.path.join(DATA_DIR, 'output_add_header.fits')
+    output_file = os.path.join(OUTPUT_DIR, 'output_add_header.fits')
     output_template = os.path.join(DATA_DIR, 'reference_square_point.fits')
 
     driz = drizzle.Drizzle(infile=output_template)
@@ -127,8 +128,8 @@ def test_add_file():
     Add an image read from a file
     """
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits[1]')        
-    output_file = os.path.join(DATA_DIR, 'output_add_file.fits')
-    test_file = os.path.join(DATA_DIR, 'output_add_header.fits')
+    output_file = os.path.join(OUTPUT_DIR, 'output_add_file.fits')
+    test_file = os.path.join(OUTPUT_DIR, 'output_add_header.fits')
     output_template = os.path.join(DATA_DIR, 'reference_square_point.fits')
 
     driz = drizzle.Drizzle(infile=output_template)
@@ -145,8 +146,8 @@ def test_blot_file():
     Blot an image read from a file
     """
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits[1]')
-    output_file = os.path.join(DATA_DIR, 'output_blot_file.fits')
-    test_file = os.path.join(DATA_DIR, 'output_blot_image.fits')
+    output_file = os.path.join(OUTPUT_DIR, 'output_blot_file.fits')
+    test_file = os.path.join(OUTPUT_DIR, 'output_blot_image.fits')
     output_template = os.path.join(DATA_DIR, 'reference_blot_image.fits')
 
     blotwcs = read_wcs(input_file)
