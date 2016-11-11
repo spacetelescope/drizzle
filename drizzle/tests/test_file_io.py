@@ -3,7 +3,10 @@ from __future__ import division, print_function, unicode_literals, absolute_impo
 import sys
 import glob
 import math
-import os.path
+import os
+import shutil
+import tempfile
+import pytest
 import numpy as np
 import numpy.ma as ma
 import numpy.testing as npt
@@ -13,7 +16,13 @@ from astropy.io import fits
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
-OUTPUT_DIR = os.path.join(TEST_DIR, 'data')
+OUTPUT_DIR = os.environ.get('DRIZZLE_TEST_OUTPUT_DIR', tempfile.mkdtemp())
+
+@pytest.yield_fixture(autouse=True, scope='module')
+def output_dir():
+    yield
+    if 'DRIZZLE_TEST_OUTPUT_DIR' not in os.environ:
+        shutil.rmtree(OUTPUT_DIR)
 
 from .. import drizzle
 from .. import util
