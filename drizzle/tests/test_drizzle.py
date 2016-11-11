@@ -2,7 +2,11 @@ from __future__ import division, print_function, unicode_literals, absolute_impo
 
 import sys
 import math
-import os.path
+import os
+import shutil
+import tempfile
+import pytest
+
 import numpy as np
 import numpy.ma as ma
 import numpy.testing as npt
@@ -12,6 +16,13 @@ from astropy.io import fits
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
+OUTPUT_DIR = os.environ.get('DRIZZLE_TEST_OUTPUT_DIR', tempfile.mkdtemp())
+
+@pytest.yield_fixture(autouse=True, scope='module')
+def output_dir():
+    yield
+    if 'DRIZZLE_TEST_OUTPUT_DIR' not in os.environ:
+        shutil.rmtree(OUTPUT_DIR)
 
 from .. import drizzle
 
@@ -207,8 +218,8 @@ def test_square_with_point():
     Test do_driz square kernel with point
     """
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output = os.path.join(DATA_DIR, 'output_square_point.fits')
-    output_difference = os.path.join(DATA_DIR, 'difference_square_point.txt')
+    output = os.path.join(OUTPUT_DIR, 'output_square_point.fits')
+    output_difference = os.path.join(OUTPUT_DIR, 'difference_square_point.txt')
     output_template = os.path.join(DATA_DIR, 'reference_square_point.fits')
     
     insci = read_image(input_file)
@@ -237,8 +248,8 @@ def test_square_with_grid():
     Test do_driz square kernel with grid
     """
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output = os.path.join(DATA_DIR, 'output_square_grid.fits')
-    output_difference = os.path.join(DATA_DIR, 'difference_square_grid.txt')
+    output = os.path.join(OUTPUT_DIR, 'output_square_grid.fits')
+    output_difference = os.path.join(OUTPUT_DIR, 'difference_square_grid.txt')
     output_template = os.path.join(DATA_DIR, 'reference_square_grid.fits')
     
     insci = read_image(input_file)
@@ -267,8 +278,8 @@ def test_turbo_with_grid():
     Test do_driz turbo kernel with grid
     """
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output = os.path.join(DATA_DIR, 'output_turbo_grid.fits')
-    output_difference = os.path.join(DATA_DIR, 'difference_turbo_grid.txt')
+    output = os.path.join(OUTPUT_DIR, 'output_turbo_grid.fits')
+    output_difference = os.path.join(OUTPUT_DIR, 'difference_turbo_grid.txt')
     output_template = os.path.join(DATA_DIR, 'reference_turbo_grid.fits')
     
     insci = read_image(input_file)
@@ -297,8 +308,8 @@ def test_gaussian_with_grid():
     Test do_driz gaussian kernel with grid
     """
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output = os.path.join(DATA_DIR, 'output_gaussian_grid.fits')
-    output_difference = os.path.join(DATA_DIR, 'difference_gaussian_grid.txt')
+    output = os.path.join(OUTPUT_DIR, 'output_gaussian_grid.fits')
+    output_difference = os.path.join(OUTPUT_DIR, 'difference_gaussian_grid.txt')
     output_template = os.path.join(DATA_DIR, 'reference_gaussian_grid.fits')
     
     insci = read_image(input_file)
@@ -327,8 +338,8 @@ def test_lanczos_with_grid():
     Test do_driz lanczos kernel with grid
     """
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output = os.path.join(DATA_DIR, 'output_lanczos_grid.fits')
-    output_difference = os.path.join(DATA_DIR, 'difference_lanczos_grid.txt')
+    output = os.path.join(OUTPUT_DIR, 'output_lanczos_grid.fits')
+    output_difference = os.path.join(OUTPUT_DIR, 'difference_lanczos_grid.txt')
     output_template = os.path.join(DATA_DIR, 'reference_lanczos_grid.fits')
     
     insci = read_image(input_file)
@@ -357,8 +368,8 @@ def test_tophat_with_grid():
     Test do_driz tophat kernel with grid
     """
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output = os.path.join(DATA_DIR, 'output_tophat_grid.fits')
-    output_difference = os.path.join(DATA_DIR, 'difference_tophat_grid.txt')
+    output = os.path.join(OUTPUT_DIR, 'output_tophat_grid.fits')
+    output_difference = os.path.join(OUTPUT_DIR, 'difference_tophat_grid.txt')
     output_template = os.path.join(DATA_DIR, 'reference_tophat_grid.fits')
     
     insci = read_image(input_file)
@@ -387,8 +398,8 @@ def test_point_with_grid():
     Test do_driz point kernel with grid
     """
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output = os.path.join(DATA_DIR, 'output_point_grid.fits')
-    output_difference = os.path.join(DATA_DIR, 'difference_point_grid.txt')
+    output = os.path.join(OUTPUT_DIR, 'output_point_grid.fits')
+    output_difference = os.path.join(OUTPUT_DIR, 'difference_point_grid.txt')
     output_template = os.path.join(DATA_DIR, 'reference_point_grid.fits')
     
     insci = read_image(input_file)
@@ -417,8 +428,8 @@ def test_blot_with_point():
     Test do_blot with point image
     """
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output = os.path.join(DATA_DIR, 'output_blot_point.fits')
-    output_difference = os.path.join(DATA_DIR, 'difference_blot_point.txt')
+    output = os.path.join(OUTPUT_DIR, 'output_blot_point.fits')
+    output_difference = os.path.join(OUTPUT_DIR, 'difference_blot_point.txt')
     output_template = os.path.join(DATA_DIR, 'reference_blot_point.fits')
     
     outsci = read_image(input_file)
@@ -447,8 +458,8 @@ def test_blot_with_default():
     Test do_blot with default grid image
     """
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output = os.path.join(DATA_DIR, 'output_blot_default.fits')
-    output_difference = os.path.join(DATA_DIR, 'difference_blot_default.txt')
+    output = os.path.join(OUTPUT_DIR, 'output_blot_default.fits')
+    output_difference = os.path.join(OUTPUT_DIR, 'difference_blot_default.txt')
     output_template = os.path.join(DATA_DIR, 'reference_blot_default.fits')
     
     outsci = read_image(input_file)
@@ -478,8 +489,8 @@ def test_blot_with_lan3():
     Test do_blot with lan3 grid image
     """
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output = os.path.join(DATA_DIR, 'output_blot_lan3.fits')
-    output_difference = os.path.join(DATA_DIR, 'difference_blot_lan3.txt')
+    output = os.path.join(OUTPUT_DIR, 'output_blot_lan3.fits')
+    output_difference = os.path.join(OUTPUT_DIR, 'difference_blot_lan3.txt')
     output_template = os.path.join(DATA_DIR, 'reference_blot_lan3.fits')
     
     outsci = read_image(input_file)
@@ -509,8 +520,8 @@ def test_blot_with_lan5():
     Test do_blot with lan5 grid image
     """
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output = os.path.join(DATA_DIR, 'output_blot_lan5.fits')
-    output_difference = os.path.join(DATA_DIR, 'difference_blot_lan5.txt')
+    output = os.path.join(OUTPUT_DIR, 'output_blot_lan5.fits')
+    output_difference = os.path.join(OUTPUT_DIR, 'difference_blot_lan5.txt')
     output_template = os.path.join(DATA_DIR, 'reference_blot_lan5.fits')
     
     outsci = read_image(input_file)
