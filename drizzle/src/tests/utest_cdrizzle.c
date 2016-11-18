@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <Python.h>
+#ifndef NPY_NO_DEPRECATED_API
+#define NPY_NO_DEPRECATED_API NPY_1_10_API_VERSION
+#endif
 #include <numpy/arrayobject.h>
 #include "pandokia_fct.h"
 #include "cdrizzlebox.h"

@@ -8,6 +8,9 @@
 #include <float.h>
 #include <stdio.h>
 
+#ifndef NPY_NO_DEPRECATED_API
+#define NPY_NO_DEPRECATED_API NPY_1_10_API_VERSION
+#endif
 #include <numpy/arrayobject.h>
 
 #include "cdrizzleblot.h"
@@ -92,37 +95,37 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   }
 
   /* Get raw C-array data */
-  img = (PyArrayObject *)PyArray_ContiguousFromAny(oimg, PyArray_FLOAT, 2, 2);
+  img = (PyArrayObject *)PyArray_ContiguousFromAny(oimg, NPY_FLOAT, 2, 2);
   if (!img) {
     driz_error_set_message(&error, "Invalid input array");
     goto _exit;
   }
 
-  wei = (PyArrayObject *)PyArray_ContiguousFromAny(owei, PyArray_FLOAT, 2, 2);
+  wei = (PyArrayObject *)PyArray_ContiguousFromAny(owei, NPY_FLOAT, 2, 2);
   if (!wei) {
     driz_error_set_message(&error, "Invalid weights array");
     goto _exit;
   }
 
-  map = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, PyArray_DOUBLE, 3, 3);
+  map = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, NPY_DOUBLE, 3, 3);
   if (!map) {
     driz_error_set_message(&error, "Invalid pixmap array");
     goto _exit;
   }
 
-  out = (PyArrayObject *)PyArray_ContiguousFromAny(oout, PyArray_FLOAT, 2, 2);
+  out = (PyArrayObject *)PyArray_ContiguousFromAny(oout, NPY_FLOAT, 2, 2);
   if (!out) {
     driz_error_set_message(&error, "Invalid output array");
     goto _exit;
   }
 
-  wht = (PyArrayObject *)PyArray_ContiguousFromAny(owht, PyArray_FLOAT, 2, 2);
+  wht = (PyArrayObject *)PyArray_ContiguousFromAny(owht, NPY_FLOAT, 2, 2);
   if (!wht) {
     driz_error_set_message(&error, "Invalid counts array");
     goto _exit;
   }
 
-  con = (PyArrayObject *)PyArray_ContiguousFromAny(ocon, PyArray_INT32, 2, 2);
+  con = (PyArrayObject *)PyArray_ContiguousFromAny(ocon, NPY_INT32, 2, 2);
   if (!con) {
     driz_error_set_message(&error, "Invalid context array");
     goto _exit;
@@ -274,19 +277,19 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
     return NULL;
   }
   
-  img = (PyArrayObject *)PyArray_ContiguousFromAny(oimg, PyArray_FLOAT, 2, 2);
+  img = (PyArrayObject *)PyArray_ContiguousFromAny(oimg, NPY_FLOAT, 2, 2);
   if (!img) {
     driz_error_set_message(&error, "Invalid input array");
     goto _exit;
   }
   
-  map = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, PyArray_DOUBLE, 3, 3);
+  map = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, NPY_DOUBLE, 3, 3);
   if (!map) {
     driz_error_set_message(&error, "Invalid pixmap array");
     goto _exit;
   }
   
-  out = (PyArrayObject *)PyArray_ContiguousFromAny(oout, PyArray_FLOAT, 2, 2);
+  out = (PyArrayObject *)PyArray_ContiguousFromAny(oout, NPY_FLOAT, 2, 2);
   if (!out) {
     driz_error_set_message(&error, "Invalid output array");
     goto _exit;
@@ -361,32 +364,32 @@ test_cdrizzle(PyObject *self, PyObject *args)
     return NULL;
   }
 
-  dat = (PyArrayObject *)PyArray_ContiguousFromAny(data, PyArray_FLOAT, 2, 2);
+  dat = (PyArrayObject *)PyArray_ContiguousFromAny(data, NPY_FLOAT, 2, 2);
   if (! dat) {
     return PyErr_Format(gl_Error, "Invalid data array.");
   }
 
-  wei = (PyArrayObject *)PyArray_ContiguousFromAny(weights, PyArray_FLOAT, 2, 2);
+  wei = (PyArrayObject *)PyArray_ContiguousFromAny(weights, NPY_FLOAT, 2, 2);
   if (! wei) {
     return PyErr_Format(gl_Error, "Invalid weghts array.");
   }
 
-  map = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, PyArray_DOUBLE, 2, 4);
+  map = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, NPY_DOUBLE, 2, 4);
   if (! map) {
     return PyErr_Format(gl_Error, "Invalid pixmap.");
   }
   
-  odat = (PyArrayObject *)PyArray_ContiguousFromAny(output_data, PyArray_FLOAT, 2, 2);
+  odat = (PyArrayObject *)PyArray_ContiguousFromAny(output_data, NPY_FLOAT, 2, 2);
   if (! odat) {
     return PyErr_Format(gl_Error, "Invalid output data array.");
   }
 
-  ocnt = (PyArrayObject *)PyArray_ContiguousFromAny(output_counts, PyArray_FLOAT, 2, 2);
+  ocnt = (PyArrayObject *)PyArray_ContiguousFromAny(output_counts, NPY_FLOAT, 2, 2);
   if (! ocnt) {
     return PyErr_Format(gl_Error, "Invalid output counts array.");
   }
 
-  ocon = (PyArrayObject *)PyArray_ContiguousFromAny(output_context, PyArray_INT32, 2, 2);
+  ocon = (PyArrayObject *)PyArray_ContiguousFromAny(output_context, NPY_INT32, 2, 2);
   if (! ocon) {
     return PyErr_Format(gl_Error, "Invalid context array");
   }
