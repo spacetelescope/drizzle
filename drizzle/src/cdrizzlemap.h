@@ -29,6 +29,11 @@ show_segment(struct segment *self,
             );
 
 void
+shrink_segment(struct segment *self,
+               PyArrayObject *pixmap,
+               int jdim);
+
+void
 sort_segment(struct segment *self,
              int jdim
             );
