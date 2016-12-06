@@ -190,6 +190,8 @@ map_bounds(
   int xystart[2];
 
   int n;
+  int idim;
+  
   int ipix = 0;
   int d[2] = {0, 0};
   int v[2] = {0, -1};
@@ -198,7 +200,7 @@ map_bounds(
   /* Starting point rounds down input pixel position
    * to integer value
    */
-  for (int idim = 0; idim < 2; ++idim) {
+  for (idim = 0; idim < 2; ++idim) {
     xystart[idim] = floor(xyin[idim]);
   }
 
@@ -206,7 +208,7 @@ map_bounds(
   get_dimensions(pixmap, xydim);
   n = 4 * xydim[0] * xydim[1];
 
-  for (int idim = 0; idim < 2; ++idim) {
+  for (idim = 0; idim < 2; ++idim) {
     if (xystart[idim] < 0) {
       xystart[idim] = 0;
     } else if (xystart[idim] >= xydim[idim]) {
@@ -220,7 +222,7 @@ map_bounds(
   while (--n > 0 && ipix < 4) {
     
     /* Get next point to check */
-    for (int idim = 0; idim < 2; ++idim) {
+    for (idim = 0; idim < 2; ++idim) {
       xy[idim] = xystart[idim] + d[idim];
     }
     
@@ -229,14 +231,14 @@ map_bounds(
       int isnan = 0;
 
       /* Check if the pixel value is NaN */ 
-      for (int idim = 0; idim < 2; ++idim) {
+      for (idim = 0; idim < 2; ++idim) {
         double pixval = get_pixmap(pixmap, xy[0], xy[1])[idim];
         isnan |= npy_isnan(pixval);
       }
     
       /* If not, copy it to output as a good point */
       if (! isnan) {
-        for (int idim = 0; idim < 2; ++idim) {
+        for (idim = 0; idim < 2; ++idim) {
           *xyptr++ = xy[idim];
         }
         ++ ipix;
@@ -253,7 +255,7 @@ map_bounds(
     }
     
     /* Move to the next point on the spiral */
-    for (int idim = 0; idim < 2; ++idim) {
+    for (idim = 0; idim < 2; ++idim) {
       d[idim] += v[idim];
     }
   }
@@ -280,13 +282,14 @@ map_point(
 
   int xypix[4][2];
   double partial[4][2];
+  int ipix, jpix, npix, idim;
     
   /* Find the four points that bound the linear interpolation */
   map_bounds(pixmap, xyin, (int *)xypix);
     
-  for (int ipix = 0; ipix < 4; ++ ipix) {
+  for (ipix = 0; ipix < 4; ++ ipix) {
     /* Evaluate pixmap at these points */
-    for (int idim = 0; idim < 2; ++idim) {
+    for (idim = 0; idim < 2; ++idim) {
       partial[ipix][idim] = get_pixmap(pixmap,
                                        xypix[ipix][0],
                                        xypix[ipix][1])[idim];
@@ -294,11 +297,9 @@ map_point(
   }
 
   /* Do linear interpolation between each set of points */
-  for (int npix = 4; npix > 1; npix /= 2) {
-    int ipix, jpix;
-
+  for (npix = 4; npix > 1; npix /= 2) {
     for (ipix = jpix = 0; ipix < npix; ipix += 2, jpix += 1) {
-      for (int idim = 0; idim < 2; ++idim) {
+      for (idim = 0; idim < 2; ++idim) {
         double frac = (xyin[idim] - xypix[ipix][idim]) /
                       (xypix[ipix+1][idim] - xypix[ipix][idim]);
                         
@@ -308,7 +309,7 @@ map_point(
     }
   }
 
-  for (int idim = 0; idim < 2; ++idim) {
+  for (idim = 0; idim < 2; ++idim) {
     xyout[idim] = partial[0][idim];
   }
 }
