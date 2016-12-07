@@ -7,6 +7,7 @@
 #define NPY_NO_DEPRECATED_API NPY_1_10_API_VERSION
 #endif
 #include <numpy/arrayobject.h>
+#include <numpy/npy_math.h>
 #include "pandokia_fct.h"
 #include "cdrizzlebox.h"
 #include "cdrizzleblot.h"
@@ -14,6 +15,7 @@
 #include "cdrizzleutil.h"
 #include "drizzletest.h"
 
+static FILE *logptr;
 static integer_t image_size[2];
 static PyArrayObject *test_data;
 static PyArrayObject *test_weights;
@@ -21,6 +23,8 @@ static PyArrayObject *test_pixmap;
 static PyArrayObject *test_output_data;
 static PyArrayObject *test_output_counts;
 static PyArrayObject *test_context;
+
+static char log_file[] = "";
 
 void
 set_test_arrays(PyArrayObject *dat,
@@ -81,6 +85,14 @@ stretch_pixmap(struct driz_param_t *p, double stretch) {
 }
 
 void
+nan_pixmap(struct driz_param_t *p, int xpix, int ypix) {
+    int idim;
+    for (idim = 0; idim < 2; ++idim) {
+         get_pixmap(p->pixmap, xpix, ypix)[idim] = NPY_NAN;
+    }
+}
+
+void
 offset_pixmap(struct driz_param_t *p, double x_offset, double y_offset) {
     
     int i, j;
@@ -132,15 +144,24 @@ void
 print_image(char *title, PyArrayObject* image, int lo, int hi) {
     int j, i;
     
-    printf("\n%s\n", title);
-    for (j = lo; j < hi; ++j) {
-        for (i = lo; i < hi; ++i) {
-            printf("%10.2f", get_pixel(image, i, j));
+    if (logptr) {
+        fprintf(logptr, "\n%s\n", title);
+        for (j = lo; j < hi; ++j) {
+            for (i = lo; i < hi; ++i) {
+                fprintf(logptr, "%10.2f", get_pixel(image, i, j));
+            }
+            fprintf(logptr, "\n");
         }
-        printf("\n");
     }
-    
+
     return;
+}
+
+void
+print_status(char *title) {
+    if (logptr) {
+        fprintf(logptr, "%s\n", title);
+    }
 }
 
 void
@@ -148,14 +169,16 @@ print_context(char *title, struct driz_param_t *p, int lo, int hi) {
     int j, i;
     integer_t bv;
     
-    bv = 1;
-    printf("\n%s\n", title);
-
-    for (j = lo; j < hi; ++j) {
-        for (i = lo; i < hi; ++i) {
-            printf("%4d", get_bit(p->output_context, i, j, bv));
+    if (logptr) {
+        bv = 1;
+        fprintf(logptr, "\n%s\n", title);
+    
+        for (j = lo; j < hi; ++j) {
+            for (i = lo; i < hi; ++i) {
+                fprintf(logptr, "%4d", get_bit(p->output_context, i, j, bv));
+            }
+            fprintf(logptr, "\n");
         }
-        printf("\n");
     }
     
     return;
@@ -166,18 +189,19 @@ print_pixmap(char *title, struct driz_param_t *p, int lo, int hi) {
     int     i, j, k;
     char *axis[2] = {"x", "y"};
 
-    for (k = 0; k < 2; k ++) {
-        double *imptr = (double *) PyArray_DATA(p->pixmap);
-        printf("\n%s %s axis\n", title, axis[k]);
-
-        for (j = 0; j < image_size[1]; j++ ) {
-            for (i = 0; i < image_size[0]; i++) {
-                if (i >= lo && i < hi && j >= lo && j < hi) {
-                    printf("%10.2f", get_pixmap(p->pixmap, i, j)[k]);
+    if (logptr) {
+        for (k = 0; k < 2; k ++) {
+            fprintf(logptr, "\n%s %s axis\n", title, axis[k]);
+    
+            for (j = 0; j < image_size[1]; j++ ) {
+                for (i = 0; i < image_size[0]; i++) {
+                    if (i >= lo && i < hi && j >= lo && j < hi) {
+                        fprintf(logptr, "%10.2f", get_pixmap(p->pixmap, i, j)[k]);
+                    }
                 }
+    
+                if (j >= lo && j < hi) fprintf(logptr, "\n");
             }
-
-            if (j >= lo && j < hi) printf("\n");
         }
     }
     
@@ -186,7 +210,6 @@ print_pixmap(char *title, struct driz_param_t *p, int lo, int hi) {
 
 struct driz_param_t *
 setup_parameters() {
-    npy_intp *dims;
     struct driz_error_t *error;
 
     /* Initialize the parameter struct with vanilla defaults */
@@ -229,11 +252,22 @@ setup_parameters() {
     fill_image(p->output_counts, 0.0);
     unset_context(p->output_context);
 
+    if (strlen(log_file)) {
+        logptr = fopen(log_file, "a");
+        setbuf(logptr, NULL);
+    } else {
+        logptr = NULL;
+    }
     return p;
 }
 
 void
 teardown_parameters(struct driz_param_t *p) {
+
+    if (logptr) {    
+        fclose(logptr);
+        logptr = NULL;
+    }
     
     free(p->error);
     free(p);
@@ -315,6 +349,83 @@ FCT_BGN_FN(utest_cdrizzle)
         }
         FCT_TEST_END();
 
+        FCT_TEST_BGN(utest_shrink_segment_01)
+        {
+            int i, j;
+            struct driz_param_t *p;
+            struct segment xybounds;
+            struct segment xylimits;
+            
+            p = setup_parameters();
+
+            initialize_segment(&xylimits, p->xmin, p->ymin, p->xmax, p->ymin);  
+            initialize_segment(&xybounds, p->xmin, p->ymin, p->xmax, p->ymin);  
+            
+            shrink_segment(&xybounds, p->pixmap, 0);
+            
+            for (i = 0; i < 2; ++i) {
+                for (j = 0; j < 2; ++j) {
+                    fct_chk_eq_dbl(xybounds.point[i][j], xylimits.point[i][j]);
+                }
+            }
+            
+            teardown_parameters(p);
+        }
+        FCT_TEST_END();
+
+        FCT_TEST_BGN(utest_shrink_segment_02)
+        {
+            int i, j;
+            struct driz_param_t *p;
+            struct segment xybounds;
+            struct segment xylimits;
+            
+            p = setup_parameters();
+
+            initialize_segment(&xylimits, p->xmin, p->ymin, p->xmin, p->ymax);  
+            initialize_segment(&xybounds, p->xmin, p->ymin, p->xmin, p->ymax);  
+            
+            shrink_segment(&xybounds, p->pixmap, 1);
+            
+            for (i = 0; i < 2; ++i) {
+                for (j = 0; j < 2; ++j) {
+                    fct_chk_eq_dbl(xybounds.point[i][j], xylimits.point[i][j]);
+                }
+            }
+            
+            teardown_parameters(p);
+        }
+        FCT_TEST_END();
+
+       FCT_TEST_BGN(utest_shrink_segment_03)
+        {
+            int i, j, nan_max;
+            struct driz_param_t *p;
+            struct segment xybounds;
+            struct segment xylimits;
+            
+            nan_max = 5;
+            p = setup_parameters();
+            for (i = 0; i < nan_max; ++i) {
+                for (j = 0; j < p->ymax; ++j) {
+                    nan_pixmap(p, i, j);
+                }
+            }
+            
+            initialize_segment(&xylimits, nan_max, p->ymin, p->xmax, p->ymin);  
+            initialize_segment(&xybounds, p->xmin, p->ymin, p->xmax, p->ymin);  
+            
+            shrink_segment(&xybounds, p->pixmap, 0);
+            for (i = 0; i < 2; ++i) {
+                for (j = 0; j < 2; ++j) {
+                    fct_chk_eq_dbl(xybounds.point[i][j], xylimits.point[i][j]);
+                }
+            }
+            
+            teardown_parameters(p);
+        }
+        FCT_TEST_END();
+
         FCT_TEST_BGN(utest_map_point_01)
         {
             double xyin[2], xyout[2];
@@ -355,6 +466,48 @@ FCT_BGN_FN(utest_cdrizzle)
         }
         FCT_TEST_END();
   
+        FCT_TEST_BGN(utest_map_point_03)
+        {
+            double xyin[2], xyout[2];
+            struct driz_param_t *p;
+
+            p = setup_parameters();
+            stretch_pixmap(p, 1000.0);
+            nan_pixmap(p, 3, 5);
+            
+            xyin[0] = 3.25;
+            xyin[1] = 5.0;
+            
+            map_point(p->pixmap, xyin, xyout);
+    
+            fct_chk_eq_dbl(xyout[0], 3.25);
+            fct_chk_eq_dbl(xyout[1], 5000.0);
+            
+            teardown_parameters(p);
+        }
+        FCT_TEST_END();
+  
+        FCT_TEST_BGN(utest_map_point_04)
+        {
+            double xyin[2], xyout[2];
+            struct driz_param_t *p;
+
+            p = setup_parameters();
+            stretch_pixmap(p, 1000.0);
+            nan_pixmap(p, 0, 5);
+            
+            xyin[0] = 0.25;
+            xyin[1] = 5.0;
+            
+            map_point(p->pixmap, xyin, xyout);
+    
+            fct_chk_eq_dbl(xyout[0], 0.25);
+            fct_chk_eq_dbl(xyout[1], 5000.0);
+            
+            teardown_parameters(p);
+        }
+        FCT_TEST_END();
+        
         FCT_TEST_BGN(utest_check_line_overlap_01)
         {
             /* Test for complete overlap */
@@ -553,7 +706,6 @@ FCT_BGN_FN(utest_cdrizzle)
         FCT_TEST_BGN(utest_compute_area_04)
         {
             /* Test compute area with diagonal square with overlap */
-            int i, j, k;
             double area;
             double is, js, x[4], y[4];
     
@@ -595,7 +747,6 @@ FCT_BGN_FN(utest_cdrizzle)
 
             for (i = 0; i <= 6; ++ i) {
                 for (j = 0; j <= 6; ++ j) {
-                    char *error;
                     x[0] = 0.25 * (double) i;
                     y[0] = 0.25 * (double) j + 0.5;
                     x[1] = 0.25 * (double) i + 0.5;
@@ -618,7 +769,7 @@ FCT_BGN_FN(utest_cdrizzle)
         {
             /* Simplest case */
             
-            integer_t i, x1;            /* start of in-bounds */
+            integer_t x1;               /* start of in-bounds */
             integer_t j, x2;            /* end of in-bounds */
             struct driz_param_t *p;     /* parameter structure */
             int n, status;
@@ -731,7 +882,7 @@ FCT_BGN_FN(utest_cdrizzle)
             
             struct driz_param_t *p;     /* parameter structure */
             integer_t i,j;
-            int k, n;
+            int n;
             double offset, value;
             
             n = 100;

@@ -6,6 +6,7 @@
 #ifndef NPY_NO_DEPRECATED_API
 #define NPY_NO_DEPRECATED_API NPY_1_10_API_VERSION
 #endif
+#include <numpy/npy_math.h>
 #include <numpy/arrayobject.h>
 
 #include "driz_portability.h"
@@ -41,6 +42,63 @@ show_segment(struct segment *self, char *str) {
           self->point[0][0], self->point[0][1],
           self->point[1][0], self->point[1][1],
           self->invalid);
+
+  return;
+}
+
+/** --------------------------------------------------------------------------------------------------
+ * Shrink the bounds to the range containing valid numbere (! is_nan)
+ *
+ * self: the segment
+ * jdim: the dimension to shrink, x (0) or y (1)
+ */
+
+void
+shrink_segment(struct segment *self, PyArrayObject *pixmap, int jdim) {
+  int iside;
+  int idim = (jdim + 1) % 2;
+  
+  for (iside = 0; iside < 2; ++iside) {
+    int delta;
+    integer_t pix[2];
+    int jside = (iside + 1) % 2;
+    
+    pix[idim] = self->point[iside][idim];
+    pix[jdim] = self->point[iside][jdim];
+    
+    if (self->point[iside][jdim] < self->point[jside][jdim]) {
+      delta = 1;
+    } else {
+      delta = -1;
+      /* Asymetric limits */
+      pix[jdim] += delta;
+    }
+    
+    while (pix[jdim] != self->point[jside][jdim]) {
+      int kdim;
+      int isnan = 0;
+
+      for (kdim = 0; kdim < 2; ++kdim) {
+        double pixval = get_pixmap(pixmap, pix[0], pix[1])[kdim];
+
+        if (npy_isnan(pixval)) {
+          isnan = 1;
+        }
+      }
+
+      if (! isnan) {
+        if (self->point[iside][jdim] < self->point[jside][jdim]) {
+          self->point[iside][jdim] = pix[jdim];
+        } else {
+          /* Asymetric limits */
+          self->point[iside][jdim] = pix[jdim] + 1;
+        }
+        break;
+      }
+    
+      pix[jdim] += delta;
+    }
+  }
 
   return;
 }
@@ -113,6 +171,99 @@ union_of_segments(int npoint, int jdim, struct segment xybounds[], integer_t bou
 }
 
 /** --------------------------------------------------------------------------------------------------
+ * Find the points that bound the linear interpolation
+ *
+ * pixmap:   The mapping of the pixel centers from input to output image
+ * xyin:     An (x,y) point on the input image
+ * xybounds: The bounds for the linear interpolation (output)
+ */
+
+void
+map_bounds(
+  PyArrayObject *pixmap,
+  const double  xyin[2],
+  int           *xypix
+  ) {
+
+  int xy[2];
+  int xydim[2];
+  int xystart[2];
+
+  int n;
+  int idim;
+  
+  int ipix = 0;
+  int d[2] = {0, 0};
+  int v[2] = {0, -1};
+  int *xyptr = xypix;
+  
+  /* Starting point rounds down input pixel position
+   * to integer value
+   */
+  for (idim = 0; idim < 2; ++idim) {
+    xystart[idim] = floor(xyin[idim]);
+  }
+
+  /* Make sure starting point is inside image */
+  get_dimensions(pixmap, xydim);
+  n = 4 * xydim[0] * xydim[1];
+
+  for (idim = 0; idim < 2; ++idim) {
+    if (xystart[idim] < 0) {
+      xystart[idim] = 0;
+    } else if (xystart[idim] >= xydim[idim]) {
+      xystart[idim] = xydim[idim] - 1;
+    }
+  }
+
+  /* Spiral around the starting point until
+   * we find four valid points on the line
+   */
+  while (--n > 0 && ipix < 4) {
+    
+    /* Get next point to check */
+    for (idim = 0; idim < 2; ++idim) {
+      xy[idim] = xystart[idim] + d[idim];
+    }
+    
+    /* If we are on the image */
+    if (xy[0] >= 0 && xy[0] < xydim[0] && xy[1] >= 0 && xy[1] < xydim[1]) {
+      int isnan = 0;
+
+      /* Check if the pixel value is NaN */ 
+      for (idim = 0; idim < 2; ++idim) {
+        double pixval = get_pixmap(pixmap, xy[0], xy[1])[idim];
+        isnan |= npy_isnan(pixval);
+      }
+    
+      /* If not, copy it to output as a good point */
+      if (! isnan) {
+        for (idim = 0; idim < 2; ++idim) {
+          *xyptr++ = xy[idim];
+        }
+        ++ ipix;
+      }
+    }
+
+    /* Change directions on spiral */
+    if ((d[0] == d[1]) ||
+        (d[0] < 0  && d[0] == -d[1]) ||
+        (d[0] > 0  && d[0] == 1 - d[1])) {
+      int t = v[0];
+      v[0] = - v[1];
+      v[1] = t;
+    }
+    
+    /* Move to the next point on the spiral */
+    for (idim = 0; idim < 2; ++idim) {
+      d[idim] += v[idim];
+    }
+  }
+  
+  assert(ipix == 4);
+}
+
+/** --------------------------------------------------------------------------------------------------
  * Map a point on the input image to the output image using
  * a mapping of the pixel centers between the two by interpolating
  * between the centers in the mapping
@@ -123,47 +274,44 @@ union_of_segments(int npoint, int jdim, struct segment xybounds[], integer_t bou
  */
 
 void
-map_point(PyArrayObject *pixmap,
-          const double xyin[2],
-          double xyout[2]
-         ) {
+map_point(
+  PyArrayObject *pixmap, 
+  const double  xyin[2], 
+  double        xyout[2] 
+  ) {
 
-  int        idim;
-  integer_t  pix[2];
-  double     frac[2];
-  integer_t  xydim[2];
+  int xypix[4][2];
+  double partial[4][2];
+  int ipix, jpix, npix, idim;
+    
+  /* Find the four points that bound the linear interpolation */
+  map_bounds(pixmap, xyin, (int *)xypix);
+    
+  for (ipix = 0; ipix < 4; ++ ipix) {
+    /* Evaluate pixmap at these points */
+    for (idim = 0; idim < 2; ++idim) {
+      partial[ipix][idim] = get_pixmap(pixmap,
+                                       xypix[ipix][0],
+                                       xypix[ipix][1])[idim];
+    }
+  }
 
-  /* Divide the position into an integral pixel position
-   * plus a fractional offset within the pixel */
-
-  get_dimensions(pixmap, xydim);
+  /* Do linear interpolation between each set of points */
+  for (npix = 4; npix > 1; npix /= 2) {
+    for (ipix = jpix = 0; ipix < npix; ipix += 2, jpix += 1) {
+      for (idim = 0; idim < 2; ++idim) {
+        double frac = (xyin[idim] - xypix[ipix][idim]) /
+                      (xypix[ipix+1][idim] - xypix[ipix][idim]);
+                        
+        partial[jpix][idim] = (1.0 - frac) * partial[ipix][idim] +
+                              frac * partial[ipix+1][idim];
+      }
+    }
+  }
 
   for (idim = 0; idim < 2; ++idim) {
-    frac[idim] = xyin[idim];
-    pix[idim]  = frac[idim];
-    pix[idim]  = CLAMP(pix[idim], 0, xydim[idim] - 2);
-    frac[idim] = frac[idim] - pix[idim];
-
-    assert(pix[idim] >= 0 && pix[idim] < xydim[idim]);
+    xyout[idim] = partial[0][idim];
   }
-  
-  if (frac[0] == 0.0 && frac[1] == 0.0) {
-    /* No interpolation needed if input position has no fractional part */
-    for (idim = 0; idim < 2; ++idim) {
-      xyout[idim] = get_pixmap(pixmap, pix[0], pix[1])[idim];
-    }
-
-  } else {
-    /* Bilinear interpolation btw pixels, see Wikipedia for explanation */
-    for (idim = 0; idim < 2; ++idim) {
-      xyout[idim] = (1.0 - frac[0]) * (1.0 - frac[1]) * get_pixmap(pixmap, pix[0], pix[1])[idim] +
-                    frac[0] * (1.0 - frac[1]) * get_pixmap(pixmap, pix[0]+1, pix[1])[idim] +
-                    (1.0 - frac[0]) * frac[1] * get_pixmap(pixmap, pix[0], pix[1]+1)[idim] +
-                    frac[0] * frac[1] * get_pixmap(pixmap, pix[0]+1, pix[1]+1)[idim];
-    }
-  }
-
-  return;
 }
 
 /** --------------------------------------------------------------------------------------------------
@@ -181,7 +329,9 @@ clip_bounds(PyArrayObject *pixmap, struct segment *xylimit, struct segment *xybo
   
   xybounds->invalid = 1; /* Track if bounds are both outside the image */
 
-  for (idim = 0; idim < 2; ++idim) {    
+  for (idim = 0; idim < 2; ++idim) {
+    shrink_segment(xybounds, pixmap, idim);
+
     for (ipoint = 0; ipoint < 2; ++ipoint) {
       int m = 21;         /* maximum iterations */
       int side = 0;       /* flag indicating which side moved last */
