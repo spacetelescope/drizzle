@@ -175,6 +175,7 @@ union_of_segments(int npoint, int jdim, struct segment xybounds[], integer_t bou
  *
  * pixmap:   The mapping of the pixel centers from input to output image
  * xyin:     An (x,y) point on the input image
+ * idim:     The dimension to search across
  * xybounds: The bounds for the linear interpolation (output)
  */
 
@@ -182,81 +183,80 @@ void
 map_bounds(
   PyArrayObject *pixmap,
   const double  xyin[2],
+  int           idim,
   int           *xypix
   ) {
 
+  int d;
+  int kdim;
+  int iside;
+  int retry;
   int xy[2];
   int xydim[2];
   int xystart[2];
 
-  int n;
-  int idim;
-  
   int ipix = 0;
-  int d[2] = {0, 0};
-  int v[2] = {0, -1};
+  int jdim = (idim + 1) % 2;
   int *xyptr = xypix;
   
   /* Starting point rounds down input pixel position
    * to integer value
    */
-  for (idim = 0; idim < 2; ++idim) {
-    xystart[idim] = floor(xyin[idim]);
+  for (kdim = 0; kdim < 2; ++kdim) {
+    xystart[kdim] = floor(xyin[kdim]);
   }
 
   /* Make sure starting point is inside image */
   get_dimensions(pixmap, xydim);
-  n = 4 * xydim[0] * xydim[1];
 
-  for (idim = 0; idim < 2; ++idim) {
-    if (xystart[idim] < 0) {
-      xystart[idim] = 0;
-    } else if (xystart[idim] >= xydim[idim]) {
-      xystart[idim] = xydim[idim] - 1;
+  for (kdim = 0; kdim < 2; ++kdim) {
+    if (xystart[kdim] < 0) {
+      xystart[kdim] = 0;
+    } else if (xystart[kdim] > xydim[kdim] - 2) {
+      xystart[kdim] = xydim[kdim] - 2;
     }
   }
 
-  /* Spiral around the starting point until
-   * we find four valid points on the line
-   */
-  while (--n > 0 && ipix < 4) {
+  /* Search for pair on both sides of starting point */
+  for (iside = 0; iside < 2; ++iside) {
     
-    /* Get next point to check */
-    for (idim = 0; idim < 2; ++idim) {
-      xy[idim] = xystart[idim] + d[idim];
-    }
+    /* Bounce around the starting point until
+     * we find four valid points on the line
+     */
+    d = 0;
+    retry = 0;
+    xy[jdim] = xystart[jdim] + iside;
     
-    /* If we are on the image */
-    if (xy[0] >= 0 && xy[0] < xydim[0] && xy[1] >= 0 && xy[1] < xydim[1]) {
-      int isnan = 0;
+    while (retry < 3 && ipix < 4) {
+        
+      /* Get next point to check */
+      xy[idim] = xystart[idim] + d;
+    
+      /* If we are on the image */
+      if (xy[idim] >= 0 && xy[idim] < xydim[idim]) {
+        retry = 0;
 
-      /* Check if the pixel value is NaN */ 
-      for (idim = 0; idim < 2; ++idim) {
+        /* Check if the pixel value is NaN */ 
         double pixval = get_pixmap(pixmap, xy[0], xy[1])[idim];
-        isnan |= npy_isnan(pixval);
-      }
     
-      /* If not, copy it to output as a good point */
-      if (! isnan) {
-        for (idim = 0; idim < 2; ++idim) {
-          *xyptr++ = xy[idim];
+        /* If not, copy it to output as a good point */
+        if (! npy_isnan(pixval)) {
+          for (kdim = 0; kdim < 2; ++kdim) {
+            *xyptr++ = xy[kdim];
+          }
+          ++ ipix;
         }
-        ++ ipix;
-      }
-    }
 
-    /* Change directions on spiral */
-    if ((d[0] == d[1]) ||
-        (d[0] < 0  && d[0] == -d[1]) ||
-        (d[0] > 0  && d[0] == 1 - d[1])) {
-      int t = v[0];
-      v[0] = - v[1];
-      v[1] = t;
-    }
-    
-    /* Move to the next point on the spiral */
-    for (idim = 0; idim < 2; ++idim) {
-      d[idim] += v[idim];
+      } else {
+        ++ retry;
+      }
+
+      /* Compute next step size */
+      if (d > 0) {
+        d = -d;
+      } else {
+        d = 1- d;
+      }
     }
   }
   
@@ -281,36 +281,31 @@ map_point(
   ) {
 
   int xypix[4][2];
-  double partial[4][2];
+  double partial[4];
   int ipix, jpix, npix, idim;
-    
-  /* Find the four points that bound the linear interpolation */
-  map_bounds(pixmap, xyin, (int *)xypix);
-    
-  for (ipix = 0; ipix < 4; ++ ipix) {
-    /* Evaluate pixmap at these points */
-    for (idim = 0; idim < 2; ++idim) {
-      partial[ipix][idim] = get_pixmap(pixmap,
-                                       xypix[ipix][0],
-                                       xypix[ipix][1])[idim];
-    }
-  }
+  
+  for (idim = 0; idim < 2; ++idim) {
+    /* Find the four points that bound the linear interpolation */
+    map_bounds(pixmap, xyin, idim, (int *)xypix);
 
-  /* Do linear interpolation between each set of points */
-  for (npix = 4; npix > 1; npix /= 2) {
-    for (ipix = jpix = 0; ipix < npix; ipix += 2, jpix += 1) {
-      for (idim = 0; idim < 2; ++idim) {
+    /* Evaluate pixmap at these points */
+    for (ipix = 0; ipix < 4; ++ ipix) {
+      partial[ipix] = get_pixmap(pixmap,
+                                 xypix[ipix][0],
+                                 xypix[ipix][1])[idim];
+    }
+
+    /* Do linear interpolation between each set of points */
+    for (npix = 4; npix > 1; npix /= 2) {
+      for (ipix = jpix = 0; ipix < npix; ipix += 2, jpix += 1) {
         double frac = (xyin[idim] - xypix[ipix][idim]) /
                       (xypix[ipix+1][idim] - xypix[ipix][idim]);
                         
-        partial[jpix][idim] = (1.0 - frac) * partial[ipix][idim] +
-                              frac * partial[ipix+1][idim];
+        partial[jpix] = (1.0 - frac) * partial[ipix] + frac * partial[ipix+1];
       }
     }
-  }
 
-  for (idim = 0; idim < 2; ++idim) {
-    xyout[idim] = partial[0][idim];
+    xyout[idim] = partial[0];
   }
 }
 
