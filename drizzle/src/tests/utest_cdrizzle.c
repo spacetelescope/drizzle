@@ -960,7 +960,7 @@ FCT_BGN_FN(utest_cdrizzle)
                     set_pixel(p->data, i, j, value);
                 }
             }
-            
+
             do_kernel_square(p);
 
             fct_chk_eq_dbl(get_pixel(p->output_data, 3, 3), 1.0);
