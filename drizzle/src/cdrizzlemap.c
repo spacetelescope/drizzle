@@ -56,26 +56,34 @@ show_segment(struct segment *self, char *str) {
 void
 shrink_segment(struct segment *self, PyArrayObject *pixmap, int jdim) {
   int iside;
-  int idim = (jdim + 1) % 2;
-  
+  int xydim[2];
+
+  get_dimensions(pixmap, xydim);
+
   for (iside = 0; iside < 2; ++iside) {
+    int kdim;
     int delta;
     integer_t pix[2];
     int jside = (iside + 1) % 2;
     
-    pix[idim] = self->point[iside][idim];
-    pix[jdim] = self->point[iside][jdim];
+    /* Set starting position and check for out of bounds */
+    for (kdim = 0; kdim < 2; ++kdim) {
+      pix[kdim] = self->point[iside][kdim];
+        
+      if (pix[kdim] < 0) {
+        pix[kdim] = 0;
+      } else if (pix[kdim] >= xydim[kdim]) {
+        pix[kdim] = xydim[kdim] - 1;
+      }
+    }
     
     if (self->point[iside][jdim] < self->point[jside][jdim]) {
       delta = 1;
     } else {
       delta = -1;
-      /* Asymetric limits */
-      pix[jdim] += delta;
     }
     
     while (pix[jdim] != self->point[jside][jdim]) {
-      int kdim;
       int isnan = 0;
 
       for (kdim = 0; kdim < 2; ++kdim) {
@@ -86,18 +94,25 @@ shrink_segment(struct segment *self, PyArrayObject *pixmap, int jdim) {
         }
       }
 
-      if (! isnan) {
+      if (isnan) {
+        self->invalid = 1;
+      } else {
         if (self->point[iside][jdim] < self->point[jside][jdim]) {
           self->point[iside][jdim] = pix[jdim];
         } else {
           /* Asymetric limits */
           self->point[iside][jdim] = pix[jdim] + 1;
         }
+        self->invalid = 0;
         break;
       }
     
       pix[jdim] += delta;
     }
+  }
+
+  if (self->invalid) {
+    self->point[1][jdim] = self->point[0][jdim];
   }
 
   return;

@@ -85,7 +85,21 @@ stretch_pixmap(struct driz_param_t *p, double stretch) {
 }
 
 void
-nan_pixmap(struct driz_param_t *p, int xpix, int ypix) {
+nan_pixmap(struct driz_param_t *p) {
+    int i, j;
+
+    for (j = 0; j < image_size[1]; j++) {
+       for (i= 0; i < image_size[0]; i++) {
+            get_pixmap(p->pixmap, i, j)[0] = NPY_NAN;
+            get_pixmap(p->pixmap, i, j)[1] = NPY_NAN;
+       }
+    }
+
+    return;
+}
+
+void
+nan_pixel(struct driz_param_t *p, int xpix, int ypix) {
     int idim;
     for (idim = 0; idim < 2; ++idim) {
          get_pixmap(p->pixmap, xpix, ypix)[idim] = NPY_NAN;
@@ -126,6 +140,18 @@ fill_image(PyArrayObject *image, double value) {
     return;
 }
 
+void
+fill_image_block(PyArrayObject* image, double value, int lo, int hi) {
+    int ypix, xpix;
+    
+    for (ypix = lo; ypix < hi; ++ypix) {
+        for (xpix = lo; xpix < hi; ++xpix) {
+            set_pixel(image, xpix, ypix, value);
+        }
+    }
+
+    return;
+}
 void
 unset_context(PyArrayObject *context) {
     npy_intp   *ndim = PyArray_DIMS(context);
@@ -408,7 +434,7 @@ FCT_BGN_FN(utest_cdrizzle)
             p = setup_parameters();
             for (i = 0; i < nan_max; ++i) {
                 for (j = 0; j < p->ymax; ++j) {
-                    nan_pixmap(p, i, j);
+                    nan_pixel(p, i, j);
                 }
             }
             
@@ -426,6 +452,28 @@ FCT_BGN_FN(utest_cdrizzle)
         }
         FCT_TEST_END();
 
+       FCT_TEST_BGN(utest_shrink_segment_04)
+        {
+            int i, j;
+            struct driz_param_t *p;
+            struct segment xybounds;
+            struct segment xylimits;
+            
+            p = setup_parameters();            
+            nan_pixmap(p);
+
+            initialize_segment(&xybounds, p->xmin, p->ymin, p->xmax, p->ymin);  
+            
+            shrink_segment(&xybounds, p->pixmap, 0);
+            for (i = 0; i < 2; ++i) {
+                for (j = 0; j < 2; ++j) {
+                    fct_chk_eq_dbl(xybounds.point[i][j], 0.0);
+                }
+            }
+            
+            teardown_parameters(p);
+        }
+        FCT_TEST_END();
         FCT_TEST_BGN(utest_map_point_01)
         {
             double xyin[2], xyout[2];
@@ -473,7 +521,7 @@ FCT_BGN_FN(utest_cdrizzle)
 
             p = setup_parameters();
             stretch_pixmap(p, 1000.0);
-            nan_pixmap(p, 3, 5);
+            nan_pixel(p, 3, 5);
             
             xyin[0] = 3.25;
             xyin[1] = 5.0;
@@ -494,7 +542,7 @@ FCT_BGN_FN(utest_cdrizzle)
 
             p = setup_parameters();
             stretch_pixmap(p, 1000.0);
-            nan_pixmap(p, 0, 5);
+            nan_pixel(p, 0, 5);
             
             xyin[0] = 0.25;
             xyin[1] = 5.0;
