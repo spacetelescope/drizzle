@@ -54,12 +54,13 @@ show_segment(struct segment *self, char *str) {
  */
 
 void
-shrink_segment(struct segment *self, PyArrayObject *pixmap, int jdim) {
+shrink_segment(struct segment *self, PyArrayObject *pixmap,
+               PyArrayObject *data, int jdim) {
   int iside;
   int xydim[2];
 
-  get_dimensions(pixmap, xydim);
-
+  get_dimensions(data, xydim);
+      
   for (iside = 0; iside < 2; ++iside) {
     int kdim;
     int delta;
@@ -69,7 +70,7 @@ shrink_segment(struct segment *self, PyArrayObject *pixmap, int jdim) {
     /* Set starting position and check for out of bounds */
     for (kdim = 0; kdim < 2; ++kdim) {
       pix[kdim] = self->point[iside][kdim];
-        
+      
       if (pix[kdim] < 0) {
         pix[kdim] = 0;
       } else if (pix[kdim] >= xydim[kdim]) {
@@ -334,14 +335,15 @@ map_point(
  */
 
 int
-clip_bounds(PyArrayObject *pixmap, struct segment *xylimit, struct segment *xybounds) {
+clip_bounds(PyArrayObject *pixmap, PyArrayObject *data,
+            struct segment *xylimit, struct segment *xybounds) {
   int ipoint, idim, jdim;
   
   xybounds->invalid = 1; /* Track if bounds are both outside the image */
-
+  
   for (idim = 0; idim < 2; ++idim) {
-    shrink_segment(xybounds, pixmap, idim);
-
+    shrink_segment(xybounds, pixmap, data, idim);
+  
     for (ipoint = 0; ipoint < 2; ++ipoint) {
       int m = 21;         /* maximum iterations */
       int side = 0;       /* flag indicating which side moved last */
@@ -451,24 +453,28 @@ int
 check_line_overlap(struct driz_param_t* p, int margin, integer_t j, integer_t *xbounds) {
   struct segment xylimit, xybounds;
   integer_t isize[2], osize[2];
+
   
+  driz_log_message("starting check_line_overlap");
   get_dimensions(p->output_data, osize);  
   initialize_segment(&xylimit, - margin, - margin,
                      osize[0] + margin, osize[1] + margin);
 
   initialize_segment(&xybounds, p->xmin, j, p->xmax, j);
 
-  if (clip_bounds(p->pixmap, &xylimit, &xybounds)) {
+  if (clip_bounds(p->pixmap, p->data, &xylimit, &xybounds)) {
     driz_error_set_message(p->error, "cannot compute xbounds");
     return 1;
   }
+
  
   sort_segment(&xybounds, 0);
-  
+
   xbounds[0] = floor(xybounds.point[0][0]);
   xbounds[1] = ceil(xybounds.point[1][0]);
 
-  get_dimensions(p->pixmap, isize);
+  get_dimensions(p->data, isize);
+  driz_log_message("ending check_line_overlap");
   if (driz_error_check(p->error, "xbounds must be inside input image",
                        xbounds[0] >= 0 && xbounds[1] <= isize[0])) {
     return 1;
@@ -494,7 +500,8 @@ check_image_overlap(struct driz_param_t* p, const int margin, integer_t *ybounds
   struct segment xylimit, xybounds[2];
   integer_t isize[2], osize[2];
   int ipoint;
-  
+
+  driz_log_message("starting check_image_overlap");  
   ybounds[0] = p->xmin;
   ybounds[1] = p->xmax;
   
@@ -506,7 +513,7 @@ check_image_overlap(struct driz_param_t* p, const int margin, integer_t *ybounds
     initialize_segment(&xybounds[ipoint], ybounds[ipoint], p->ymin,
                                           ybounds[ipoint], p->ymax);
     
-    if (clip_bounds(p->pixmap, &xylimit, &xybounds[ipoint])) {
+    if (clip_bounds(p->pixmap, p->data, &xylimit, &xybounds[ipoint])) {
       driz_error_set_message(p->error, "cannot compute ybounds");
       return 1;
     }
@@ -515,6 +522,7 @@ check_image_overlap(struct driz_param_t* p, const int margin, integer_t *ybounds
   union_of_segments(2, 1, xybounds, ybounds);
 
   get_dimensions(p->pixmap, isize);
+  driz_log_message("ending check_image_overlap");
   if (driz_error_check(p->error, "ybounds must be inside input image",
                        ybounds[0] >= 0 && ybounds[1] <= isize[1])) {
     return 1;

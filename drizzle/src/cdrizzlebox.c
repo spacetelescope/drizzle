@@ -27,7 +27,8 @@ update_data(struct driz_param_t* p, const integer_t ii, const integer_t jj,
             const float d, const float vc, const float dow) {
 
   const double vc_plus_dow = vc + dow;
-
+  driz_log_message("starting update_data");
+  
   /* Just a simple calculation without logical tests */
   if (vc == 0.0) {
     if (oob_pixel(p->output_data, ii, jj)) {
@@ -55,6 +56,7 @@ update_data(struct driz_param_t* p, const integer_t ii, const integer_t jj,
     set_pixel(p->output_counts, ii, jj, vc_plus_dow);
   }
 
+  driz_log_message("ending update_data");
   return 0;
 }
 
@@ -100,6 +102,7 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
    * computed width is positive for two of the sides and negative for the other two,
    * we subtract the area outside the quadrilateral without any extra code.
    */
+  driz_log_message("starting compute_area");
   area = 0.0;
 
   border[0][0] = is - 0.5;
@@ -200,7 +203,8 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
     _nextsegment: continue;
   }
 
-   return fabs(area);
+  driz_log_message("ending compute_area");
+  return fabs(area);
 }
 
 /** --------------------------------------------------------------------------------------------------
@@ -846,7 +850,8 @@ do_kernel_square(struct driz_param_t* p) {
   double dh, jaco, tem, dover, w;
   double xyin[4][2], xyout[2], xout[4], yout[4];
   int margin;
-  
+
+  driz_log_message("starting do_kernel_square");  
   dh = 0.5 * p->pixel_fraction;
   bv = compute_bit_value(p->uuid);
   scale2 = p->scale * p->scale;
@@ -980,6 +985,7 @@ do_kernel_square(struct driz_param_t* p) {
     }
   }
 
+  driz_log_message("ending do_kernel_square");
   return 0;
 }
 
@@ -1009,7 +1015,8 @@ kernel_handler_map[] = {
 int
 dobox(struct driz_param_t* p) {
   kernel_handler_t kernel_handler = NULL;
-
+  driz_log_message("starting dobox");
+  
   /* Set up a function pointer to handle the appropriate kernel */
   if (p->kernel < kernel_LAST) {
     kernel_handler = kernel_handler_map[p->kernel];
@@ -1023,5 +1030,6 @@ dobox(struct driz_param_t* p) {
     driz_error_set_message(p->error, "Invalid kernel type");
   }
  
+  driz_log_message("ending dobox");
   return driz_error_is_set(p->error);
 }

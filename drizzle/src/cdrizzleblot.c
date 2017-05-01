@@ -888,6 +888,7 @@ doblot(struct driz_param_t* p) {
   struct lanczos_param_t lanczos;
   void* state = NULL;
   
+  driz_log_message("starting doblot");
   get_dimensions(p->data, isize);
   get_dimensions(p->output_data, osize);
 
@@ -973,6 +974,7 @@ doblot(struct driz_param_t* p) {
   }
 
  doblot_exit_:
+  driz_log_message("ending doblot");
   if (lanczos.lut) free(lanczos.lut);
 
   return driz_error_is_set(p->error);
