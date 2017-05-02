@@ -173,6 +173,40 @@ driz_param_init(struct driz_param_t* p);
 void
 driz_param_dump(struct driz_param_t* p);
 
+
+/****************************************************************************/
+/* LOGGING */
+
+#define LOGGING 0
+
+#if LOGGING
+extern FILE *driz_log_handle;
+
+static inline_macro FILE*
+driz_log_init(FILE *handle) {
+    handle = fopen("/tmp/drizzle.log", "a");
+    setbuf(handle, 0);
+    return handle;
+}
+
+static inline_macro int
+driz_log_close(FILE *handle) {
+    return fclose(driz_log_handle);
+}
+
+static inline_macro int
+driz_log_message(const char* message) {
+    fputs(message, driz_log_handle);
+    fputs("\n", driz_log_handle);
+    return 0;
+}
+
+#else
+#define driz_log_init(handle) NULL
+#define driz_log_close(handle) 0
+#define driz_log_message(message) 0
+#endif
+
 /****************************************************************************/
 /* ARRAY ACCESSORS */
 
@@ -195,18 +229,27 @@ get_pixmap(PyArrayObject *pixmap, integer_t xpix, integer_t ypix) {
   return (double*) PyArray_GETPTR3(pixmap, ypix, xpix, 0);
 }
 
-#ifdef NDEBUG
-#define oob_pixel(image, xpix, ypix)   0
-#else
+#if LOGGING
+
 static inline_macro int
 oob_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
+  char buffer[64];
+  int flag = 0;
 
   npy_intp *ndim = PyArray_DIMS(image);
-  if (xpix < 0 || xpix >= ndim[1]) return 1;
-  if (ypix < 0 || ypix >= ndim[0]) return 1;
+  if (xpix < 0 || xpix >= ndim[1]) flag = 1;
+  if (ypix < 0 || ypix >= ndim[0]) flag = 1;
 
-  return 0;
+  if (flag) {
+    sprintf(buffer, "OOB in output data [%d,%d]", xpix, ypix);
+    driz_log_message(buffer);
+  }
+  
+  return flag;
 }
+
+#else
+#define oob_pixel(image, xpix, ypix)   0
 #endif
 
 static inline_macro float

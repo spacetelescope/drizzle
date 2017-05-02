@@ -20,6 +20,7 @@
 #include "tests/drizzletest.h"
 
 static PyObject *gl_Error;
+FILE *driz_log_handle = NULL;
 
 /** --------------------------------------------------------------------------------------------------
  * Multiply each pixel in an image by a scale factor
@@ -83,6 +84,8 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   struct driz_param_t p;
   integer_t isize[2];
 
+  driz_log_handle = driz_log_init(driz_log_handle);
+  driz_log_message("starting tdriz");
   driz_error_init(&error);
   
   if (!PyArg_ParseTupleAndKeywords(args, keywords, "OOOOOO|lllllddssffs:tdriz", (char **)kwlist,
@@ -219,6 +222,8 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   }
 
  _exit:
+  driz_log_message("ending tdriz");
+  driz_log_close(driz_log_handle);
   Py_XDECREF(con);
   Py_XDECREF(img); 
   Py_XDECREF(wei); 
@@ -266,6 +271,8 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
   struct driz_param_t p;
   integer_t osize[2];
 
+  driz_log_handle = driz_log_init(driz_log_handle);
+  driz_log_message("starting tnlot");
   driz_error_init(&error);
   
   if (!PyArg_ParseTupleAndKeywords(args, keywords, "OOO|lllldfsfff:tblot", (char **)kwlist,
@@ -332,6 +339,8 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
   if (doblot(&p)) goto _exit;
 
  _exit:
+  driz_log_message("ending tblot");
+  driz_log_close(driz_log_handle);
   Py_DECREF(img);
   Py_DECREF(out);
   Py_DECREF(map);
