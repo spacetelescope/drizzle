@@ -272,7 +272,7 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
   integer_t osize[2];
 
   driz_log_handle = driz_log_init(driz_log_handle);
-  driz_log_message("starting tnlot");
+  driz_log_message("starting tblot");
   driz_error_init(&error);
   
   if (!PyArg_ParseTupleAndKeywords(args, keywords, "OOO|lllldfsfff:tblot", (char **)kwlist,
