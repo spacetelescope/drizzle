@@ -19,7 +19,7 @@
  */
 
 void
-initialize_segment(struct segment *self, integer_t x1, integer_t y1, integer_t x2, integer_t y2) {
+initialize_segment(struct segment *self, integer_t x1, integer_t y1, integer_t x2, integer_t y2) { 
   self->point[0][0] = x1;
   self->point[0][1] = y1;
   self->point[1][0] = x2;
@@ -54,12 +54,12 @@ show_segment(struct segment *self, char *str) {
  */
 
 void
-shrink_segment(struct segment *self, PyArrayObject *pixmap,
-               PyArrayObject *data, int jdim) {
+shrink_segment(struct segment *self, PyArrayObject *data, int jdim) {
   int iside;
   int xydim[2];
-
-  get_dimensions(data, xydim);
+  
+  driz_log_message("starting shrink_segment");
+  get_dimensions(data, xydim); 
       
   for (iside = 0; iside < 2; ++iside) {
     int kdim;
@@ -77,7 +77,7 @@ shrink_segment(struct segment *self, PyArrayObject *pixmap,
         pix[kdim] = xydim[kdim] - 1;
       }
     }
-    
+
     if (self->point[iside][jdim] < self->point[jside][jdim]) {
       delta = 1;
     } else {
@@ -85,17 +85,9 @@ shrink_segment(struct segment *self, PyArrayObject *pixmap,
     }
     
     while (pix[jdim] != self->point[jside][jdim]) {
-      int isnan = 0;
+      double pixval = get_pixel(data, pix[0], pix[1]);
 
-      for (kdim = 0; kdim < 2; ++kdim) {
-        double pixval = get_pixmap(pixmap, pix[0], pix[1])[kdim];
-
-        if (npy_isnan(pixval)) {
-          isnan = 1;
-        }
-      }
-
-      if (isnan) {
+      if (npy_isnan(pixval)) {
         self->invalid = 1;
       } else {
         if (self->point[iside][jdim] < self->point[jside][jdim]) {
@@ -116,6 +108,7 @@ shrink_segment(struct segment *self, PyArrayObject *pixmap,
     self->point[1][jdim] = self->point[0][jdim];
   }
 
+  driz_log_message("ending shrink_segment"); 
   return;
 }
 
@@ -160,6 +153,7 @@ union_of_segments(int npoint, int jdim, struct segment xybounds[], integer_t bou
   int ipoint;
   int none = 1;
   
+  driz_log_message("starting union_of_segments");  
   for (ipoint = 0; ipoint < npoint; ++ipoint) {
     sort_segment(&xybounds[ipoint], jdim);
 
@@ -183,6 +177,7 @@ union_of_segments(int npoint, int jdim, struct segment xybounds[], integer_t bou
     bounds[1] = bounds[0];
   }
 
+  driz_log_message("ending union_of_segments");  
   return;
 }
 
@@ -339,10 +334,11 @@ clip_bounds(PyArrayObject *pixmap, PyArrayObject *data,
             struct segment *xylimit, struct segment *xybounds) {
   int ipoint, idim, jdim;
   
+  driz_log_message("starting clip_bounds");  
   xybounds->invalid = 1; /* Track if bounds are both outside the image */
   
   for (idim = 0; idim < 2; ++idim) {
-    shrink_segment(xybounds, pixmap, data, idim);
+    shrink_segment(xybounds, data, idim);
   
     for (ipoint = 0; ipoint < 2; ++ipoint) {
       int m = 21;         /* maximum iterations */
@@ -435,6 +431,7 @@ clip_bounds(PyArrayObject *pixmap, PyArrayObject *data,
     }
   }
 
+  driz_log_message("ending clip_bounds");  
   return 0;
 }
 
