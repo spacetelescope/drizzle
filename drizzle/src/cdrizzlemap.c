@@ -47,14 +47,17 @@ show_segment(struct segment *self, char *str) {
 }
 
 /** --------------------------------------------------------------------------------------------------
- * Shrink the bounds to the range containing valid numbere (! is_nan)
+ * Shrink the bounds to the range containing valid data
  *
- * self: the segment
- * jdim: the dimension to shrink, x (0) or y (1)
+ * self:    the segment
+ * pixmap:  array mapping input pixel coordinates to output pixel coordinates
+ * weights: array of weights to apply when summing pixels
+ * jdim:    the dimension to shrink, x (0) or y (1)
  */
 
 void
-shrink_segment(struct segment *self, PyArrayObject *pixmap, int jdim) {
+shrink_segment(struct segment *self, PyArrayObject *pixmap,
+               PyArrayObject *weights, int jdim) {
   int iside;
   int xydim[2];
   
@@ -84,16 +87,22 @@ shrink_segment(struct segment *self, PyArrayObject *pixmap, int jdim) {
     }
     
     while (pix[jdim] != self->point[jside][jdim]) {
-      int is_nan = 0;
-      for (kdim = 0; kdim < 2; ++kdim) {
-        oob_pixel(pixmap, pix[0], pix[1]);
-        if (npy_isnan(get_pixmap(pixmap, pix[0], pix[1])[kdim])) {
-            is_nan = 1;
-            break;
+      int is_bad = 0;
+      oob_pixel(weights, pix[0], pix[1]);
+      if (get_pixel(weights, pix[0], pix[1]) == 0.0) {
+        is_bad = 1;
+
+      } else {     
+        for (kdim = 0; kdim < 2; ++kdim) {
+          oob_pixel(pixmap, pix[0], pix[1]);
+          if (npy_isnan(get_pixmap(pixmap, pix[0], pix[1])[kdim])) {
+              is_bad = 1;
+              break;
+          }
         }
       }
 
-      if (is_nan) {
+      if (is_bad) {
         self->invalid = 1;
       } else {
         if (self->point[iside][jdim] < self->point[jside][jdim]) {
@@ -333,14 +342,14 @@ map_point(
  */
 
 int
-clip_bounds(PyArrayObject *pixmap, PyArrayObject *data,
+clip_bounds(PyArrayObject *pixmap, PyArrayObject *weights,
             struct segment *xylimit, struct segment *xybounds) {
   int ipoint, idim, jdim;
   
   xybounds->invalid = 1; /* Track if bounds are both outside the image */
   
   for (idim = 0; idim < 2; ++idim) {
-    shrink_segment(xybounds, pixmap, idim);
+    shrink_segment(xybounds, pixmap, weights, idim);
   
     for (ipoint = 0; ipoint < 2; ++ipoint) {
       int m = 21;         /* maximum iterations */
@@ -462,7 +471,7 @@ check_line_overlap(struct driz_param_t* p, int margin, integer_t j, integer_t *x
 
   initialize_segment(&xybounds, p->xmin, j, p->xmax, j);
 
-  if (clip_bounds(p->pixmap, p->data, &xylimit, &xybounds)) {
+  if (clip_bounds(p->pixmap, p->weights, &xylimit, &xybounds)) {
     driz_error_set_message(p->error, "cannot compute xbounds");
     return 1;
   }
@@ -511,7 +520,7 @@ check_image_overlap(struct driz_param_t* p, const int margin, integer_t *ybounds
     initialize_segment(&xybounds[ipoint], ybounds[ipoint], p->ymin,
                                           ybounds[ipoint], p->ymax);
     
-    if (clip_bounds(p->pixmap, p->data, &xylimit, &xybounds[ipoint])) {
+    if (clip_bounds(p->pixmap, p->weights, &xylimit, &xybounds[ipoint])) {
       driz_error_set_message(p->error, "cannot compute ybounds");
       return 1;
     }

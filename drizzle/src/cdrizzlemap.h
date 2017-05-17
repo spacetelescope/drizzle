@@ -31,6 +31,7 @@ show_segment(struct segment *self,
 void
 shrink_segment(struct segment *self,
                PyArrayObject *pixmap,
+               PyArrayObject *weights,
                int jdim);
 
 void
@@ -52,7 +53,7 @@ map_point(PyArrayObject * pixmap,
 
 int
 clip_bounds(PyArrayObject *pixmap,
-            PyArrayObject *data,
+            PyArrayObject *weights,
             struct segment *xylimit,
             struct segment *xybounds
            );

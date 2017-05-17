@@ -82,7 +82,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   float inv_exposure_time;
   struct driz_error_t error;
   struct driz_param_t p;
-  integer_t psize[2], isize[2];
+  integer_t isize[2], psize[2], wsize[2];
 
   driz_log_handle = driz_log_init(driz_log_handle);
   driz_log_message("starting tdriz");
@@ -157,14 +157,20 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
 #endif
   }
 
-  get_dimensions(map, psize);
   get_dimensions(img, isize);
+  get_dimensions(map, psize);
+  get_dimensions(wei, wsize);
   
   if (psize[0] != isize[0] || psize[1] != isize[1]) {
     driz_error_set_message(&error, "Pixel map dimensions != input dimensions");
     goto _exit;
   }
 
+  if (wsize[0] != isize[0] || wsize[1] != isize[1]) {
+    driz_error_set_message(&error, "Weights array  dimensions != input dimensions");
+    goto _exit;
+  }
+  
   /* Set the area to be processed */
 
   if (xmax == 0) xmax = isize[0];
