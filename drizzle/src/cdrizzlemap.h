@@ -30,7 +30,7 @@ show_segment(struct segment *self,
 
 void
 shrink_segment(struct segment *self,
-               PyArrayObject *data,
+               PyArrayObject *pixmap,
                int jdim);
 
 void

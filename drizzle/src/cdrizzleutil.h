@@ -241,7 +241,8 @@ oob_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
   if (ypix < 0 || ypix >= ndim[0]) flag = 1;
 
   if (flag) {
-    sprintf(buffer, "OOB in output data [%d,%d]", xpix, ypix);
+    sprintf(buffer, "Point [%d,%d] is outside of [%d, %d]",
+            xpix, ypix, (int) ndim[1], (int) ndim[0]);
     driz_log_message(buffer);
   }
   

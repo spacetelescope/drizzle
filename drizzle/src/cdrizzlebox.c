@@ -27,7 +27,6 @@ update_data(struct driz_param_t* p, const integer_t ii, const integer_t jj,
             const float d, const float vc, const float dow) {
 
   const double vc_plus_dow = vc + dow;
-  driz_log_message("starting update_data");
   
   /* Just a simple calculation without logical tests */
   if (vc == 0.0) {
@@ -56,7 +55,6 @@ update_data(struct driz_param_t* p, const integer_t ii, const integer_t jj,
     set_pixel(p->output_counts, ii, jj, vc_plus_dow);
   }
 
-  driz_log_message("ending update_data");
   return 0;
 }
 
@@ -102,7 +100,6 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
    * computed width is positive for two of the sides and negative for the other two,
    * we subtract the area outside the quadrilateral without any extra code.
    */
-  driz_log_message("starting compute_area");
   area = 0.0;
 
   border[0][0] = is - 0.5;
@@ -203,7 +200,6 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
     _nextsegment: continue;
   }
 
-  driz_log_message("ending compute_area");
   return fabs(area);
 }
 
