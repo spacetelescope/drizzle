@@ -4,7 +4,7 @@
 
 #include <Python.h>
 #ifndef NPY_NO_DEPRECATED_API
-#define NPY_NO_DEPRECATED_API NPY_1_10_API_VERSION
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #endif
 #include <numpy/arrayobject.h>
 
@@ -202,9 +202,14 @@ driz_log_message(const char* message) {
 }
 
 #else
-#define driz_log_init(handle) NULL
-#define driz_log_close(handle) 0
-#define driz_log_message(message) 0
+static inline_macro void *
+driz_log_idem(void *ptr) {
+    return ptr;
+}
+
+#define driz_log_init(handle) driz_log_idem(handle)
+#define driz_log_close(handle) driz_log_idem(handle)
+#define driz_log_message(message) driz_log_idem(message)
 #endif
 
 /****************************************************************************/
