@@ -157,22 +157,9 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
 #endif
   }
 
-  get_dimensions(img, isize);
-  get_dimensions(map, psize);
-  get_dimensions(wei, wsize);
-  
-  if (psize[0] != isize[0] || psize[1] != isize[1]) {
-    driz_error_set_message(&error, "Pixel map dimensions != input dimensions");
-    goto _exit;
-  }
-
-  if (wsize[0] != isize[0] || wsize[1] != isize[1]) {
-    driz_error_set_message(&error, "Weights array  dimensions != input dimensions");
-    goto _exit;
-  }
-  
   /* Set the area to be processed */
 
+  get_dimensions(img, isize);
   if (xmax == 0) xmax = isize[0];
   if (ymax == 0) ymax = isize[1];
   
@@ -216,7 +203,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   p.weight_scale = wtscl;
   p.fill_value = fill_value;
   p.error = &error;
-
+  
   if (driz_error_check(&error, "xmin must be >= 0", p.xmin >= 0)) goto _exit;
   if (driz_error_check(&error, "ymin must be >= 0", p.ymin >= 0)) goto _exit;
   if (driz_error_check(&error, "xmax must be > xmin", p.xmax > p.xmin)) goto _exit;
@@ -224,6 +211,20 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   if (driz_error_check(&error, "scale must be > 0", p.scale > 0.0)) goto _exit;
   if (driz_error_check(&error, "exposure time must be > 0", p.exposure_time)) goto _exit;
   if (driz_error_check(&error, "weight scale must be > 0", p.weight_scale > 0.0)) goto _exit;
+  
+  get_dimensions(p.pixmap, psize);
+  if (psize[0] != isize[0] || psize[1] != isize[1]) {
+    driz_error_set_message(&error, "Pixel map dimensions != input dimensions");
+    goto _exit;
+  }
+  
+  if (p.weights) {
+    get_dimensions(p.weights, wsize);
+    if (wsize[0] != isize[0] || wsize[1] != isize[1]) {
+      driz_error_set_message(&error, "Weights array  dimensions != input dimensions");
+      goto _exit;
+    }
+  }
   
   if (dobox(&p)) {
     goto _exit;

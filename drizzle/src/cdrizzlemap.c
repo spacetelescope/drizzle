@@ -57,72 +57,76 @@ show_segment(struct segment *self, char *str) {
 
 void
 shrink_segment(struct segment *self, PyArrayObject *pixmap,
-               PyArrayObject *weights, int jdim) {
-  int iside;
+               PyArrayObject *weights) {
+  int idim, iside;
   int xydim[2];
   
   get_dimensions(pixmap, xydim); 
+  for (idim = 0; idim < 2; ++idim) {      
+    for (iside = 0; iside < 2; ++iside) {
+      int kdim;
+      int delta;
+      integer_t pix[2];
+      int jside = (iside + 1) % 2;
       
-  for (iside = 0; iside < 2; ++iside) {
-    int kdim;
-    int delta;
-    integer_t pix[2];
-    int jside = (iside + 1) % 2;
-    
-    /* Set starting position and check for out of bounds */
-    for (kdim = 0; kdim < 2; ++kdim) {
-      pix[kdim] = self->point[iside][kdim];
-      
-      if (pix[kdim] < 0) {
-        pix[kdim] = 0;
-      } else if (pix[kdim] >= xydim[kdim]) {
-        pix[kdim] = xydim[kdim] - 1;
+      /* Set starting position and check for out of bounds */
+      for (kdim = 0; kdim < 2; ++kdim) {
+        pix[kdim] = self->point[iside][kdim];
+        
+        if (pix[kdim] < 0) {
+          pix[kdim] = 0;
+        } else if (pix[kdim] >= xydim[kdim]) {
+          pix[kdim] = xydim[kdim] - 1;
+        }
       }
-    }
-
-    if (self->point[iside][jdim] < self->point[jside][jdim]) {
-      delta = 1;
-    } else {
-      delta = -1;
-    }
-    
-    while (pix[jdim] != self->point[jside][jdim]) {
-      int is_bad = 0;
-      oob_pixel(weights, pix[0], pix[1]);
-      if (get_pixel(weights, pix[0], pix[1]) == 0.0) {
-        is_bad = 1;
-
-      } else {     
-        for (kdim = 0; kdim < 2; ++kdim) {
-          oob_pixel(pixmap, pix[0], pix[1]);
-          if (npy_isnan(get_pixmap(pixmap, pix[0], pix[1])[kdim])) {
-              is_bad = 1;
-              break;
+  
+      if (self->point[iside][idim] < self->point[jside][idim]) {
+        delta = 1;
+      } else {
+        delta = -1;
+      }
+      
+      while (pix[idim] != self->point[jside][idim]) {
+        int is_bad = 0;
+        if (weights) {
+          oob_pixel(weights, pix[0], pix[1]);
+          if (get_pixel(weights, pix[0], pix[1]) == 0.0) {
+            is_bad = 1;
           }
         }
-      }
-
-      if (is_bad) {
-        self->invalid = 1;
-      } else {
-        if (self->point[iside][jdim] < self->point[jside][jdim]) {
-          self->point[iside][jdim] = pix[jdim];
-        } else {
-          /* Asymetric limits */
-          self->point[iside][jdim] = pix[jdim] + 1;
+        
+        if (! is_bad) {
+          for (kdim = 0; kdim < 2; ++kdim) {
+            oob_pixel(pixmap, pix[0], pix[1]);
+            if (npy_isnan(get_pixmap(pixmap, pix[0], pix[1])[kdim])) {
+                is_bad = 1;
+                break;
+            }
+          }
         }
-        self->invalid = 0;
-        break;
+  
+        if (is_bad) {
+          self->invalid = 1;
+        } else {
+          if (self->point[iside][idim] < self->point[jside][idim]) {
+            self->point[iside][idim] = pix[idim];
+          } else {
+            /* Asymetric limits */
+            self->point[iside][idim] = pix[idim] + 1;
+          }
+          self->invalid = 0;
+          break;
+        }
+      
+        pix[idim] += delta;
       }
-    
-      pix[jdim] += delta;
+    }
+  
+    if (self->invalid) {
+      self->point[1][idim] = self->point[0][idim];
     }
   }
-
-  if (self->invalid) {
-    self->point[1][jdim] = self->point[0][jdim];
-  }
-
+  
   return;
 }
 
@@ -342,16 +346,14 @@ map_point(
  */
 
 int
-clip_bounds(PyArrayObject *pixmap, PyArrayObject *weights,
-            struct segment *xylimit, struct segment *xybounds) {
+clip_bounds(PyArrayObject *pixmap, struct segment *xylimit,
+            struct segment *xybounds) {
   int ipoint, idim, jdim;
   
   xybounds->invalid = 1; /* Track if bounds are both outside the image */
   
   for (idim = 0; idim < 2; ++idim) {
-    shrink_segment(xybounds, pixmap, weights, idim);
-  
-    for (ipoint = 0; ipoint < 2; ++ipoint) {
+      for (ipoint = 0; ipoint < 2; ++ipoint) {
       int m = 21;         /* maximum iterations */
       int side = 0;       /* flag indicating which side moved last */
   
@@ -470,8 +472,9 @@ check_line_overlap(struct driz_param_t* p, int margin, integer_t j, integer_t *x
                      osize[0] + margin, osize[1] + margin);
 
   initialize_segment(&xybounds, p->xmin, j, p->xmax, j);
+  shrink_segment(&xybounds, p->pixmap, p->weights);
 
-  if (clip_bounds(p->pixmap, p->weights, &xylimit, &xybounds)) {
+  if (clip_bounds(p->pixmap, &xylimit, &xybounds)) {
     driz_error_set_message(p->error, "cannot compute xbounds");
     return 1;
   }
@@ -520,7 +523,7 @@ check_image_overlap(struct driz_param_t* p, const int margin, integer_t *ybounds
     initialize_segment(&xybounds[ipoint], ybounds[ipoint], p->ymin,
                                           ybounds[ipoint], p->ymax);
     
-    if (clip_bounds(p->pixmap, p->weights, &xylimit, &xybounds[ipoint])) {
+    if (clip_bounds(p->pixmap, &xylimit, &xybounds[ipoint])) {
       driz_error_set_message(p->error, "cannot compute ybounds");
       return 1;
     }
