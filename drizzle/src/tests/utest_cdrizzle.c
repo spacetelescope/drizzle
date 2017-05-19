@@ -4,7 +4,7 @@
 #include <string.h>
 #include <Python.h>
 #ifndef NPY_NO_DEPRECATED_API
-#define NPY_NO_DEPRECATED_API NPY_1_10_API_VERSION
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #endif
 #include <numpy/arrayobject.h>
 #include <numpy/npy_math.h>
@@ -387,7 +387,7 @@ FCT_BGN_FN(utest_cdrizzle)
             initialize_segment(&xylimits, p->xmin, p->ymin, p->xmax, p->ymin);  
             initialize_segment(&xybounds, p->xmin, p->ymin, p->xmax, p->ymin);  
             
-            shrink_segment(&xybounds, p->data, 0);
+            shrink_segment(&xybounds, p->pixmap, p->weights);
             
             for (i = 0; i < 2; ++i) {
                 for (j = 0; j < 2; ++j) {
@@ -411,7 +411,7 @@ FCT_BGN_FN(utest_cdrizzle)
             initialize_segment(&xylimits, p->xmin, p->ymin, p->xmin, p->ymax);  
             initialize_segment(&xybounds, p->xmin, p->ymin, p->xmin, p->ymax);  
             
-            shrink_segment(&xybounds, p->data, 1);
+            shrink_segment(&xybounds, p->pixmap, p->weights);
             
             for (i = 0; i < 2; ++i) {
                 for (j = 0; j < 2; ++j) {
@@ -441,7 +441,7 @@ FCT_BGN_FN(utest_cdrizzle)
             initialize_segment(&xylimits, nan_max, p->ymin, p->xmax, p->ymin);  
             initialize_segment(&xybounds, p->xmin, p->ymin, p->xmax, p->ymin);  
             
-            shrink_segment(&xybounds, p->data, 0);
+            shrink_segment(&xybounds, p->pixmap, p->weights);
             for (i = 0; i < 2; ++i) {
                 for (j = 0; j < 2; ++j) {
                     fct_chk_eq_dbl(xybounds.point[i][j], xylimits.point[i][j]);
@@ -463,7 +463,7 @@ FCT_BGN_FN(utest_cdrizzle)
 
             initialize_segment(&xybounds, p->xmin, p->ymin, p->xmax, p->ymin);  
             
-            shrink_segment(&xybounds, p->data, 0);
+            shrink_segment(&xybounds, p->pixmap, p->weights);
             for (i = 0; i < 2; ++i) {
                 for (j = 0; j < 2; ++j) {
                     fct_chk_eq_dbl(xybounds.point[i][j], 0.0);

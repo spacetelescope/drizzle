@@ -10,6 +10,8 @@
 #define _USE_MATH_DEFINES       /* needed for MS Windows to define M_PI */
 #include <math.h>
 #include <stdlib.h>
+#include <numpy/npy_math.h>
+#include <numpy/arrayobject.h>
 
 /** --------------------------------------------------------------------------------------------------
  * Signature for functions that perform blotting interpolation.
@@ -941,14 +943,23 @@ doblot(struct driz_param_t* p) {
   /* Recalculate the area scaling factor */
   scale2 = p->scale * p->scale;
   v = 1.0;
-
-  /* Outer look over output image pixels (X, Y) */
+  
   for (j = 0; j < osize[1]; ++j) {
 
     /* Loop through the output positions and do the interpolation */
     for (i = 0; i < osize[0]; ++i) {
-      xo = get_pixmap(p->pixmap, i, j)[0];
-      yo = get_pixmap(p->pixmap, i, j)[1];
+      if (oob_pixel(p->pixmap, i, j)) {
+          driz_error_format_message(p->error, "OOB in pixmap[%d,%d]", i, j);
+          return 1;
+      } else {
+        xo = get_pixmap(p->pixmap, i, j)[0];
+        yo = get_pixmap(p->pixmap, i, j)[1];
+      }
+      
+      if (npy_isnan(xo) || npy_isnan(yo)) {
+          driz_error_format_message(p->error, "NaN in pixmap[%d,%d]", i, j);
+          return 1;
+      }
       
       /* Check it is on the input image */
       if (xo >= 0.0 && xo < isize[0] &&
@@ -962,13 +973,23 @@ doblot(struct driz_param_t* p) {
         }
         
         value = v * p->ef / scale2;
-        set_pixel(p->output_data, i, j, value);
+        if (oob_pixel(p->output_data, i, j)) {
+          driz_error_format_message(p->error, "OOB in output_data[%d,%d]", i, j);
+          return 1;
+        } else {
+          set_pixel(p->output_data, i, j, value);
+        }
 
       } else {
         /* If there is nothing for us then set the output to missing C
            value flag */
-        set_pixel(p->output_data, i, j, p->misval);
-        p->nmiss++;
+        if (oob_pixel(p->output_data, i, j)) {
+          driz_error_format_message(p->error, "OOB in output_data[%d,%d]", i, j);
+          return 1;
+        } else {
+          set_pixel(p->output_data, i, j, p->misval);
+          p->nmiss++;
+        }
       }
     }
   }

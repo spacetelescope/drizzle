@@ -4,7 +4,7 @@
 
 #include <Python.h>
 #ifndef NPY_NO_DEPRECATED_API
-#define NPY_NO_DEPRECATED_API NPY_1_10_API_VERSION
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #endif
 #include <numpy/arrayobject.h>
 
@@ -202,9 +202,14 @@ driz_log_message(const char* message) {
 }
 
 #else
-#define driz_log_init(handle) NULL
-#define driz_log_close(handle) 0
-#define driz_log_message(message) 0
+static inline_macro void *
+driz_log_idem(void *ptr) {
+    return ptr;
+}
+
+#define driz_log_init(handle) driz_log_idem(handle)
+#define driz_log_close(handle) driz_log_idem(handle)
+#define driz_log_message(message) driz_log_idem(message)
 #endif
 
 /****************************************************************************/
@@ -241,7 +246,8 @@ oob_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
   if (ypix < 0 || ypix >= ndim[0]) flag = 1;
 
   if (flag) {
-    sprintf(buffer, "OOB in output data [%d,%d]", xpix, ypix);
+    sprintf(buffer, "Point [%d,%d] is outside of [%d, %d]",
+            xpix, ypix, (int) ndim[1], (int) ndim[0]);
     driz_log_message(buffer);
   }
   

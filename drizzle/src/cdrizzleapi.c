@@ -82,7 +82,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   float inv_exposure_time;
   struct driz_error_t error;
   struct driz_param_t p;
-  integer_t isize[2];
+  integer_t isize[2], psize[2], wsize[2];
 
   driz_log_handle = driz_log_init(driz_log_handle);
   driz_log_message("starting tdriz");
@@ -158,7 +158,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   }
 
   /* Set the area to be processed */
-  
+
   get_dimensions(img, isize);
   if (xmax == 0) xmax = isize[0];
   if (ymax == 0) ymax = isize[1];
@@ -203,7 +203,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   p.weight_scale = wtscl;
   p.fill_value = fill_value;
   p.error = &error;
-
+  
   if (driz_error_check(&error, "xmin must be >= 0", p.xmin >= 0)) goto _exit;
   if (driz_error_check(&error, "ymin must be >= 0", p.ymin >= 0)) goto _exit;
   if (driz_error_check(&error, "xmax must be > xmin", p.xmax > p.xmin)) goto _exit;
@@ -211,6 +211,20 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   if (driz_error_check(&error, "scale must be > 0", p.scale > 0.0)) goto _exit;
   if (driz_error_check(&error, "exposure time must be > 0", p.exposure_time)) goto _exit;
   if (driz_error_check(&error, "weight scale must be > 0", p.weight_scale > 0.0)) goto _exit;
+  
+  get_dimensions(p.pixmap, psize);
+  if (psize[0] != isize[0] || psize[1] != isize[1]) {
+    driz_error_set_message(&error, "Pixel map dimensions != input dimensions");
+    goto _exit;
+  }
+  
+  if (p.weights) {
+    get_dimensions(p.weights, wsize);
+    if (wsize[0] != isize[0] || wsize[1] != isize[1]) {
+      driz_error_set_message(&error, "Weights array  dimensions != input dimensions");
+      goto _exit;
+    }
+  }
   
   if (dobox(&p)) {
     goto _exit;
@@ -269,7 +283,7 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
   int istat = 0;
   struct driz_error_t error;
   struct driz_param_t p;
-  integer_t osize[2];
+  integer_t psize[2], osize[2];
 
   driz_log_handle = driz_log_init(driz_log_handle);
   driz_log_message("starting tblot");
@@ -306,7 +320,14 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
     goto _exit;
   }
 
+  get_dimensions(map, psize);
   get_dimensions(out, osize);
+  
+  if (psize[0] != osize[0] || psize[1] != osize[1]) {
+    driz_error_set_message(&error, "Pixel map dimensions != output dimensions");
+    goto _exit;
+  }
+
   if (xmax == 0) xmax = osize[0];
   if (ymax == 0) ymax = osize[1];
 
