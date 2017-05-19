@@ -353,7 +353,7 @@ clip_bounds(PyArrayObject *pixmap, struct segment *xylimit,
   xybounds->invalid = 1; /* Track if bounds are both outside the image */
   
   for (idim = 0; idim < 2; ++idim) {
-      for (ipoint = 0; ipoint < 2; ++ipoint) {
+    for (ipoint = 0; ipoint < 2; ++ipoint) {
       int m = 21;         /* maximum iterations */
       int side = 0;       /* flag indicating which side moved last */
   
