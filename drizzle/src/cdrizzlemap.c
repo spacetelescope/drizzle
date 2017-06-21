@@ -47,86 +47,101 @@ show_segment(struct segment *self, char *str) {
 }
 
 /** --------------------------------------------------------------------------------------------------
- * Shrink the bounds to the range containing valid data
+ * Test if a pixmap vaue is bad (NaN)
  *
- * self:    the segment
- * pixmap:  array mapping input pixel coordinates to output pixel coordinates
- * weights: array of weights to apply when summing pixels
- * jdim:    the dimension to shrink, x (0) or y (1)
+ * pixmap: the pixel mapping between input and output images
+ * i:      the index of a pixel within a line
+ * j:      the index of a line within an image
  */
 
-void
-shrink_segment(struct segment *self, PyArrayObject *pixmap,
-               PyArrayObject *weights) {
-  int idim, iside;
-  int xydim[2];
-  
-  get_dimensions(pixmap, xydim); 
-  for (idim = 0; idim < 2; ++idim) {      
-    for (iside = 0; iside < 2; ++iside) {
-      int kdim;
-      int delta;
-      integer_t pix[2];
-      int jside = (iside + 1) % 2;
-      
-      /* Set starting position and check for out of bounds */
-      for (kdim = 0; kdim < 2; ++kdim) {
-        pix[kdim] = self->point[iside][kdim];
-        
-        if (pix[kdim] < 0) {
-          pix[kdim] = 0;
-        } else if (pix[kdim] >= xydim[kdim]) {
-          pix[kdim] = xydim[kdim] - 1;
-        }
-      }
-  
-      if (self->point[iside][idim] < self->point[jside][idim]) {
-        delta = 1;
-      } else {
-        delta = -1;
-      }
-      
-      while (pix[idim] != self->point[jside][idim]) {
-        int is_bad = 0;
-        if (weights) {
-          oob_pixel(weights, pix[0], pix[1]);
-          if (get_pixel(weights, pix[0], pix[1]) == 0.0) {
-            is_bad = 1;
-          }
-        }
-        
-        if (! is_bad) {
-          for (kdim = 0; kdim < 2; ++kdim) {
-            oob_pixel(pixmap, pix[0], pix[1]);
-            if (npy_isnan(get_pixmap(pixmap, pix[0], pix[1])[kdim])) {
-                is_bad = 1;
-                break;
-            }
-          }
-        }
-  
-        if (is_bad) {
-          self->invalid = 1;
-        } else {
-          if (self->point[iside][idim] < self->point[jside][idim]) {
-            self->point[iside][idim] = pix[idim];
-          } else {
-            /* Asymetric limits */
-            self->point[iside][idim] = pix[idim] + 1;
-          }
-          self->invalid = 0;
-          break;
-        }
-      
-        pix[idim] += delta;
-      }
-    }
-  
-    if (self->invalid) {
-      self->point[1][idim] = self->point[0][idim];
+int
+bad_pixel(PyArrayObject *pixmap, int i, int j) {
+  int k;
+  for (k = 0; k < 2; ++k) {
+    oob_pixel(pixmap, i, j);
+    if (npy_isnan(get_pixmap(pixmap, i, j)[k])) {
+      return 1;
     }
   }
   
+  return 0;
+}
+
+/** --------------------------------------------------------------------------------------------------
+ * Test if weight value is bad (zero)
+ *
+ * weights the weight to be given each pixel in an image
+ * i:      the index of a pixel within a line
+ * j:      the index of a line within an image
+ */
+
+int
+bad_weight(PyArrayObject *weights, int i, int j) {
+
+  if (weights) {
+    oob_pixel(weights, i, j);
+    if (get_pixel(weights, i, j) == 0.0) {
+      return 1;
+    } else {
+      return 0;
+    } 
+  }
+  
+  return 0;
+}
+
+/** --------------------------------------------------------------------------------------------------
+ * Set the bounds of a segment to the range containing valid data
+ *
+ * self:    the segment
+ * p:       the stucture containing the image pointers
+ * pixmap:  array mapping input pixel coordinates to output pixel coordinates
+ * weights: array of weights to apply when summing pixels
+ */
+
+void
+shrink_segment(struct segment *self,
+               PyArrayObject *array,
+               int (*is_bad_value)(PyArrayObject *, int, int)) {
+
+  int i, j, imin, imax, jmin, jmax;
+
+  imin = self->point[1][0];
+  jmin = self->point[1][1];
+  
+  for (j = self->point[0][1]; j < self->point[1][1]; ++j) {
+    for (i = self->point[0][0]; i < self->point[1][0]; ++ i) {
+      if (! is_bad_value(array, i, j)) {
+        if (i < imin) {
+          imin = i;
+        }
+        if (j < jmin) {
+          jmin = j;
+        }
+        break;
+      }
+    }
+  }
+  
+  imax = self->point[0][0];
+  jmax = self->point[0][1];
+
+  for (j = self->point[1][1]; j > self->point[0][1]; --j) {  
+    for (i = self->point[1][0]; i > self->point[0][0]; -- i) {
+      if (! is_bad_value(array, i-1, j-1)) {
+        if (i > imax) {
+          imax = i;
+        }
+        if (j > jmax) {
+          jmax = j;
+        }
+        break;
+      }
+    }
+  }
+  
+  initialize_segment(self, imin, jmin, imax, jmax);
+  self->invalid = imin >= imax || jmin >= jmax;
   return;
 }
 
@@ -191,7 +206,8 @@ union_of_segments(int npoint, int jdim, struct segment xybounds[], integer_t bou
   }
   
   if (none) {
-    bounds[1] = bounds[0];
+    bounds[0] = 0;
+    bounds[1] = 0;
   }
 
   return;
@@ -206,8 +222,8 @@ union_of_segments(int npoint, int jdim, struct segment xybounds[], integer_t bou
  * xybounds: The bounds for the linear interpolation (output)
  */
 
-void
-map_bounds(
+int
+interpolation_bounds(
   PyArrayObject *pixmap,
   const double  xyin[2],
   int           idim,
@@ -217,7 +233,6 @@ map_bounds(
   int d;
   int kdim;
   int iside;
-  int retry;
   int xy[2];
   int xydim[2];
   int xystart[2];
@@ -251,19 +266,18 @@ map_bounds(
      * we find four valid points on the line
      */
     d = 0;
-    retry = 0;
     xy[jdim] = xystart[jdim] + iside;
-    
-    while (retry < 3 && ipix < 4) {
+      
+    while (ipix < 4) {
         
       /* Get next point to check */
       xy[idim] = xystart[idim] + d;
-    
+      
       /* If we are on the image */
       if (xy[idim] >= 0 && xy[idim] < xydim[idim]) {
-        retry = 0;
 
         /* Check if the pixel value is NaN */ 
+        oob_pixel(pixmap, xy[0], xy[1]); 
         double pixval = get_pixmap(pixmap, xy[0], xy[1])[idim];
     
         /* If not, copy it to output as a good point */
@@ -273,9 +287,6 @@ map_bounds(
           }
           ++ ipix;
         }
-
-      } else {
-        ++ retry;
       }
 
       /* Compute next step size */
@@ -283,11 +294,18 @@ map_bounds(
         d = -d;
       } else {
         d = 1- d;
+        if (d > 4) {
+            break;
+        }
       }
     }
   }
   
-  assert(ipix == 4);
+  if (ipix == 4) {
+    return 0;
+  } else {
+    return 1;
+  }
 }
 
 /** --------------------------------------------------------------------------------------------------
@@ -300,8 +318,8 @@ map_bounds(
  * xyout:  The same (x, y) point on the output image (output)
  */
 
-void
-map_point(
+int
+interpolate_point(
   PyArrayObject *pixmap, 
   const double  xyin[2], 
   double        xyout[2] 
@@ -310,13 +328,16 @@ map_point(
   int xypix[4][2];
   double partial[4];
   int ipix, jpix, npix, idim;
-  
+
   for (idim = 0; idim < 2; ++idim) {
     /* Find the four points that bound the linear interpolation */
-    map_bounds(pixmap, xyin, idim, (int *)xypix);
+    if (interpolation_bounds(pixmap, xyin, idim, (int *)xypix)) {
+        return 1;
+    }
 
     /* Evaluate pixmap at these points */
     for (ipix = 0; ipix < 4; ++ ipix) {
+      oob_pixel(pixmap, xypix[ipix][0], xypix[ipix][1]);
       partial[ipix] = get_pixmap(pixmap,
                                  xypix[ipix][0],
                                  xypix[ipix][1])[idim];
@@ -334,25 +355,97 @@ map_point(
 
     xyout[idim] = partial[0];
   }
+
+  return 0;
+}
+
+/** --------------------------------------------------------------------------------------------------
+ * Map an integer pixel position from the input to the output image.
+ * Fall back on interpolation if the value at the point is undefined
+ * 
+ * pixmap: The mapping of the pixel centers from input to output image
+ * i        The index of the x coordinate
+ * j        The index of the y coordinate
+ * xyout:  The (x, y) point on the output image (output)
+ */
+
+int
+map_pixel(
+  PyArrayObject *pixmap, 
+  int           i,
+  int           j,
+  double        xyout[2] 
+  ) {
+
+  int k;
+
+  oob_pixel(pixmap, i, j);
+  for (k = 0; k < 2; ++k) {
+    xyout[k] = get_pixmap(pixmap, i, j)[k];
+
+    if (npy_isnan(xyout[k])) {
+      double xyin[2];
+      xyin[0] = i;
+      xyin[1] = j;
+      return interpolate_point(pixmap, xyin, xyout); 
+    }
+  }
+
+  return 0;
+}
+
+/** --------------------------------------------------------------------------------------------------
+ * Map a point on the input image to the output image either by interpolation
+ * or direct array acces if the input position is integral.
+ *
+ * pixmap: The mapping of the pixel centers from input to output image
+ * xyin:   An (x,y) point on the input image
+ * xyout:  The same (x, y) point on the output image (output)
+ */
+
+int
+map_point(
+  PyArrayObject *pixmap, 
+  const double  xyin[2], 
+  double        xyout[2] 
+  ) {
+
+  int i, j, status, mapsize[2];
+
+  i = xyin[0];
+  j = xyin[1];
+  get_dimensions(pixmap, mapsize);
+  
+  if ((double) i == xyin[0] && i >= 0 && i < mapsize[0] &&
+      (double) j == xyin[1] && j >= 0 && j < mapsize[1]) {
+    status = map_pixel(pixmap, i, j, xyout);
+
+  } else {
+    status = interpolate_point(pixmap, xyin, xyout);
+  }
+
+  return status;
 }
 
 /** --------------------------------------------------------------------------------------------------
  * Clip a line segment from an input image to the limits of an output image along one dimension
  *
  * pixmap:   the mapping between input and output images
- * xylimit:  the limits  of the output image
+ * outlimit:  the limits  of the output image
  * xybounds: the clipped line segment (output)
  * 
  */
 
 int
-clip_bounds(PyArrayObject *pixmap, struct segment *xylimit,
+clip_bounds(PyArrayObject *pixmap, struct segment *outlimit,
             struct segment *xybounds) {
   int ipoint, idim, jdim;
-  
-  xybounds->invalid = 1; /* Track if bounds are both outside the image */
-  
-  for (idim = 0; idim < 2; ++idim) {
+
+  if (xybounds->invalid) {
+    return 0;
+  }
+
+  for (idim = 0; idim < 2; ++idim) {    
     for (ipoint = 0; ipoint < 2; ++ipoint) {
       int m = 21;         /* maximum iterations */
       int side = 0;       /* flag indicating which side moved last */
@@ -361,30 +454,37 @@ clip_bounds(PyArrayObject *pixmap, struct segment *xylimit,
       double a, b, c, fa, fb, fc;
       
       /* starting values at endpoints of interval */
-  
+
       for (jdim = 0; jdim < 2; ++jdim) {
         xyin[jdim] = xybounds->point[0][jdim];
       }
- 
-      oob_pixel(pixmap, xyin[0], xyin[1]);     
-      map_point(pixmap, xyin, xyout);
+      
+      if (map_point(pixmap, xyin, xyout)) {
+        /* Cannot find bound */
+        return 0;
+      }
+            
       a = xybounds->point[0][idim];
-      fa = xyout[idim] - xylimit->point[ipoint][idim];
+      fa = xyout[idim] - outlimit->point[ipoint][idim];
       
       for (jdim = 0; jdim < 2; ++jdim) {
         xyin[jdim] = xybounds->point[1][jdim];
       }
-  
-      oob_pixel(pixmap, xyin[0], xyin[1]); 
-      map_point(pixmap, xyin, xyout);
+      
+      if (map_point(pixmap, xyin, xyout)) {
+        /* Cannot find bound */
+        return 0;
+      }
+
       c = xybounds->point[1][idim];
-      fc = xyout[idim] - xylimit->point[ipoint][idim];
+      fc = xyout[idim] - outlimit->point[ipoint][idim];
   
       /* Solution via the method of false position (regula falsi) */
   
       if (fa * fc < 0.0) {
         int n; /* for loop limit is just for safety's sake */
         
+        xybounds->invalid = 0;
         for (n = 0; n < m; n++) {
           b = (fa * c - fc * a) / (fa - fc);
           
@@ -392,9 +492,11 @@ clip_bounds(PyArrayObject *pixmap, struct segment *xylimit,
           if (floor(a) == floor(c)) break;
           
           xyin[idim] = b;
-          oob_pixel(pixmap, xyin[0], xyin[1]); 
-          map_point(pixmap, xyin, xyout);
-          fb = xyout[idim] - xylimit->point[ipoint][idim];
+          if (map_point(pixmap, xyin, xyout)) {
+            /*  cannot map point, so end interpolation */
+            break;
+          }
+          fb = xyout[idim] - outlimit->point[ipoint][idim];
   
           /* Maintain the bound by copying b to the variable
            * with the same sign as b
@@ -423,27 +525,28 @@ clip_bounds(PyArrayObject *pixmap, struct segment *xylimit,
         }
   
         if (n > m) {
-          xybounds->invalid = 1;
           return 1;
         }
 
-        xybounds->invalid = 0;
         xybounds->point[ipoint][idim] = b;
-  
+
       } else {
         /* No bracket, so track which side the bound lies on */
+        if (xybounds->invalid == 0) {
+            xybounds->invalid = 1;
+        }
         xybounds->invalid *= fa > 0.0 ? +1 : -1;
       }
     }
-  
+
     if (xybounds->invalid > 0) {
-        /* Positive means both bounds are outside the image */
-        xybounds->point[1][idim] = xybounds->point[0][idim];
-        break;
+      /* Positive means both bounds are outside the image */
+      xybounds->point[1][idim] = xybounds->point[0][idim];
+      break;
 
     } else {
-        /* Negative means both bounds are inside, which is not a problem */
-        xybounds->invalid = 0;
+      /* Negative means both bounds are inside, which is not a problem */
+      xybounds->invalid = 0;
     }
   }
 
@@ -463,24 +566,23 @@ clip_bounds(PyArrayObject *pixmap, struct segment *xylimit,
 
 int
 check_line_overlap(struct driz_param_t* p, int margin, integer_t j, integer_t *xbounds) {
-  struct segment xylimit, xybounds;
+  struct segment outlimit, xybounds;
   integer_t isize[2], osize[2];
-
-  
+    
   get_dimensions(p->output_data, osize);  
-  initialize_segment(&xylimit, - margin, - margin,
+  initialize_segment(&outlimit, - margin, - margin,
                      osize[0] + margin, osize[1] + margin);
 
-  initialize_segment(&xybounds, p->xmin, j, p->xmax, j);
-  shrink_segment(&xybounds, p->pixmap, p->weights);
-
-  if (clip_bounds(p->pixmap, &xylimit, &xybounds)) {
+  initialize_segment(&xybounds, p->xmin, j, p->xmax, j+1);
+  shrink_segment(&xybounds, p->pixmap, &bad_pixel);
+  
+  if (clip_bounds(p->pixmap, &outlimit, &xybounds)) {
     driz_error_set_message(p->error, "cannot compute xbounds");
     return 1;
   }
 
- 
   sort_segment(&xybounds, 0);
+  shrink_segment(&xybounds, p->weights, &bad_weight);
 
   xbounds[0] = floor(xybounds.point[0][0]);
   xbounds[1] = ceil(xybounds.point[1][0]);
@@ -508,22 +610,28 @@ check_line_overlap(struct driz_param_t* p, int margin, integer_t j, integer_t *x
 int
 check_image_overlap(struct driz_param_t* p, const int margin, integer_t *ybounds) {
 
-  struct segment xylimit, xybounds[2];
+  struct segment inlimit, outlimit, xybounds[2];
   integer_t isize[2], osize[2];
   int ipoint;
-
-  ybounds[0] = p->xmin;
-  ybounds[1] = p->xmax;
   
   get_dimensions(p->output_data, osize);  
-  initialize_segment(&xylimit, - margin, - margin,
+  initialize_segment(&outlimit, - margin, - margin,
                      osize[0] + margin, osize[1] + margin);
 
+  initialize_segment(&inlimit, p->xmin, p->ymin, p->xmax, p->ymax);
+  shrink_segment(&inlimit, p->pixmap, &bad_pixel);
+  
+  if (inlimit.invalid == 1) {
+      driz_error_set_message(p->error, "no valid pixels on input image");
+      return 1;
+    }
+
   for (ipoint = 0; ipoint < 2; ++ipoint) {
-    initialize_segment(&xybounds[ipoint], ybounds[ipoint], p->ymin,
-                                          ybounds[ipoint], p->ymax);
-    
-    if (clip_bounds(p->pixmap, &xylimit, &xybounds[ipoint])) {
+    initialize_segment(&xybounds[ipoint],
+                       inlimit.point[ipoint][0], inlimit.point[0][1],
+                       inlimit.point[ipoint][0], inlimit.point[1][1]);
+
+    if (clip_bounds(p->pixmap, &outlimit, &xybounds[ipoint])) {
       driz_error_set_message(p->error, "cannot compute ybounds");
       return 1;
     }
