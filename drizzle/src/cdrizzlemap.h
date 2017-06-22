@@ -28,10 +28,22 @@ show_segment(struct segment *self,
              char *str
             );
 
+int
+bad_pixel(PyArrayObject *pixmap,
+          int i,
+          int j
+          );
+
+int
+bad_weight(PyArrayObject *weights,
+           int i,
+           int j
+           );
+
 void
 shrink_segment(struct segment *self,
-               PyArrayObject *pixmap,
-               PyArrayObject *weights
+               PyArrayObject *array,
+               int (*is_bad_value)(PyArrayObject *, int, int)
                );
 
 void
@@ -45,10 +57,17 @@ union_of_segments(int npoint, int jdim,
                   integer_t bounds[2]
                  );
 
-void
+int
 map_point(PyArrayObject * pixmap,
           const double xyin[2],
           double xyout[2]
+         );
+
+int
+map_pixel(PyArrayObject *pixmap, 
+          int    i,
+          int    j,
+          double xyout[2] 
          );
 
 int

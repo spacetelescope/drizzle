@@ -196,6 +196,9 @@ driz_log_close(FILE *handle) {
 
 static inline_macro int
 driz_log_message(const char* message) {
+    if (! driz_log_handle)
+        driz_log_handle = driz_log_init(driz_log_handle);
+
     fputs(message, driz_log_handle);
     fputs("\n", driz_log_handle);
     return 0;
