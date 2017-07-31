@@ -96,7 +96,7 @@ for entry_point in entry_point_list:
 c_files = []
 for root, dirs, files in os.walk(PACKAGENAME):
     for filename in files:
-        if filename.endswith('.c'):
+        if filename.endswith('.c') or filename.endswith('.h'):
             c_files.append(
                 os.path.join(
                     os.path.relpath(root, PACKAGENAME), filename))
