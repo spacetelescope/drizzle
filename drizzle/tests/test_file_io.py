@@ -70,9 +70,9 @@ def test_null_run():
     output_wcs = read_wcs(output_template)
     driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="expsq",
                                    pixfrac=0.5, kernel="turbo",
-                                   fillval="999.")
+                                   fillval="NaN")
     driz.write(output_file)
-    
+
     assert(os.path.exists(output_file))
     handle = fits.open(output_file)
 
@@ -87,7 +87,7 @@ def test_null_run():
     assert(pheader['DRIZWTSC'] == 'expsq')
     assert(pheader['DRIZKERN'] == 'turbo')
     assert(pheader['DRIZPIXF'] == 0.5)
-    assert(pheader['DRIZFVAL'] == '999.')
+    assert(pheader['DRIZFVAL'] == 'NaN')
     assert(pheader['DRIZOUUN'] == 'cps')
     assert(pheader['EXPTIME'] == 0.0)
     assert(pheader['DRIZEXPT'] == 1.0)
@@ -106,13 +106,13 @@ def test_file_init():
     assert(driz.wt_scl == 'expsq')
     assert(driz.kernel == 'turbo')
     assert(driz.pixfrac == 0.5)
-    assert(driz.fillval == '999.')
+    assert(driz.fillval == 'NaN')
 
 def test_add_header():
     """
     Add extra keywords read from the header
     """
-    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')        
+    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
     output_file = os.path.join(OUTPUT_DIR, 'output_add_header.fits')
     output_template = os.path.join(DATA_DIR, 'reference_square_point.fits')
 
@@ -126,7 +126,7 @@ def test_add_header():
     header['TWOVAL'] = (2.0, 'test value')
 
     driz.write(output_file, outheader=header)
-    
+
     header = read_header(output_file)
     assert(header['ONEVAL'] == 1.0)
     assert(header['TWOVAL'] == 2.0)
@@ -136,7 +136,7 @@ def test_add_file():
     """
     Add an image read from a file
     """
-    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits[1]')        
+    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits[1]')
     output_file = os.path.join(OUTPUT_DIR, 'output_add_file.fits')
     test_file = os.path.join(OUTPUT_DIR, 'output_add_header.fits')
     output_template = os.path.join(DATA_DIR, 'reference_square_point.fits')
@@ -165,7 +165,7 @@ def test_blot_file():
     driz.add_fits_file(input_file)
     driz.blot_image(blotwcs)
     driz.write(test_file)
-    
+
     driz = drizzle.Drizzle(infile=output_template)
     driz.add_fits_file(input_file)
     driz.blot_fits_file(input_file)
