@@ -3,60 +3,64 @@
 # install Python ourselves using conda.
 language: c
 
+compiler: gcc
+
+# Cache can be cleared from the travis settings menu, see docs currently at
+# https://docs.travis-ci.com/user/caching#Clearing-Caches
+cache:
+  - ccache
+
 os:
     - linux
+
+stage: Comprehensive tests
 
 # Setting sudo to false opts in to Travis-CI container-based builds.
 sudo: false
 
-# The apt packages below are needed for sphinx builds. A full list of packages
-# that can be included can be found here:
-#
-# https://github.com/travis-ci/apt-package-whitelist/blob/master/ubuntu-precise
-
+# The apt packages below are needed for sphinx builds, which can no longer
+# be installed with sudo apt-get.
 addons:
     apt:
         packages:
             - graphviz
-            - texlive-latex-extra
-            - dvipng
+            - language-pack-de
 
 env:
     global:
-
-        # The following versions are the 'default' for tests, unless
-        # overridden underneath. They are defined here in order to save having
-        # to repeat them for all configurations.
+        # Set defaults to avoid repeating in most cases
         - PYTHON_VERSION=3.6
-        - NUMPY_VERSION=stable
-        - ASTROPY_VERSION=stable
+	- NUMPY_VERSION=stable
         - MAIN_CMD='python setup.py'
-        - SETUP_CMD='test'
-        - PIP_DEPENDENCIES=''
-        - EVENT_TYPE='pull_request push'
-
-    # For this package-template, we include examples of Cython modules,
-        # so Cython is required for testing. If your package does not include
-        # Cython code, you can set CONDA_DEPENDENCIES=''
         - CONDA_DEPENDENCIES='Cython'
+        - CONDA_ALL_DEPENDENCIES='astropy Cython'
+        - SETUP_XVFB=True
+        - EVENT_TYPE='push pull_request'
+        - SETUP_CMD='test'
 
-        # Conda packages for affiliated packages are hosted in channel
-        # "astropy" while builds for astropy LTS with recent numpy versions
-        # are in astropy-ci-extras. If your package uses either of these,
-        # add the channels to CONDA_CHANNELS along with any other channels
-        # you want to use.
-        - CONDA_CHANNELS='astropy-ci-extras astropy'
+        # PEP8 errors/warnings:
+        # E101 - mix of tabs and spaces
+        # W191 - use of tabs
+        # W291 - trailing whitespace
+        # W292 - no newline at end of file
+        # W293 - trailing whitespace
+        # W391 - blank line at end of file
+        # E111 - 4 spaces per indentation level
+        # E112 - 4 spaces per indentation level
+        # E113 - 4 spaces per indentation level
+        # E502 - the backslash is redundant between brackets
+        # E722 - do not use bare except
+        # E901 - SyntaxError or IndentationError
+        # E902 - IOError
+        - FLAKE8_OPT="--select=E101,W191,W291,W292,W293,W391,E111,E112,E113,E502,E722,E901,E902"
 
-        # If there are matplotlib or other GUI tests, uncomment the following
-        # line to use the X virtual framebuffer.
-        # - SETUP_XVFB=True
-
-    matrix:
-        # Make sure that egg_info works without dependencies
-        - PYTHON_VERSION=2.7 SETUP_CMD='egg_info'
-        - PYTHON_VERSION=3.4 SETUP_CMD='egg_info'
-        - PYTHON_VERSION=3.5 SETUP_CMD='egg_info'
-        - PYTHON_VERSION=3.6 SETUP_CMD='egg_info'
+stages:
+   # Do the style check and a single test job, don't proceed if it fails
+   - name: Initial tests
+   # Do the rest of the tests
+   - name: Comprehensive tests
+   - name: Cron tests
+     if: type = cron
 
 matrix:
 
@@ -64,74 +68,124 @@ matrix:
     fast_finish: true
 
     include:
-        # Try MacOS X
-        - os: osx
-          env: SETUP_CMD='test'
 
-        # Do a coverage test.
-        - os: linux
-          env: SETUP_CMD='test --coverage'
+        - stage: Initial tests
+          env: PYTHON_VERSION=3.5 SETUP_CMD='egg_info'
+
+        - stage: Initial tests
+          env: PYTHON_VERSION=3.6 SETUP_CMD='egg_info'
+
+        # Try MacOS X. Use a slightly old numpy version to help test against
+        # all supported numpy versions.
+        - os: osx
+          stage: Cron tests
+          env: SETUP_CMD='test --remote-data=astropy'
+               CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
+               PIP_DEPENDENCIES='' EVENT_TYPE='cron'
 
         # Check for sphinx doc build warnings - we do this first because it
-        # may run for a long time
+        # runs for a long time. The sphinx build also has some additional
+        # dependencies. Using a more stringent locale than UTF-8.
         - os: linux
           env: SETUP_CMD='build_docs -w'
-
-        # Now try Astropy dev and LTS vesions with the latest 3.x and 2.7.
-        - os: linux
-          env: PYTHON_VERSION=2.7 ASTROPY_VERSION=development
-               EVENT_TYPE='pull_request push cron'
-        - os: linux
-          env: ASTROPY_VERSION=development
-               EVENT_TYPE='pull_request push cron'
-        - os: linux
-          env: PYTHON_VERSION=2.7 ASTROPY_VERSION=lts
-        - os: linux
-          env: ASTROPY_VERSION=lts
+               CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
+               PIP_DEPENDENCIES=''
+               LC_CTYPE=C LC_ALL=C LANG=C
 
         # Try all python versions and Numpy versions. Since we can assume that
         # the Numpy developers have taken care of testing Numpy with different
         # versions of Python, we can vary Python and Numpy versions at the same
-        # time.
-
-        - os: linux
-          env: PYTHON_VERSION=2.7 NUMPY_VERSION=1.10
-        - os: linux
-          env: PYTHON_VERSION=3.4 NUMPY_VERSION=1.9
+        # time. Since we test the latest Numpy as part of the builds with all
+        # optional dependencies below, we can focus on older builds here.
+        # Numpy 1.11 is tested below, 1.12 in the Initial stage test.
+        # Run this test using native pytest
         - os: linux
           env: PYTHON_VERSION=3.5 NUMPY_VERSION=1.10
-        - os: linux
-          env: NUMPY_VERSION=1.11
+               INSTALL_CMD='python setup.py build_ext --inplace'
+               PIP_DEPENDENCIES='pytest-astropy'
+               TEST_CMD='pytest --open-files --doctest-rst'
+          script:
+            - $INSTALL_CMD
+            - $TEST_CMD
 
-        # Try numpy pre-release
+        # Now try with all optional dependencies.
+        - os: linux
+          env: PYTHON_VERSION=3.5 SETUP_CMD='test --remote-data=astropy'
+               CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
+               PIP_DEPENDENCIES="jplephem $ASDF_GIT"
+               LC_CTYPE=C.ascii LC_ALL=C
+               NUMPY_VERSION=1.11
+               MATPLOTLIB_VERSION=1.5
+
+        - os: linux
+          stage: Initial tests
+          env: CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
+               PYTEST_VERSION='>3.2'
+               SETUP_CMD='test -a "--durations=50"'
+          compiler: clang
+
+        # Pinning conda version temporarily to 4.3.21, as some anaconda
+        # packges build with 4.3.27 are faulty and we see this job failing,
+        # while locally there are no issues when the same version of
+        # packages are installed from pip.
+        # TODO: remove the pinning once the issue is solved upstream.
+        - os: linux
+          env: SETUP_CMD='test --coverage --remote-data=astropy'
+               CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
+               PIP_DEPENDENCIES=""
+               LC_CTYPE=C.ascii LC_ALL=C
+               CFLAGS='-ftest-coverage -fprofile-arcs -fno-inline-functions -O0'
+               MATPLOTLIB_VERSION=2.0 NUMPY_VERSION=1.13
+               EVENT_TYPE='push pull_request cron'
+               CONDA_VERSION=4.3.21
+
+        # Try pre-release version of Numpy without optional dependencies
         - os: linux
           env: NUMPY_VERSION=prerelease
-               EVENT_TYPE='pull_request push cron'
+               EVENT_TYPE='push pull_request cron'
+
+        # Try older numpy versions
+        - os: linux
+          env: NUMPY_VERSION=1.12
+               EVENT_TYPE='push pull_request cron'
+
+        # Do a PEP8/pyflakes test with flake8
+        - os: linux
+          stage: Initial tests
+          env: MAIN_CMD="flake8 astropy --count $FLAKE8_OPT" SETUP_CMD=''
+
+        # Try developer version of Numpy with optional dependencies and also
+        # run all remote tests. Since both cases will be potentially
+        # unstable, we combine them into a single unstable build that we can
+        # mark as an allowed failure below.
+        - os: linux
+          env: NUMPY_VERSION=dev SETUP_CMD='test --remote-data'
+               CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
+
+        # We check numpy-dev also in a job that only runs from cron, so that
+        # we can spot issues sooner. We do not use remote data here, since
+        # that gives too many false positives due to URL timeouts.
+        - os: linux
+          stage: Cron tests
+          env: NUMPY_VERSION=dev EVENT_TYPE='cron'
+               CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
+
+    allow_failures:
+      - os: linux
+        env: NUMPY_VERSION=dev SETUP_CMD='test --remote-data'
+             CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
 
 install:
-
-    # We now use the ci-helpers package to set up our testing environment.
-    # This is done by using Miniconda and then using conda and pip to install
-    # dependencies. Which dependencies are installed using conda and pip is
-    # determined by the CONDA_DEPENDENCIES and PIP_DEPENDENCIES variables,
-    # which should be space-delimited lists of package names. See the README
-    # in https://github.com/astropy/ci-helpers for information about the full
-    # list of environment variables that can be used to customize your
-    # environment. In some cases, ci-helpers may not offer enough flexibility
-    # in how to install a package, in which case you can have additional
-    # commands in the install: section below.
-
     - git clone git://github.com/astropy/ci-helpers.git
-    - source ci-helpers/travis/setup_conda_$TRAVIS_OS_NAME.sh
-
-    # As described above, using ci-helpers, you should be able to set up an
-    # environment with dependencies installed using conda and pip, but in some
-    # cases this may not provide enough flexibility in how to install a
-    # specific dependency (and it will not be able to install non-Python
-    # dependencies). Therefore, you can also include commands below (as
-    # well as at the start of the install section or in the before_install
-    # section if they are needed before setting up conda) to install any
-    # other dependencies.
+    - source ci-helpers/travis/setup_conda.sh
 
 script:
-   - $MAIN_CMD $SETUP_CMD
+    - $MAIN_CMD $SETUP_CMD
+
+after_success:
+    - if [[ $SETUP_CMD == *--coverage* ]]; then
+        if [ "$TRAVIS_REPO_SLUG" = "astropy/astropy" -o "$TRAVIS_PULL_REQUEST_SLUG" = "astropy/astropy" ]; then
+          cpp-coveralls -E ".*convolution.*" -E ".*_erfa.*" -E ".*\.l" -E ".*\.y" -E ".*flexed.*" -E ".*cextern.*" -E ".*_np_utils.*" -E ".*cparser.*" -E ".*cython_impl.*" --dump c-coveralls.json;
+          coveralls --merge=c-coveralls.json --rcfile='astropy/tests/coveragerc';
+        fi;
+      fi

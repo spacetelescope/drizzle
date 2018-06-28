@@ -12,6 +12,7 @@
 #define NPY_NO_DEPRECATED_API NPY_1_10_API_VERSION
 #endif
 #include <numpy/arrayobject.h>
+#include <numpy/npy_math.h>
 
 #include "cdrizzleblot.h"
 #include "cdrizzlebox.h"
@@ -30,7 +31,7 @@ static void
 scale_image(PyArrayObject *image, double scale_factor) {
   long  i, size;
   float *imptr;
-  
+
   assert(image);
   imptr = (float *) PyArray_DATA(image);
 
@@ -39,7 +40,7 @@ scale_image(PyArrayObject *image, double scale_factor) {
   for (i = size; i > 0; --i) {
     *imptr++ *= scale_factor;
   }
-  
+
   return;
 }
 
@@ -53,7 +54,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   const char *kwlist[] = {"input", "weights", "pixmap",
                           "output", "counts", "context",
                           "uniqid", "xmin", "xmax", "ymin", "ymax",
-                          "scale", "pixfrac", "kernel", "in_units", 
+                          "scale", "pixfrac", "kernel", "in_units",
                           "expscale", "wtscale", "fillstr", NULL};
 
   /* Arguments in the order they appear */
@@ -72,7 +73,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   char *fillstr = "INDEF";
 
   /* Derived values */
-  
+
   PyArrayObject *img = NULL, *wei = NULL, *out = NULL, *wht = NULL, *con = NULL, *map = NULL;
   enum e_kernel_t kernel;
   enum e_unit_t inun;
@@ -87,7 +88,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   driz_log_handle = driz_log_init(driz_log_handle);
   driz_log_message("starting tdriz");
   driz_error_init(&error);
-  
+
   if (!PyArg_ParseTupleAndKeywords(args, keywords, "OOOOOO|lllllddssffs:tdriz", (char **)kwlist,
                         &oimg, &owei, &pixmap, &oout, &owht, &ocon, /* OOOOOO */
                         &uniqid, &xmin, &xmax, &ymin, &ymax,  /* lllll */
@@ -134,7 +135,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
     goto _exit;
   }
 
-  /* Convert the fill value string */
+  /* Convert t`he fill value string */
 
   if (fillstr == NULL ||
       *fillstr == 0 ||
@@ -143,6 +144,11 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
 
     do_fill = 0;
     fill_value = 0.0;
+
+  } else if (strncmp(fillstr, "NaN", 4) == 0 ||
+             strncmp(fillstr, "nan", 4) == 0) {
+    do_fill = 1;
+    fill_value = NPY_NANF;
 
   } else {
     do_fill = 1;
@@ -162,14 +168,14 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   get_dimensions(img, isize);
   if (xmax == 0) xmax = isize[0];
   if (ymax == 0) ymax = isize[1];
-  
+
   /* Convert strings to enumerations */
-  
+
   if (kernel_str2enum(kernel_str, &kernel, &error) ||
       unit_str2enum(inun_str, &inun, &error)) {
     goto _exit;
   }
-  
+
   if (pfract <= 0.001){
     printf("kernel reset to POINT due to pfract being set to 0.0...\n");
     kernel_str2enum("point", &kernel, &error);
@@ -203,7 +209,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   p.weight_scale = wtscl;
   p.fill_value = fill_value;
   p.error = &error;
-  
+
   if (driz_error_check(&error, "xmin must be >= 0", p.xmin >= 0)) goto _exit;
   if (driz_error_check(&error, "ymin must be >= 0", p.ymin >= 0)) goto _exit;
   if (driz_error_check(&error, "xmax must be > xmin", p.xmax > p.xmin)) goto _exit;
@@ -211,13 +217,13 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   if (driz_error_check(&error, "scale must be > 0", p.scale > 0.0)) goto _exit;
   if (driz_error_check(&error, "exposure time must be > 0", p.exposure_time)) goto _exit;
   if (driz_error_check(&error, "weight scale must be > 0", p.weight_scale > 0.0)) goto _exit;
-  
+
   get_dimensions(p.pixmap, psize);
   if (psize[0] != isize[0] || psize[1] != isize[1]) {
     driz_error_set_message(&error, "Pixel map dimensions != input dimensions");
     goto _exit;
   }
-  
+
   if (p.weights) {
     get_dimensions(p.weights, wsize);
     if (wsize[0] != isize[0] || wsize[1] != isize[1]) {
@@ -225,11 +231,11 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
       goto _exit;
     }
   }
-  
+
   if (dobox(&p)) {
     goto _exit;
   }
-  
+
   /* Put in the fill values (if defined) */
   if (do_fill) {
     put_fill(&p, fill_value);
@@ -239,8 +245,8 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   driz_log_message("ending tdriz");
   driz_log_close(driz_log_handle);
   Py_XDECREF(con);
-  Py_XDECREF(img); 
-  Py_XDECREF(wei); 
+  Py_XDECREF(img);
+  Py_XDECREF(wei);
   Py_XDECREF(out);
   Py_XDECREF(wht);
   Py_XDECREF(map);
@@ -249,7 +255,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
     PyErr_SetString(PyExc_ValueError, driz_error_get_message(&error));
     return NULL;
   } else {
-    return Py_BuildValue("sii", "Callable C-based DRIZZLE Version 0.9 (10th July 2015)", p.nmiss, p.nskip);
+    return Py_BuildValue("sii", "Callable C-based DRIZZLE Version 1.12 (28th June 2018)", p.nmiss, p.nskip);
   }
 }
 
@@ -288,7 +294,7 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
   driz_log_handle = driz_log_init(driz_log_handle);
   driz_log_message("starting tblot");
   driz_error_init(&error);
-  
+
   if (!PyArg_ParseTupleAndKeywords(args, keywords, "OOO|lllldfsfff:tblot", (char **)kwlist,
                         &oimg, &pixmap, &oout, /* OOO */
                         &xmin, &xmax, &ymin, &ymax, /* llll */
@@ -297,19 +303,19 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
                        ){
     return NULL;
   }
-  
+
   img = (PyArrayObject *)PyArray_ContiguousFromAny(oimg, NPY_FLOAT, 2, 2);
   if (!img) {
     driz_error_set_message(&error, "Invalid input array");
     goto _exit;
   }
-  
+
   map = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, NPY_DOUBLE, 3, 3);
   if (!map) {
     driz_error_set_message(&error, "Invalid pixmap array");
     goto _exit;
   }
-  
+
   out = (PyArrayObject *)PyArray_ContiguousFromAny(oout, NPY_FLOAT, 2, 2);
   if (!out) {
     driz_error_set_message(&error, "Invalid output array");
@@ -322,7 +328,7 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
 
   get_dimensions(map, psize);
   get_dimensions(out, osize);
-  
+
   if (psize[0] != osize[0] || psize[1] != osize[1]) {
     driz_error_set_message(&error, "Pixel map dimensions != output dimensions");
     goto _exit;
@@ -332,7 +338,7 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
   if (ymax == 0) ymax = osize[1];
 
   driz_param_init(&p);
-  
+
   p.data = img;
   p.output_data = out;
   p.xmin = xmin;
@@ -348,7 +354,7 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
   p.sinscl = sinscl;
   p.pixmap = map;
   p.error = &error;
-  
+
   if (driz_error_check(&error, "xmin must be >= 0", p.xmin >= 0)) goto _exit;
   if (driz_error_check(&error, "ymin must be >= 0", p.ymin >= 0)) goto _exit;
   if (driz_error_check(&error, "xmax must be > xmin", p.xmax > p.xmin)) goto _exit;
@@ -388,7 +394,7 @@ test_cdrizzle(PyObject *self, PyObject *args)
 
   int argc = 1;
   char *argv[] = {"utest_cdrizzle", NULL};
-  
+
   if (!PyArg_ParseTuple(args,"OOOOOO:test_cdrizzle", &data, &weights, &pixmap,
                                           &output_data, &output_counts, &output_context)) {
     return NULL;
@@ -408,7 +414,7 @@ test_cdrizzle(PyObject *self, PyObject *args)
   if (! map) {
     return PyErr_Format(gl_Error, "Invalid pixmap.");
   }
-  
+
   odat = (PyArrayObject *)PyArray_ContiguousFromAny(output_data, NPY_FLOAT, 2, 2);
   if (! odat) {
     return PyErr_Format(gl_Error, "Invalid output data array.");
@@ -426,7 +432,7 @@ test_cdrizzle(PyObject *self, PyObject *args)
 
   set_test_arrays(dat, wei, map, odat, ocnt, ocon);
   utest_cdrizzle(argc, argv);
-  
+
   return Py_BuildValue("");
 }
 
