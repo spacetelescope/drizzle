@@ -175,7 +175,7 @@ def dodrizzle(insci, input_wcs, inwht,
 
     # Compute the mapping between the input and output pixel coordinates
     pixmap = calc_pixmap.calc_pixmap(input_wcs, output_wcs)
-
+            
     #
     # Call 'drizzle' to perform image combination
     # This call to 'cdriz.tdriz' uses the new C syntax

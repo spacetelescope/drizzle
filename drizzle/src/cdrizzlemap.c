@@ -109,6 +109,9 @@ shrink_segment(struct segment *self,
   imin = self->point[1][0];
   jmin = self->point[1][1];
   
+  imin = 65000; 
+  jmin = 65000;
+  
   for (j = self->point[0][1]; j < self->point[1][1]; ++j) {
     for (i = self->point[0][0]; i < self->point[1][0]; ++ i) {
       if (! is_bad_value(array, i, j)) {
@@ -119,13 +122,17 @@ shrink_segment(struct segment *self,
           jmin = j;
         }
         break;
+      } else {
+          // printf('pixel is bad %d %d', i, j);
       }
     }
   }
   
   imax = self->point[0][0];
   jmax = self->point[0][1];
-
+  
+  imax = -1;
+  jmax = -1;
   for (j = self->point[1][1]; j > self->point[0][1]; --j) {  
     for (i = self->point[1][0]; i > self->point[0][0]; -- i) {
       if (! is_bad_value(array, i-1, j-1)) {
@@ -139,6 +146,7 @@ shrink_segment(struct segment *self,
       }
     }
   }
+  // printf("segment %d %d %d %d\n", imin, imax, jmin, jmax);
   
   initialize_segment(self, imin, jmin, imax, jmax);
   self->invalid = imin >= imax || jmin >= jmax;
@@ -576,10 +584,10 @@ check_line_overlap(struct driz_param_t* p, int margin, integer_t j, integer_t *x
   initialize_segment(&xybounds, p->xmin, j, p->xmax, j+1);
   shrink_segment(&xybounds, p->pixmap, &bad_pixel);
   
-  if (clip_bounds(p->pixmap, &outlimit, &xybounds)) {
-    driz_error_set_message(p->error, "cannot compute xbounds");
-    return 1;
-  }
+  // if (clip_bounds(p->pixmap, &outlimit, &xybounds)) {
+  //   driz_error_set_message(p->error, "cannot compute xbounds");
+  //   return 1;
+  // }
 
   sort_segment(&xybounds, 0);
   shrink_segment(&xybounds, p->weights, &bad_weight);
@@ -619,7 +627,7 @@ check_image_overlap(struct driz_param_t* p, const int margin, integer_t *ybounds
                      osize[0] + margin, osize[1] + margin);
 
   initialize_segment(&inlimit, p->xmin, p->ymin, p->xmax, p->ymax);
-  shrink_segment(&inlimit, p->pixmap, &bad_pixel);
+  //shrink_segment(&inlimit, p->pixmap, &bad_pixel);
   
   if (inlimit.invalid == 1) {
       driz_error_set_message(p->error, "no valid pixels on input image");
@@ -631,10 +639,10 @@ check_image_overlap(struct driz_param_t* p, const int margin, integer_t *ybounds
                        inlimit.point[ipoint][0], inlimit.point[0][1],
                        inlimit.point[ipoint][0], inlimit.point[1][1]);
 
-    if (clip_bounds(p->pixmap, &outlimit, &xybounds[ipoint])) {
-      driz_error_set_message(p->error, "cannot compute ybounds");
-      return 1;
-    }
+    // if (clip_bounds(p->pixmap, &outlimit, &xybounds[ipoint])) {
+    //   driz_error_set_message(p->error, "cannot compute ybounds");
+    //   return 1;
+    // }
   }
 
   union_of_segments(2, 1, xybounds, ybounds);
