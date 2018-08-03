@@ -36,17 +36,22 @@ def calc_pixmap(first_wcs, second_wcs):
     # co-ordinate system of the second.
 
     one = np.ones(2, dtype='float64')
+    ix = 1
+    
+    # one = np.zeros(2, dtype='float64')
+    # ix = 0
+    
     idxmap = np.indices((first_naxis1, first_naxis2), dtype='float64')
-    idxmap = idxmap.transpose() + one
+    idxmap = idxmap.transpose() + one 
     
     idxmap = idxmap.reshape(first_naxis2 * first_naxis1, 2)
         
-    worldmap = first_wcs.all_pix2world(idxmap, 1)
+    worldmap = first_wcs.all_pix2world(idxmap, ix)
 
     if second_wcs.sip is None:
-        pixmap = second_wcs.wcs_world2pix(worldmap, 1)
+        pixmap = second_wcs.wcs_world2pix(worldmap, ix)
     else:
-        pixmap = second_wcs.all_world2pix(worldmap, 1)
+        pixmap = second_wcs.all_world2pix(worldmap, ix)
 
     pixmap = pixmap.reshape(first_naxis2, first_naxis1, 2)
     pixmap = pixmap - one
