@@ -175,7 +175,25 @@ def dodrizzle(insci, input_wcs, inwht,
 
     # Compute the mapping between the input and output pixel coordinates
     pixmap = calc_pixmap.calc_pixmap(input_wcs, output_wcs)
+    
+    # Add additional clipping for negative pixmap values
+    # This should be done rather in tdriz, but this is a quick pure-python fix
+    if pixmap.min() < 0:
+        print('xxx clip pixmap!')
+        mask = pixmap > 0
+        
+        insh = insci.shape
+        yp, xp = np.indices(insh)
+        xmi = xp[mask[:,:,0]].min()
+        xma = xp[mask[:,:,0]].max()
+        ymi = yp[mask[:,:,1]].min()
+        yma = yp[mask[:,:,1]].max()
 
+        xmin = np.maximum(xmin, xmi)
+        xmax = np.minimum(xmax, xma)
+        ymin = np.maximum(ymin, ymi)
+        ymax = np.minimum(ymax, yma)      
+          
     #
     # Call 'drizzle' to perform image combination
     # This call to 'cdriz.tdriz' uses the new C syntax
