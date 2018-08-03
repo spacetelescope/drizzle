@@ -179,7 +179,7 @@ def dodrizzle(insci, input_wcs, inwht,
     # Add additional clipping for negative pixmap values
     # This should be done rather in tdriz, but this is a quick pure-python fix
     if pixmap.min() < 0:
-        print('xxx clip pixmap!')
+        #print('xxx clip pixmap!')
         mask = pixmap > 0
         
         insh = insci.shape
