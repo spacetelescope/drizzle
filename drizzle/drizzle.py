@@ -171,20 +171,18 @@ class Drizzle(object):
             raise ValueError("Illegal value for wt_scl: %s" % out_units)
 
         # Initialize images if not read from a file
-
+        outwcs_naxis1, outwcs_naxis2 = self.outwcs.pixel_shape
         if self.outsci is None:
-            self.outsci = np.zeros((self.outwcs._naxis2,
-                                   self.outwcs._naxis1),
+            self.outsci = np.zeros(self.outwcs.pixel_shape[::-1],
                                    dtype=np.float32)
 
         if self.outwht is None:
-            self.outwht = np.zeros((self.outwcs._naxis2,
-                                    self.outwcs._naxis1),
-                                    dtype=np.float32)
+            self.outwht = np.zeros(self.outwcs.pixel_shape[::-1],
+                                   dtype=np.float32)
         if self.outcon is None:
             self.outcon = np.zeros((1,
-                                    self.outwcs._naxis2,
-                                    self.outwcs._naxis1),
+                                    outwcs_naxis2,
+                                    outwcs_naxis1),
                                     dtype=np.int32)
 
 
