@@ -24,15 +24,22 @@ def get_extensions():
                      'cdrizzlemap.c',
                      'cdrizzleutil.c',
                      test_source]
-    
+
     sources = [str(os.path.join(ROOT, 'src', x)) for x in cdriz_sources]
-    
+
     cfg = setup_helpers.DistutilsExtensionArgs()
-    
-    cfg['libraries'].append('m')
+
     cfg['include_dirs'].append('numpy')
     cfg['include_dirs'].append(str(os.path.join(ROOT, 'src')))
-                               
+
+    if sys.platform != 'win32':
+        cfg['libraries'].append('m')
+
+    if sys.platform == 'win32':
+        cfg['define_macros'].append(('WIN32', None))
+        cfg['define_macros'].append(('__STDC__', 1))
+        cfg['define_macros'].append(('_CRT_SECURE_NO_WARNINGS', None))
+
     return [Extension(str('drizzle.cdrizzle'), sources, **cfg)]
 
 def get_external_libraries():

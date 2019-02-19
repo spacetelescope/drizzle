@@ -8,7 +8,13 @@
 #endif
 #include <numpy/arrayobject.h>
 #include <numpy/npy_math.h>
+
+#ifdef WIN32
+#include "fct.h"
+#else
 #include "pandokia_fct.h"
+#endif
+
 #include "cdrizzlebox.h"
 #include "cdrizzleblot.h"
 #include "cdrizzlemap.h"
