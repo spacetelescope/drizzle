@@ -75,8 +75,7 @@ matrix:
         - stage: Initial tests
           env: PYTHON_VERSION=3.7 SETUP_CMD='egg_info'
 
-        # Try MacOS X. Use a slightly old numpy version to help test against
-        # all supported numpy versions.
+        # Try MacOS X.
         - os: osx
           stage: Cron tests
           env: SETUP_CMD='test --remote-data=astropy'
@@ -97,8 +96,6 @@ matrix:
         # versions of Python, we can vary Python and Numpy versions at the same
         # time. Since we test the latest Numpy as part of the builds with all
         # optional dependencies below, we can focus on older builds here.
-        # Numpy 1.11 is tested below, 1.12 in the Initial stage test.
-        # Run this test using native pytest
         - os: linux
           env: PYTHON_VERSION=3.6 NUMPY_VERSION=1.15
                INSTALL_CMD='python setup.py build_ext --inplace'
