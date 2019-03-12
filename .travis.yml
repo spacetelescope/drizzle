@@ -30,7 +30,7 @@ env:
     global:
         # Set defaults to avoid repeating in most cases
         - PYTHON_VERSION=3.6
-	- NUMPY_VERSION=stable
+        - NUMPY_VERSION=stable
         - MAIN_CMD='python setup.py'
         - CONDA_DEPENDENCIES='Cython'
         - CONDA_ALL_DEPENDENCIES='astropy Cython'
