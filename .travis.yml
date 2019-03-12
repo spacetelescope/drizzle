@@ -97,7 +97,8 @@ matrix:
         # time. Since we test the latest Numpy as part of the builds with all
         # optional dependencies below, we can focus on older builds here.
         - os: linux
-          env: PYTHON_VERSION=3.6 NUMPY_VERSION=1.15
+          env: PYTHON_VERSION=3.6
+               NUMPY_VERSION=1.15
                INSTALL_CMD='python setup.py build_ext --inplace'
                PIP_DEPENDENCIES='pytest-astropy'
                TEST_CMD='pytest --open-files --doctest-rst'
@@ -107,12 +108,12 @@ matrix:
 
         # Now try with all optional dependencies.
         - os: linux
-          env: PYTHON_VERSION=3.7 SETUP_CMD='test --remote-data=astropy'
-               CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
-               PIP_DEPENDENCIES="jplephem $ASDF_GIT"
-               LC_CTYPE=C.ascii LC_ALL=C
+          env: PYTHON_VERSION=3.7
                NUMPY_VERSION=1.16
-               MATPLOTLIB_VERSION=1.5
+               SETUP_CMD='test --remote-data=astropy'
+               CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
+               PIP_DEPENDENCIES="jplephem asdf"
+               LC_CTYPE=C.ascii LC_ALL=C
 
         - os: linux
           stage: Initial tests
@@ -127,7 +128,7 @@ matrix:
                PIP_DEPENDENCIES=""
                LC_CTYPE=C.ascii LC_ALL=C
                CFLAGS='-ftest-coverage -fprofile-arcs -fno-inline-functions -O0'
-               MATPLOTLIB_VERSION=2.0 NUMPY_VERSION=1.16
+               NUMPY_VERSION=1.16
                EVENT_TYPE='push pull_request cron'
 
         # Try pre-release version of Numpy without optional dependencies
@@ -143,14 +144,15 @@ matrix:
         # Do a PEP8/pyflakes test with flake8
         - os: linux
           stage: Initial tests
-          env: MAIN_CMD="flake8 astropy --count $FLAKE8_OPT" SETUP_CMD=''
+          env: MAIN_CMD="flake8 drizzle --count $FLAKE8_OPT" SETUP_CMD=''
 
         # Try developer version of Numpy with optional dependencies and also
         # run all remote tests. Since both cases will be potentially
         # unstable, we combine them into a single unstable build that we can
         # mark as an allowed failure below.
         - os: linux
-          env: NUMPY_VERSION=dev SETUP_CMD='test --remote-data'
+          env: NUMPY_VERSION=dev
+               SETUP_CMD='test --remote-data'
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
 
         # We check numpy-dev also in a job that only runs from cron, so that
@@ -158,12 +160,14 @@ matrix:
         # that gives too many false positives due to URL timeouts.
         - os: linux
           stage: Cron tests
-          env: NUMPY_VERSION=dev EVENT_TYPE='cron'
+          env: NUMPY_VERSION=dev
+               EVENT_TYPE='cron'
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
 
     allow_failures:
       - os: linux
-        env: NUMPY_VERSION=dev SETUP_CMD='test --remote-data'
+        env: NUMPY_VERSION=dev
+             SETUP_CMD='test --remote-data'
              CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
 
 install:
