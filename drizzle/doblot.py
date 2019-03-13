@@ -17,7 +17,7 @@ def doblot(source, source_wcs, blot_wcs, exptime, coeffs = True,
             interp='poly5', sinscl=1.0, stepsize=10, wcsmap=None):
     """
     Low level routine for performing the 'blot' operation.
-    
+
     Create a single blotted image from a single source image. The
     interface is compatible with STScI code. All distortion information
     is assumed to be included in the WCS specification of the 'output'
