@@ -100,6 +100,7 @@ matrix:
           env: PYTHON_VERSION=3.6
                NUMPY_VERSION=1.15
                INSTALL_CMD='python setup.py build_ext --inplace'
+               CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
                PIP_DEPENDENCIES='pytest-astropy'
                TEST_CMD='pytest --open-files --doctest-rst'
           script:
@@ -139,6 +140,7 @@ matrix:
         # Try older numpy versions
         - os: linux
           env: NUMPY_VERSION=1.13
+               CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
                EVENT_TYPE='push pull_request cron'
 
         # Do a PEP8/pyflakes test with flake8
