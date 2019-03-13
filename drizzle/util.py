@@ -13,22 +13,22 @@ def find_keyword_extn(fimg, keyword, value=None):
     """
     This function will return the index of the extension in a multi-extension
     FITS file which contains the desired keyword with the given value.
-    
+
     Parameters
     ----------
-    
+
     fimg : hdulist
         A list of header data units
-    
+
     keyword : str
         The keyword to search for
-    
+
     value : str or number, optional
         If set, the value the keyword must have to match
-    
+
     Returns
     -------
-    
+
     The index of the extension
     """
 
@@ -56,18 +56,18 @@ def find_keyword_extn(fimg, keyword, value=None):
 def get_extn(fimg, extn=''):
     """
     Returns the FITS extension corresponding to extension specified in
-    filename. Defaults to returning the first extension with data or the 
+    filename. Defaults to returning the first extension with data or the
     primary extension, if none have data.
-    
+
     Parameters
     ----------
-    
+
     fimg : hdulist
         A list of header data units
 
     extn : str
         The extension name and version to match
-    
+
     Returns
     -------
 
@@ -81,7 +81,7 @@ def get_extn(fimg, extn=''):
                 _e = fimg.index_of(_extn)
             else:
                 _e = _extn[1]
-            
+
         except KeyError:
             _e = None
 
@@ -102,25 +102,25 @@ def get_extn(fimg, extn=''):
                 _extn = _e
                 break
 
-    return _extn    
+    return _extn
 
 def get_keyword(fimg, keyword, default=None):
     """
     Return a keyword value from the header of an image,
     or the default if the keyword is not found.
-    
+
     Parameters
     ----------
 
     fimg : hdulist
         A list of header data units
-    
+
     keyword : hdulist
         The keyword value to search for
-    
+
     default : str or number, optional
         The default value if not found
-    
+
     Returns
     -------
 
@@ -134,7 +134,7 @@ def get_keyword(fimg, keyword, default=None):
             value = fimg[_nextn].header[keyword]
         except KeyError:
             value = None
-        
+
     if value is None and default is not None:
         value = default
 
@@ -143,13 +143,13 @@ def get_keyword(fimg, keyword, default=None):
 def is_blank(value):
     """
     Determines whether or not a value is considered 'blank'.
-    
+
     Parameters
     ----------
-    
+
     value : str
         The value to check
-    
+
     Returns
     -------
 
@@ -172,12 +172,12 @@ def parse_extn(extn=''):
         ('', 2)
         >>> parse_extn('sci')
         ('sci', 1)
-        
+
     Parameters
     ----------
     extn : str
         The extension name
-    
+
     Returns
     -------
     A tuple of the extension name and value
@@ -187,7 +187,7 @@ def parse_extn(extn=''):
 
     try:
         lext = extn.split(',')
-    except:
+    except Exception:
         return ('', 1)
 
     if len(lext) == 1 and lext[0].isdigit():
@@ -201,16 +201,16 @@ def parse_filename(filename):
     """
     Parse out filename from any specified extensions.
     Returns rootname and string version of extension name.
-    
+
     Parameters
     ----------
-    
+
     filename : str
         The filename to be parsed
-    
+
     Returns
     -------
-    
+
     A tuple with the filename root and extension
     """
     # Parse out any extension specified in filename
@@ -227,13 +227,13 @@ def parse_filename(filename):
 
 def set_pscale(the_wcs):
     """
-    Calculates the plate scale from cdelt and the pc  matrix and adds 
+    Calculates the plate scale from cdelt and the pc  matrix and adds
     it to the WCS. Plate scale is not part of the WCS standard, but is
     required by the drizzle code
-    
+
     Parameters
     ----------
-    
+
     the_wcs : wcs
         A WCS object
     """
