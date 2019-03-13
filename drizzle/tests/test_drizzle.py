@@ -265,7 +265,7 @@ def test_square_with_grid():
     else:
         driz.write(output)
         template_data = read_image(output_template)
-        
+
         (min_diff, med_diff, max_diff) = centroid_statistics("square with grid", output_difference,
                                                                   driz.outsci, template_data, 20.0, 8)
 
@@ -295,7 +295,7 @@ def test_turbo_with_grid():
     else:
         driz.write(output)
         template_data = read_image(output_template)
-        
+
         (min_diff, med_diff, max_diff) = centroid_statistics("turbo with grid", output_difference,
                                                                   driz.outsci, template_data, 20.0, 8)
 
