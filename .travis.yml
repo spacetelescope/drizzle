@@ -101,7 +101,7 @@ matrix:
                NUMPY_VERSION=1.15
                INSTALL_CMD='python setup.py build_ext --inplace'
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
-               PIP_DEPENDENCIES='pytest-astropy'
+               PIP_DEPENDENCIES='pytest-astropy sphinx'
                TEST_CMD='pytest --open-files --doctest-rst'
           script:
             - $INSTALL_CMD
