@@ -91,6 +91,8 @@ matrix:
                PIP_DEPENDENCIES='sphinx sphinx-astropy sphinx-automodapi'
                LC_CTYPE=C LC_ALL=C LANG=C
 
+        # TODO: Add doctest back using pytest-doctestplus?
+        #
         # Try all python versions and Numpy versions. Since we can assume that
         # the Numpy developers have taken care of testing Numpy with different
         # versions of Python, we can vary Python and Numpy versions at the same
@@ -99,10 +101,11 @@ matrix:
         - os: linux
           env: PYTHON_VERSION=3.6
                NUMPY_VERSION=1.15
+               OPENMP_EXPECTED=False
                INSTALL_CMD='python setup.py build_ext --inplace'
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
-               PIP_DEPENDENCIES='sphinx pytest-doctestplus pytest-openfiles'
-               TEST_CMD='pytest --open-files --doctest-rst'
+               PIP_DEPENDENCIES='sphinx pytest-openfiles'
+               TEST_CMD='python setup.py test --open-files'
           script:
             - $INSTALL_CMD
             - $TEST_CMD
