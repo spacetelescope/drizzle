@@ -105,7 +105,7 @@ matrix:
                INSTALL_CMD='python setup.py build_ext --inplace'
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
                PIP_DEPENDENCIES='sphinx pytest-openfiles'
-               TEST_CMD='pytest --open-files'
+               TEST_CMD='python setup.py test --open-files'
           script:
             - $INSTALL_CMD
             - $TEST_CMD
