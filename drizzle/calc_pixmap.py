@@ -5,21 +5,21 @@ import numpy as np
 def calc_pixmap(first_wcs, second_wcs):
     """
     Calculate a mapping between the pixels of two images.
-    
+
     Parameters
     ----------
-    
+
     first_wcs : wcs
         A WCS object representing the coordinate system you are
         converting from
-    
+
     seond_wcs : wcs
         A WCS object representing the coordinate system you are
         converting to
-        
+
     Returns
     -------
-    
+
     A three dimensional array representing the transformation between
     the two. The last dimension is of length two and contains the x and
     y coordinates of a pixel center, repectively. The other two coordinates
@@ -38,9 +38,9 @@ def calc_pixmap(first_wcs, second_wcs):
     one = np.ones(2, dtype='float64')
     idxmap = np.indices((first_naxis1, first_naxis2), dtype='float64')
     idxmap = idxmap.transpose() + one
-    
+
     idxmap = idxmap.reshape(first_naxis2 * first_naxis1, 2)
-        
+
     worldmap = first_wcs.all_pix2world(idxmap, 1)
 
     if second_wcs.sip is None:
@@ -50,5 +50,5 @@ def calc_pixmap(first_wcs, second_wcs):
 
     pixmap = pixmap.reshape(first_naxis2, first_naxis1, 2)
     pixmap = pixmap - one
-    
+
     return pixmap

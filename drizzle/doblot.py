@@ -17,7 +17,7 @@ def doblot(source, source_wcs, blot_wcs, exptime, coeffs = True,
             interp='poly5', sinscl=1.0, stepsize=10, wcsmap=None):
     """
     Low level routine for performing the 'blot' operation.
-    
+
     Create a single blotted image from a single source image. The
     interface is compatible with STScI code. All distortion information
     is assumed to be included in the WCS specification of the 'output'
@@ -28,17 +28,17 @@ def doblot(source, source_wcs, blot_wcs, exptime, coeffs = True,
 
     source : 2d array
         Input numpy array of the source image in units of 'cps'.
-    
+
     source_wcs : wcs
         The source image WCS.
-    
+
     blot_wcs : wcs
         The blotted image WCS. The WCS that the source image will be
         resampled to.
-    
+
     exptime : float
         The exposure time of the input image.
-    
+
     interp : str, optional
         The type of interpolation used in the blotting. The
         possible values are "nearest" (nearest neighbor interpolation),
@@ -57,10 +57,10 @@ def doblot(source, source_wcs, blot_wcs, exptime, coeffs = True,
 
     Other Parameters
     ----------------
-    
+
     coeffs : bool, optional
         Not used. Only kept for backwards compatibility.
-    
+
     stepsize : float, optional
         Was used when input to output mapping was computed
         internally. Is no longer used and only here for backwards compatibility.
@@ -71,7 +71,7 @@ def doblot(source, source_wcs, blot_wcs, exptime, coeffs = True,
     """
     _outsci = np.zeros((blot_wcs._naxis2,blot_wcs._naxis1),dtype=np.float32)
 
-    # compute the undistorted 'natural' plate scale 
+    # compute the undistorted 'natural' plate scale
     wcslin = blot_wcs
     blot_wcs.sip = None
     blot_wcs.cpdis1 = None

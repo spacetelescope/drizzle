@@ -19,7 +19,7 @@ def test_map_rectangular():
     """
     naxis1 = 1000
     naxis2 = 10
-    
+
     pixmap = np.indices((naxis1, naxis2), dtype='float32')
     pixmap = pixmap.transpose()
     npt.assert_equal(pixmap[5,500], (500,5))
@@ -52,7 +52,7 @@ def test_translated_map():
     first_file = os.path.join(DATA_DIR, 'input1.fits')
     first_hdu = fits.open(first_file)
     first_header = first_hdu[1].header
-    
+
     first_wcs = wcs.WCS(first_header)
     naxis1 = first_wcs._naxis1
     naxis2 = first_wcs._naxis2
@@ -61,7 +61,7 @@ def test_translated_map():
     second_file = os.path.join(DATA_DIR, 'input3.fits')
     second_hdu = fits.open(second_file)
     second_header = second_hdu[1].header
-    
+
     second_wcs = wcs.WCS(second_header)
     second_hdu.close()
 
@@ -71,4 +71,3 @@ def test_translated_map():
     pixmap = calc_pixmap.calc_pixmap(first_wcs, second_wcs)
     npt.assert_equal(pixmap.shape, ok_pixmap.shape) # Got x-y transpose right
     npt.assert_almost_equal(pixmap, ok_pixmap, decimal=5) # Mapping an array to a translated array
-

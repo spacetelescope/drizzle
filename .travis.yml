@@ -30,7 +30,7 @@ env:
     global:
         # Set defaults to avoid repeating in most cases
         - PYTHON_VERSION=3.6
-	- NUMPY_VERSION=stable
+        - NUMPY_VERSION=stable
         - MAIN_CMD='python setup.py'
         - CONDA_DEPENDENCIES='Cython'
         - CONDA_ALL_DEPENDENCIES='astropy Cython'
@@ -70,13 +70,12 @@ matrix:
     include:
 
         - stage: Initial tests
-          env: PYTHON_VERSION=3.5 SETUP_CMD='egg_info'
-
-        - stage: Initial tests
           env: PYTHON_VERSION=3.6 SETUP_CMD='egg_info'
 
-        # Try MacOS X. Use a slightly old numpy version to help test against
-        # all supported numpy versions.
+        - stage: Initial tests
+          env: PYTHON_VERSION=3.7 SETUP_CMD='egg_info'
+
+        # Try MacOS X.
         - os: osx
           stage: Cron tests
           env: SETUP_CMD='test --remote-data=astropy'
@@ -89,7 +88,7 @@ matrix:
         - os: linux
           env: SETUP_CMD='build_docs -w'
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
-               PIP_DEPENDENCIES=''
+               PIP_DEPENDENCIES='sphinx sphinx-astropy sphinx-automodapi'
                LC_CTYPE=C LC_ALL=C LANG=C
 
         # Try all python versions and Numpy versions. Since we can assume that
@@ -97,12 +96,12 @@ matrix:
         # versions of Python, we can vary Python and Numpy versions at the same
         # time. Since we test the latest Numpy as part of the builds with all
         # optional dependencies below, we can focus on older builds here.
-        # Numpy 1.11 is tested below, 1.12 in the Initial stage test.
-        # Run this test using native pytest
         - os: linux
-          env: PYTHON_VERSION=3.5 NUMPY_VERSION=1.10
+          env: PYTHON_VERSION=3.6
+               NUMPY_VERSION=1.15
                INSTALL_CMD='python setup.py build_ext --inplace'
-               PIP_DEPENDENCIES='pytest-astropy'
+               CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
+               PIP_DEPENDENCIES='sphinx pytest-doctestplus pytest-openfiles'
                TEST_CMD='pytest --open-files --doctest-rst'
           script:
             - $INSTALL_CMD
@@ -110,12 +109,12 @@ matrix:
 
         # Now try with all optional dependencies.
         - os: linux
-          env: PYTHON_VERSION=3.5 SETUP_CMD='test --remote-data=astropy'
+          env: PYTHON_VERSION=3.7
+               NUMPY_VERSION=1.16
+               SETUP_CMD='test --remote-data=astropy'
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
-               PIP_DEPENDENCIES="jplephem $ASDF_GIT"
+               PIP_DEPENDENCIES="jplephem asdf"
                LC_CTYPE=C.ascii LC_ALL=C
-               NUMPY_VERSION=1.11
-               MATPLOTLIB_VERSION=1.5
 
         - os: linux
           stage: Initial tests
@@ -124,20 +123,14 @@ matrix:
                SETUP_CMD='test -a "--durations=50"'
           compiler: clang
 
-        # Pinning conda version temporarily to 4.3.21, as some anaconda
-        # packges build with 4.3.27 are faulty and we see this job failing,
-        # while locally there are no issues when the same version of
-        # packages are installed from pip.
-        # TODO: remove the pinning once the issue is solved upstream.
         - os: linux
           env: SETUP_CMD='test --coverage --remote-data=astropy'
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
                PIP_DEPENDENCIES=""
                LC_CTYPE=C.ascii LC_ALL=C
                CFLAGS='-ftest-coverage -fprofile-arcs -fno-inline-functions -O0'
-               MATPLOTLIB_VERSION=2.0 NUMPY_VERSION=1.13
+               NUMPY_VERSION=1.16
                EVENT_TYPE='push pull_request cron'
-               CONDA_VERSION=4.3.21
 
         # Try pre-release version of Numpy without optional dependencies
         - os: linux
@@ -146,20 +139,22 @@ matrix:
 
         # Try older numpy versions
         - os: linux
-          env: NUMPY_VERSION=1.12
+          env: NUMPY_VERSION=1.13
+               CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
                EVENT_TYPE='push pull_request cron'
 
         # Do a PEP8/pyflakes test with flake8
         - os: linux
           stage: Initial tests
-          env: MAIN_CMD="flake8 astropy --count $FLAKE8_OPT" SETUP_CMD=''
+          env: MAIN_CMD="flake8 drizzle --count $FLAKE8_OPT" SETUP_CMD=''
 
         # Try developer version of Numpy with optional dependencies and also
         # run all remote tests. Since both cases will be potentially
         # unstable, we combine them into a single unstable build that we can
         # mark as an allowed failure below.
         - os: linux
-          env: NUMPY_VERSION=dev SETUP_CMD='test --remote-data'
+          env: NUMPY_VERSION=dev
+               SETUP_CMD='test --remote-data'
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
 
         # We check numpy-dev also in a job that only runs from cron, so that
@@ -167,12 +162,14 @@ matrix:
         # that gives too many false positives due to URL timeouts.
         - os: linux
           stage: Cron tests
-          env: NUMPY_VERSION=dev EVENT_TYPE='cron'
+          env: NUMPY_VERSION=dev
+               EVENT_TYPE='cron'
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
 
     allow_failures:
       - os: linux
-        env: NUMPY_VERSION=dev SETUP_CMD='test --remote-data'
+        env: NUMPY_VERSION=dev
+             SETUP_CMD='test --remote-data'
              CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
 
 install:
