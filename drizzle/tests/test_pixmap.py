@@ -34,8 +34,7 @@ def test_map_to_self():
     input_shape = input_hdu[1].data.shape
 
     input_wcs = wcs.WCS(input_hdu[1].header)
-    naxis1 = input_wcs._naxis1
-    naxis2 = input_wcs._naxis2
+    naxis1, naxis2 = input_wcs.pixel_shape
     input_hdu.close()
 
     ok_pixmap = np.indices((naxis1, naxis2), dtype='float32')
@@ -54,8 +53,7 @@ def test_translated_map():
     first_header = first_hdu[1].header
 
     first_wcs = wcs.WCS(first_header)
-    naxis1 = first_wcs._naxis1
-    naxis2 = first_wcs._naxis2
+    naxis1, naxis2 = first_wcs.pixel_shape
     first_hdu.close()
 
     second_file = os.path.join(DATA_DIR, 'input3.fits')

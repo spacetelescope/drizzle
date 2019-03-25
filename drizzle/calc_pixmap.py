@@ -26,8 +26,7 @@ def calc_pixmap(first_wcs, second_wcs):
     correspond to the two coordinates of the image the first WCS is from.
     """
 
-    first_naxis1 = first_wcs._naxis1
-    first_naxis2 = first_wcs._naxis2
+    first_naxis1, first_naxis2 = first_wcs.pixel_shape
 
     # We add one to the pixel co-ordinates before the transformation and subtract
     # it afterwards because wcs co-ordinates are one based, while pixel co-ordinates
