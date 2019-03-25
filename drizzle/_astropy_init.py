@@ -6,11 +6,7 @@ __all__ = ['__version__', '__githash__', 'test']
 try:
     _ASTROPY_SETUP_
 except NameError:
-    from sys import version_info
-    if version_info[0] >= 3:
-        import builtins
-    else:
-        import __builtin__ as builtins
+    import builtins
     builtins._ASTROPY_SETUP_ = False
 
 try:
@@ -22,11 +18,13 @@ try:
 except ImportError:
     __githash__ = ''
 
+
 # set up the test command
 def _get_test_runner():
     import os
     from astropy.tests.helper import TestRunner
     return TestRunner(os.path.dirname(__file__))
+
 
 def test(package=None, test_path=None, args=None, plugins=None,
          verbose=False, pastebin=None, remote_data=False, pep8=False,
@@ -109,6 +107,7 @@ def test(package=None, test_path=None, args=None, plugins=None,
         plugins=plugins, verbose=verbose, pastebin=pastebin,
         remote_data=remote_data, pep8=pep8, pdb=pdb,
         coverage=coverage, open_files=open_files, **kwargs)
+
 
 if not _ASTROPY_SETUP_:
     import os

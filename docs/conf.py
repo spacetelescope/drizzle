@@ -39,13 +39,10 @@ except ImportError:
             sys.path.insert(1, a_h_path)
 
 # Load all of the global Astropy configuration
-from astropy_helpers.sphinx.conf import *
+from sphinx_astropy.conf import *
 
 # Get configuration information from setup.cfg
-try:
-    from ConfigParser import ConfigParser
-except ImportError:
-    from configparser import ConfigParser
+from configparser import ConfigParser
 
 conf = ConfigParser()
 conf.read([os.path.join(os.path.dirname(__file__), '..', 'setup.cfg')])
@@ -146,15 +143,15 @@ man_pages = [('index', project.lower(), project + u' Documentation',
 
 ## -- Options for the edit_on_github extension ----------------------------------------
 
-if eval(setup_cfg.get('edit_on_github')):
-    extensions += ['astropy_helpers.sphinx.ext.edit_on_github']
-
-    versionmod = __import__(setup_cfg['package_name'] + '.version')
-    edit_on_github_project = setup_cfg['github_project']
-    if versionmod.version.release:
-        edit_on_github_branch = "v" + versionmod.version.version
-    else:
-        edit_on_github_branch = "master"
-
-    edit_on_github_source_root = ""
-    edit_on_github_doc_root = "docs"
+#if eval(setup_cfg.get('edit_on_github')):
+#    extensions += ['astropy_helpers.sphinx.ext.edit_on_github']
+#
+#    versionmod = __import__(setup_cfg['package_name'] + '.version')
+#    edit_on_github_project = setup_cfg['github_project']
+#    if versionmod.version.release:
+#        edit_on_github_branch = "v" + versionmod.version.version
+#    else:
+#        edit_on_github_branch = "master"
+#
+#    edit_on_github_source_root = ""
+#    edit_on_github_doc_root = "docs"

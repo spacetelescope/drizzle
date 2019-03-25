@@ -5,14 +5,10 @@ import glob
 import os
 import sys
 
-import ah_bootstrap
+import ah_bootstrap  # noqa
 from setuptools import setup
 
-#A dirty hack to get around some early import/configurations ambiguities
-if sys.version_info[0] >= 3:
-    import builtins
-else:
-    import __builtin__ as builtins
+import builtins
 builtins._ASTROPY_SETUP_ = True
 
 from astropy_helpers.setup_helpers import (
@@ -20,11 +16,7 @@ from astropy_helpers.setup_helpers import (
 from astropy_helpers.git_helpers import get_git_devstr
 from astropy_helpers.version_helpers import generate_version_py
 
-# Get some values from the setup.cfg
-try:
-    from ConfigParser import ConfigParser
-except ImportError:
-    from configparser import ConfigParser
+from configparser import ConfigParser
 
 conf = ConfigParser()
 conf.read(['setup.cfg'])
@@ -47,7 +39,7 @@ LONG_DESCRIPTION = package.__doc__
 builtins._ASTROPY_PACKAGE_NAME_ = PACKAGENAME
 
 # VERSION should be PEP386 compatible (http://www.python.org/dev/peps/pep-0386)
-VERSION = '1.12'
+VERSION = '1.13.dev'
 
 # Indicates if this version is a release version
 RELEASE = 'dev' not in VERSION
@@ -110,7 +102,9 @@ setup(name=PACKAGENAME,
       version=VERSION,
       description=DESCRIPTION,
       scripts=scripts,
-      install_requires=['astropy'],
+      python_requires='>=3.5',
+      install_requires=['Cython', 'astropy'],
+      tests_require=['pytest'],
       author=AUTHOR,
       author_email=AUTHOR_EMAIL,
       license=LICENSE,
@@ -118,7 +112,5 @@ setup(name=PACKAGENAME,
       long_description=LONG_DESCRIPTION,
       cmdclass=cmdclassd,
       zip_safe=False,
-      use_2to3=True,
       entry_points=entry_points,
-      **package_info
-)
+      **package_info)
