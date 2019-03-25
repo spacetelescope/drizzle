@@ -69,7 +69,7 @@ def doblot(source, source_wcs, blot_wcs, exptime, coeffs = True,
         Was used when input to output mapping was computed
         internally. Is no longer used and only here for backwards compatibility.
     """
-    _outsci = np.zeros(blot_wcs.pixel_shape[::-1],dtype=np.float32)
+    _outsci = np.zeros(blot_wcs.pixel_shape[::-1], dtype=np.float32)
 
     # compute the undistorted 'natural' plate scale 
     wcslin = blot_wcs
