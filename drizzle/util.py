@@ -238,18 +238,18 @@ def set_pscale(the_wcs):
         A WCS object
     """
     try:
-        cdelt = np.matrix(np.diag(the_wcs.wcs.get_cdelt()))
-        pc = np.matrix(the_wcs.wcs.get_pc())
+        cdelt = the_wcs.wcs.get_cdelt()
+        pc = the_wcs.wcs.get_pc()
 
     except InconsistentAxisTypesError:
         try:
             # for non-celestial axes, get_cdelt doesnt work
-            cdelt = np.matrix(the_wcs.wcs.cd) * np.matrix(np.diag(the_wcs.wcs.cdelt))
+            cdelt = the_wcs.wcs.cd @ the_wcs.wcs.cdelt
         except AttributeError:
-            cdelt = np.matrix(np.diag(the_wcs.wcs.cdelt))
+            cdelt = the_wcs.wcs.cdelt
 
         try:
-            pc = np.matrix(the_wcs.wcs.pc)
+            pc = the_wcs.wcs.pc
         except AttributeError:
             pc = 1
 
