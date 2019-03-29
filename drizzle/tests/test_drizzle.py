@@ -1,5 +1,3 @@
-from __future__ import division, print_function, unicode_literals, absolute_import
-
 import sys
 import math
 import os
@@ -14,6 +12,8 @@ import numpy.testing as npt
 from astropy import wcs
 from astropy.io import fits
 
+from drizzle import drizzle
+
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
 OUTPUT_DIR = os.environ.get('DRIZZLE_TEST_OUTPUT_DIR', tempfile.mkdtemp())
@@ -23,8 +23,6 @@ def output_dir():
     yield
     if 'DRIZZLE_TEST_OUTPUT_DIR' not in os.environ:
         shutil.rmtree(OUTPUT_DIR)
-
-from .. import drizzle
 
 ok = False
 
