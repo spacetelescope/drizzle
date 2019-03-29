@@ -78,7 +78,7 @@ matrix:
         # Try MacOS X.
         - os: osx
           stage: Cron tests
-          env: SETUP_CMD='test --remote-data=astropy'
+          env: MAIN_CMD='pytest' SETUP_CMD=''
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
                PIP_DEPENDENCIES='' EVENT_TYPE='cron'
 
@@ -105,7 +105,7 @@ matrix:
                INSTALL_CMD='python setup.py build_ext --inplace'
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
                PIP_DEPENDENCIES='sphinx pytest-openfiles'
-               TEST_CMD='python setup.py test --open-files'
+               TEST_CMD='pytest --open-files'
           script:
             - $INSTALL_CMD
             - $TEST_CMD
@@ -114,7 +114,7 @@ matrix:
         - os: linux
           env: PYTHON_VERSION=3.7
                NUMPY_VERSION=1.16
-               SETUP_CMD='test --remote-data=astropy'
+               MAIN_CMD='pytest' SETUP_CMD=''
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
                PIP_DEPENDENCIES="jplephem asdf"
                LC_CTYPE=C.ascii LC_ALL=C
@@ -123,11 +123,11 @@ matrix:
           stage: Initial tests
           env: CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
                PYTEST_VERSION='>3.2'
-               SETUP_CMD='test -a "--durations=50"'
+               MAIN_CMD='pytest --durations=50' SETUP_CMD=''
           compiler: clang
 
         - os: linux
-          env: SETUP_CMD='test --coverage --remote-data=astropy'
+          env: MAIN_CMD='pytest --cov' SETUP_CMD=''
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
                PIP_DEPENDENCIES=""
                LC_CTYPE=C.ascii LC_ALL=C
@@ -139,26 +139,19 @@ matrix:
         - os: linux
           env: NUMPY_VERSION=prerelease
                EVENT_TYPE='push pull_request cron'
+               MAIN_CMD='pytest' SETUP_CMD=''
 
         # Try older numpy versions
         - os: linux
           env: NUMPY_VERSION=1.13
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
+               MAIN_CMD='pytest' SETUP_CMD=''
                EVENT_TYPE='push pull_request cron'
 
         # Do a PEP8/pyflakes test with flake8
         - os: linux
           stage: Initial tests
           env: MAIN_CMD="flake8 drizzle --count $FLAKE8_OPT" SETUP_CMD=''
-
-        # Try developer version of Numpy with optional dependencies and also
-        # run all remote tests. Since both cases will be potentially
-        # unstable, we combine them into a single unstable build that we can
-        # mark as an allowed failure below.
-        - os: linux
-          env: NUMPY_VERSION=dev
-               SETUP_CMD='test --remote-data'
-               CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
 
         # We check numpy-dev also in a job that only runs from cron, so that
         # we can spot issues sooner. We do not use remote data here, since
@@ -168,12 +161,8 @@ matrix:
           env: NUMPY_VERSION=dev
                EVENT_TYPE='cron'
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
+               MAIN_CMD='pytest' SETUP_CMD=''
 
-    allow_failures:
-      - os: linux
-        env: NUMPY_VERSION=dev
-             SETUP_CMD='test --remote-data'
-             CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
 
 install:
     - git clone git://github.com/astropy/ci-helpers.git
