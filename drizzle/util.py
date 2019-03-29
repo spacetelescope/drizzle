@@ -241,10 +241,10 @@ def set_pscale(the_wcs):
         cdelt = the_wcs.wcs.get_cdelt()
         pc = the_wcs.wcs.get_pc()
 
-    except InconsistentAxisTypesError:
+    except Exception:
         try:
             # for non-celestial axes, get_cdelt doesnt work
-            cdelt = the_wcs.wcs.cd @ the_wcs.wcs.cdelt
+            cdelt = the_wcs.wcs.cd * the_wcs.wcs.cdelt
         except AttributeError:
             cdelt = the_wcs.wcs.cdelt
 
