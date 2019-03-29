@@ -1,5 +1,3 @@
-from __future__ import print_function, absolute_import
-
 import sys
 import os.path
 import numpy as np
@@ -8,10 +6,10 @@ import numpy.testing as npt
 from astropy import wcs
 from astropy.io import fits
 
+from drizzle import calc_pixmap
+
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
-
-from .. import calc_pixmap
 
 def test_map_rectangular():
     """
