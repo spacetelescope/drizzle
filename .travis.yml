@@ -102,9 +102,8 @@ matrix:
           env: PYTHON_VERSION=3.6
                NUMPY_VERSION=1.15
                OPENMP_EXPECTED=False
-               INSTALL_CMD='pip install -e ".[test]"'
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
-               PIP_DEPENDENCIES='sphinx pytest-openfiles'
+               PIP_DEPENDENCIES='".[test]" sphinx pytest-openfiles'
                TEST_CMD='python setup.py test --addopts --open-files'
           script:
             - $INSTALL_CMD
