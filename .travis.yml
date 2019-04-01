@@ -102,10 +102,10 @@ matrix:
           env: PYTHON_VERSION=3.6
                NUMPY_VERSION=1.15
                OPENMP_EXPECTED=False
-               INSTALL_CMD='python setup.py build_ext --inplace'
+               INSTALL_CMD='pip install -e .[test]'
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
                PIP_DEPENDENCIES='sphinx pytest-openfiles'
-               TEST_CMD='python setup.py test --open-files'
+               TEST_CMD='python setup.py test --addopts --open-files'
           script:
             - $INSTALL_CMD
             - $TEST_CMD
@@ -114,7 +114,7 @@ matrix:
         - os: linux
           env: PYTHON_VERSION=3.7
                NUMPY_VERSION=1.16
-               SETUP_CMD='test --remote-data=astropy'
+               SETUP_CMD='test --addopts --remote-data=astropy'
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
                PIP_DEPENDENCIES="jplephem asdf"
                LC_CTYPE=C.ascii LC_ALL=C
@@ -123,11 +123,11 @@ matrix:
           stage: Initial tests
           env: CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
                PYTEST_VERSION='>3.2'
-               SETUP_CMD='test -a "--durations=50"'
+               SETUP_CMD='test --addopts --durations=50'
           compiler: clang
 
         - os: linux
-          env: SETUP_CMD='test --coverage --remote-data=astropy'
+          env: SETUP_CMD='test --addopts --coverage --remote-data=astropy'
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
                PIP_DEPENDENCIES=""
                LC_CTYPE=C.ascii LC_ALL=C
@@ -157,7 +157,7 @@ matrix:
         # mark as an allowed failure below.
         - os: linux
           env: NUMPY_VERSION=dev
-               SETUP_CMD='test --remote-data'
+               SETUP_CMD='test --addopts --remote-data'
                CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
 
         # We check numpy-dev also in a job that only runs from cron, so that
@@ -172,7 +172,7 @@ matrix:
     allow_failures:
       - os: linux
         env: NUMPY_VERSION=dev
-             SETUP_CMD='test --remote-data'
+             SETUP_CMD='test --addopts --remote-data'
              CONDA_DEPENDENCIES=$CONDA_ALL_DEPENDENCIES
 
 install:

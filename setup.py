@@ -39,7 +39,7 @@ LONG_DESCRIPTION = package.__doc__
 builtins._ASTROPY_PACKAGE_NAME_ = PACKAGENAME
 
 # VERSION should be PEP386 compatible (http://www.python.org/dev/peps/pep-0386)
-VERSION = '1.13.dev'
+VERSION = '1.13'
 
 # Indicates if this version is a release version
 RELEASE = 'dev' not in VERSION
@@ -51,6 +51,11 @@ if not RELEASE:
 # invoking any other functionality from distutils since it can potentially
 # modify distutils' behavior.
 cmdclassd = register_commands(PACKAGENAME, VERSION, RELEASE)
+
+# Obliterate astropy's test hook
+if cmdclassd.get('test'):
+    del cmdclassd['test']
+
 
 # Adjust the compiler in case the default on this platform is to use a
 # broken one.
@@ -97,6 +102,10 @@ package_info['package_data'][PACKAGENAME].extend(c_files)
 # Note that requires and provides should not be included in the call to
 # ``setup``, since these are now deprecated. See this link for more details:
 # https://groups.google.com/forum/#!topic/astropy-dev/urYO8ckB2uM
+TESTS_REQUIRE = [
+    'pytest',
+    'pytest-runner'
+]
 
 setup(name=PACKAGENAME,
       version=VERSION,
@@ -104,7 +113,10 @@ setup(name=PACKAGENAME,
       scripts=scripts,
       python_requires='>=3.5',
       install_requires=['Cython', 'astropy'],
-      tests_require=['pytest'],
+      tests_require=TESTS_REQUIRE,
+      extras_require={
+          'test': TESTS_REQUIRE
+      },
       author=AUTHOR,
       author_email=AUTHOR_EMAIL,
       license=LICENSE,
