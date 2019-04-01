@@ -107,6 +107,10 @@ TESTS_REQUIRE = [
     'pytest-runner'
 ]
 
+DOCS_REQUIRE = [
+    'sphinx'
+]
+
 setup(name=PACKAGENAME,
       version=VERSION,
       description=DESCRIPTION,
@@ -115,7 +119,8 @@ setup(name=PACKAGENAME,
       install_requires=['Cython', 'astropy'],
       tests_require=TESTS_REQUIRE,
       extras_require={
-          'test': TESTS_REQUIRE
+          'test': TESTS_REQUIRE,
+          'docs': DOCS_REQUIRE
       },
       author=AUTHOR,
       author_email=AUTHOR_EMAIL,
