@@ -15,13 +15,7 @@ addons:
 env:
   global:
     - NUMPY_VERSION=1.16
-    - DEV: |
-      (
-        "--pre"
-        "--upgrade"
-        "numpy"
-        "git+https://github.com/astropy/astropy"
-      )
+    - DEV=("--pre" "--upgrade" "numpy" "git+https://github.com/astropy/astropy")
 
 matrix:
   # Don't wait for allowed failures
