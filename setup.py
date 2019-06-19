@@ -103,7 +103,9 @@ TESTS_REQUIRE = [
 ]
 
 DOCS_REQUIRE = [
-    'sphinx'
+    'sphinx',
+    'sphinx_automodapi',
+    'matplotlib'
 ]
 
 setup(name=PACKAGENAME,
