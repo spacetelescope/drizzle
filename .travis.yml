@@ -22,23 +22,23 @@ matrix:
   fast_finish: true
   include:
     # Run tests
-    - env: TEST_COMMAND='python setup.py test'
+    - env: TEST_COMMAND='pytest'
            PIP_DEPENDENCIES='.[test]'
     # Build sphinx documentation with warnings
     - env: TEST_COMMAND='python setup.py build_sphinx -W'
            PIP_DEPENDENCIES='.[docs]'
     # Test with python 3.7
     - python: 3.7
-      env: TEST_COMMAND='python setup.py test'
+      env: TEST_COMMAND='pytest'
            PIP_DEPENDENCIES='.[test]'
     # Cron job test with dev versions of dependencies and python 3.6
     - env: PIP_DEPENDENCIES="${DEV} .[test]"
-           TEST_COMMAND='python setup.py test'
+           TEST_COMMAND='pytest'
            # EVENT_TYPE='cron'
     # Cron job test with dev versions of dependencies and python 3.7
     - python: 3.7
       env: PIP_DEPENDENCIES="${DEV} .[test]"
-           TEST_COMMAND='python setup.py test'
+           TEST_COMMAND='pytest'
            # EVENT_TYPE='cron'
     # PEP8 check
     # Strict PEP8 check, an allowed failure below
