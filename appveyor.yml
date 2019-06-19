@@ -16,18 +16,13 @@ environment:
       CONDA_DEPENDENCIES: "Cython"
 
   matrix:
+      - PYTHON_VERSION: "3.6"
+        ASTROPY_VERSION: "3.1"
+        NUMPY_VERSION: "1.16"
 
-      # We test Python 2.6 and 3.4 because 2.6 is most likely to have issues in
-      # Python 2 (if 2.6 passes, 2.7 virtually always passes) and Python 3.4 is
-      # the latest Python 3 release.
-
-      - PYTHON_VERSION: "2.6"
-        ASTROPY_VERSION: "1.0"
-        NUMPY_VERSION: "1.9.1"
-
-      - PYTHON_VERSION: "3.4"
-        ASTROPY_VERSION: "1.0"
-        NUMPY_VERSION: "1.9.1"
+      - PYTHON_VERSION: "3.7"
+        ASTROPY_VERSION: "3.1.2"
+        NUMPY_VERSION: "1.16.4"
 
 platform:
     -x64
@@ -37,10 +32,11 @@ install:
     - "powershell ci-helpers/appveyor/install-miniconda.ps1"
     - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
     - "activate test"
+    - "python -m pip install -e .[test]"
 
 # Not a .NET project, we build the package in the install step instead
 build: false
 
 test_script:
-  - "%CMD_IN_ENV% python setup.py test"
+  - "%CMD_IN_ENV% pytest"
 
