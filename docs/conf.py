@@ -29,26 +29,25 @@ import datetime
 import os
 import sys
 
-try:
-    import astropy_helpers
-except ImportError:
-    # Building from inside the docs/ directory?
-    if os.path.basename(os.getcwd()) == 'docs':
-        a_h_path = os.path.abspath(os.path.join('..', 'astropy_helpers'))
-        if os.path.isdir(a_h_path):
-            sys.path.insert(1, a_h_path)
-
-# Load all of the global Astropy configuration
-from sphinx_astropy.conf import *
-
 # Get configuration information from setup.cfg
 from configparser import ConfigParser
+
+sys.path.insert(1, '..')
 
 conf = ConfigParser()
 conf.read([os.path.join(os.path.dirname(__file__), '..', 'setup.cfg')])
 setup_cfg = dict(conf.items('metadata'))
 
+extensions = [
+    'sphinx_automodapi.automodapi',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.doctest',
+    'sphinx.ext.intersphinx',
+]
 # -- General configuration ----------------------------------------------------
+
+master_doc = 'index'
 
 # If your documentation needs a minimal Sphinx version, state it here.
 #needs_sphinx = '1.2'
@@ -59,11 +58,11 @@ setup_cfg = dict(conf.items('metadata'))
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns.append('_templates')
+exclude_patterns = ['_templates']
 
 # This is added to the end of RST files - a good place to put substitutions to
 # be used globally.
-rst_epilog += """
+rst_epilog = """
 """
 
 # -- Project information ------------------------------------------------------

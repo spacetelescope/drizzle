@@ -34,6 +34,7 @@ parts
 bin
 var
 sdist
+pip-wheel-metadata
 develop-eggs
 .installed.cfg
 distribute-*.tar.gz

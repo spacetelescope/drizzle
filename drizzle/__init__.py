@@ -6,4 +6,9 @@ A package for combining dithered images into a single image
 
 from __future__ import absolute_import, division, unicode_literals, print_function
 
-from ._astropy_init import *
+from pkg_resources import get_distribution, DistributionNotFound
+try:
+    __version__ = get_distribution(__name__).version
+except DistributionNotFound:
+    # package is not installed
+    pass
