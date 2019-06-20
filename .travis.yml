@@ -11,11 +11,13 @@ addons:
       - texlive-latex-extra
       - dvipng
       - graphviz
+      - libopenblas-base
+      - libopenblas-dev
 
 env:
   global:
     - NUMPY_VERSION=1.16
-    - DEV="--upgrade --pre numpy git+https://github.com/astropy/astropy"
+    - DEV="--upgrade cython git+https://github.com/numpy/numpy git+https://github.com/astropy/astropy"
 
 matrix:
   # Don't wait for allowed failures
@@ -23,21 +25,21 @@ matrix:
   include:
     # Run tests
     - env: TEST_COMMAND='pytest'
-           PIP_DEPENDENCIES='.[test]'
+           PIP_DEPENDENCIES='-e .[test]'
     # Build sphinx documentation with warnings
     - env: TEST_COMMAND='python setup.py build_sphinx'
-           PIP_DEPENDENCIES='.[docs]'
+           PIP_DEPENDENCIES='-e .[docs]'
     # Test with python 3.7
     - python: 3.7
       env: TEST_COMMAND='pytest'
-           PIP_DEPENDENCIES='.[test]'
+           PIP_DEPENDENCIES='-e .[test]'
     # Cron job test with dev versions of dependencies and python 3.6
-    - env: PIP_DEPENDENCIES="${DEV} .[test]"
+    - env: PIP_DEPENDENCIES="${DEV} -e .[test]"
            TEST_COMMAND='pytest'
            # EVENT_TYPE='cron'
     # Cron job test with dev versions of dependencies and python 3.7
     - python: 3.7
-      env: PIP_DEPENDENCIES="${DEV} .[test]"
+      env: PIP_DEPENDENCIES="${DEV} -e .[test]"
            TEST_COMMAND='pytest'
            # EVENT_TYPE='cron'
     # PEP8 check
@@ -49,7 +51,7 @@ matrix:
 install:
   - pip install --upgrade pip
   - pip install numpy~=$NUMPY_VERSION
-  - if [[ -n $PIP_DEPENDENCIES ]]; then pip install -e $PIP_DEPENDENCIES; fi
+  - if [[ -n $PIP_DEPENDENCIES ]]; then pip install $PIP_DEPENDENCIES; fi
   - pip install flake8
 
 script: $TEST_COMMAND
