@@ -15,7 +15,7 @@ addons:
 env:
   global:
     - NUMPY_VERSION=1.16
-    - DEV="--pre --upgrade numpy git+https://github.com/astropy/astropy"
+    - DEV="--upgrade --pre numpy git+https://github.com/astropy/astropy"
 
 matrix:
   # Don't wait for allowed failures
@@ -25,7 +25,7 @@ matrix:
     - env: TEST_COMMAND='pytest'
            PIP_DEPENDENCIES='.[test]'
     # Build sphinx documentation with warnings
-    - env: TEST_COMMAND='python setup.py build_sphinx -W'
+    - env: TEST_COMMAND='python setup.py build_sphinx'
            PIP_DEPENDENCIES='.[docs]'
     # Test with python 3.7
     - python: 3.7
