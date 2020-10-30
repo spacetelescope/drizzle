@@ -3,9 +3,10 @@
 
 import os
 import sys
-
 from setuptools import setup, find_packages, Extension
 from configparser import ConfigParser
+
+import numpy
 
 
 def get_extensions():
