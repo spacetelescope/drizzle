@@ -22,9 +22,6 @@ jobs:
       addons:
         apt:
           packages:
-            - texlive-latex-extra
-            - dvipng
-            - graphviz
             - libopenblas-base
             - libopenblas-dev
 
@@ -33,6 +30,11 @@ jobs:
         - pip install -U cython
         - "pip install git+https://github.com/numpy/numpy git+https://github.com/astropy/astropy"
         - "pip install -e .[test]"
+      addons:
+        apt:
+          packages:
+            - libopenblas-base
+            - libopenblas-dev
 
     - name: Code style
       install:

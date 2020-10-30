@@ -8,14 +8,6 @@ from setuptools import setup, find_packages, Extension
 from configparser import ConfigParser
 
 
-try:
-    import numpy
-except ImportError:
-    print("numpy is required to build this package.", file=sys.stderr)
-    print("HINT: execute \"pip install .\"", file=sys.stderr)
-    exit(1)
-
-
 def get_extensions():
     ROOT = os.path.dirname(__file__)
     SRCDIR = os.path.join(ROOT, 'src')
