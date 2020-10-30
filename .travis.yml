@@ -14,6 +14,17 @@ jobs:
         - pip install numpy~=1.16.0
         - "pip install -e .[test]"
 
+    - name: Dev dependencies
+      install:
+        - pip install -U cython
+        - "pip install git+https://github.com/numpy/numpy git+https://github.com/astropy/astropy"
+        - "pip install -e .[test]"
+      addons:
+        apt:
+          packages:
+            - libopenblas-base
+            - libopenblas-dev
+
     - name: Documentation build
       install:
         - "pip install -e .[docs]"
@@ -25,29 +36,11 @@ jobs:
             - libopenblas-base
             - libopenblas-dev
 
-    - name: Dev dependencies
-      install:
-        - pip install -U cython
-        - "pip install git+https://github.com/numpy/numpy git+https://github.com/astropy/astropy"
-        - "pip install -e .[test]"
-      addons:
-        apt:
-          packages:
-            - libopenblas-base
-            - libopenblas-dev
-
     - name: Code style
       install:
         - pip install flake8
       script:
         - flake8 --count
-
-  allow_failures:
-    - name: Dev dependencies
-      install:
-        - pip install -U cython
-        - "pip install git+https://github.com/numpy/numpy git+https://github.com/astropy/astropy"
-        - "pip install -e .[test]"
 
 install:
   - pip install -e .[test]
