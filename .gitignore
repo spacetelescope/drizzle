@@ -47,3 +47,4 @@ distribute-*.tar.gz
 
 # Mac OSX
 .DS_Store
+.pytest_cache

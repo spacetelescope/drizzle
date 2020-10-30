@@ -1,15 +1,16 @@
-import sys
 import os.path
+
 import numpy as np
 import numpy.testing as npt
-
 from astropy import wcs
 from astropy.io import fits
 
 from drizzle import calc_pixmap
 
+
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
+
 
 def test_map_rectangular():
     """
@@ -22,14 +23,13 @@ def test_map_rectangular():
     pixmap = pixmap.transpose()
     npt.assert_equal(pixmap[5,500], (500,5))
 
+
 def test_map_to_self():
     """
     Map a pixel array to itself. Should return the same array.
     """
     input_file = os.path.join(DATA_DIR, 'input1.fits')
     input_hdu = fits.open(input_file)
-    input_header = input_hdu[1].header
-    input_shape = input_hdu[1].data.shape
 
     input_wcs = wcs.WCS(input_hdu[1].header)
     naxis1, naxis2 = input_wcs.pixel_shape
@@ -41,6 +41,7 @@ def test_map_to_self():
     pixmap = calc_pixmap.calc_pixmap(input_wcs, input_wcs)
     npt.assert_equal(pixmap.shape, ok_pixmap.shape) # Got x-y transpose right
     npt.assert_almost_equal(pixmap, ok_pixmap, decimal=5) # Mapping an array to itself
+
 
 def test_translated_map():
     """

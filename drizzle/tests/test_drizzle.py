@@ -3,20 +3,19 @@ import math
 import os
 import shutil
 import tempfile
+
 import pytest
-
 import numpy as np
-import numpy.ma as ma
-import numpy.testing as npt
-
 from astropy import wcs
 from astropy.io import fits
 
 from drizzle import drizzle
 
+
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
 OUTPUT_DIR = os.environ.get('DRIZZLE_TEST_OUTPUT_DIR', tempfile.mkdtemp())
+
 
 @pytest.yield_fixture(autouse=True, scope='module')
 def output_dir():

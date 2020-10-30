@@ -1,10 +1,7 @@
 from __future__ import division, print_function, unicode_literals, absolute_import
 
-# THIRD-PARTY
 import numpy as np
 
-# LOCAL
-from . import util
 from . import calc_pixmap
 from . import cdrizzle
 
@@ -72,7 +69,6 @@ def doblot(source, source_wcs, blot_wcs, exptime, coeffs = True,
     _outsci = np.zeros(blot_wcs.pixel_shape[::-1], dtype=np.float32)
 
     # compute the undistorted 'natural' plate scale
-    wcslin = blot_wcs
     blot_wcs.sip = None
     blot_wcs.cpdis1 = None
     blot_wcs.cpdis2 = None
