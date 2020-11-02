@@ -12,13 +12,13 @@ jobs:
       python: 3.6.10
       install:
         - pip install numpy~=1.16.0
-        - "pip install -e .[test]"
+        - pip install -e .[test]
 
     - name: Dev dependencies
       install:
-        - pip install -U cython
-        - "pip install git+https://github.com/numpy/numpy git+https://github.com/astropy/astropy"
-        - "pip install -e .[test]"
+        - pip install git+https://github.com/numpy/numpy
+        - pip install git+https://github.com/astropy/astropy
+        - pip install -e .[test]
       addons:
         apt:
           packages:
@@ -27,7 +27,7 @@ jobs:
 
     - name: Documentation build
       install:
-        - "pip install -e .[docs]"
+        - pip install -e .[test,docs]
       script:
         - sphinx-build docs docs/_build
       addons:
