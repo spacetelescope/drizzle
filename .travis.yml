@@ -16,6 +16,7 @@ jobs:
 
     - name: Dev dependencies
       install:
+        - pip install cython
         - pip install git+https://github.com/numpy/numpy
         - pip install git+https://github.com/astropy/astropy
         - pip install -e .[test]
@@ -27,9 +28,11 @@ jobs:
 
     - name: Documentation build
       install:
-        - pip install -e .[test,docs]
+        - pip install -e .[docs]
+      before_script:
+        - cd docs
       script:
-        - sphinx-build docs docs/_build
+        - sphinx-build . ./_build
       addons:
         apt:
           packages:
@@ -41,6 +44,19 @@ jobs:
         - pip install flake8
       script:
         - flake8 --count
+
+allow_failures:
+    - name: Dev dependencies
+      install:
+        - pip install cython
+        - pip install git+https://github.com/numpy/numpy
+        - pip install git+https://github.com/astropy/astropy
+        - pip install -e .[test]
+      addons:
+        apt:
+          packages:
+            - libopenblas-base
+            - libopenblas-dev
 
 install:
   - pip install -e .[test]
