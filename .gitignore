@@ -12,6 +12,7 @@ htmlcov
 MANIFEST
 .coverage*
 docs/api/
+.pytest_cache
 
 # Test output
 drizzle/tests/data/difference_*

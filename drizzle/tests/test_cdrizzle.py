@@ -1,6 +1,5 @@
 import numpy as np
 
-from drizzle import drizzle
 from drizzle import cdrizzle
 
 def test_cdrizzle():

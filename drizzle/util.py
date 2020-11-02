@@ -1,13 +1,7 @@
 from __future__ import division, print_function, unicode_literals, absolute_import
 
-# SYSTEM
-import os
-import os.path
-
-# THIRD-PARTY
 import numpy as np
-from astropy import wcs
-from astropy.io import fits
+
 
 def find_keyword_extn(fimg, keyword, value=None):
     """

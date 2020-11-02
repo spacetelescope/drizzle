@@ -1,29 +1,27 @@
-import sys
-import glob
-import math
 import os
 import shutil
 import tempfile
+
 import pytest
 import numpy as np
-import numpy.ma as ma
-import numpy.testing as npt
-
 from astropy import wcs
 from astropy.io import fits
 
 from drizzle import drizzle
 from drizzle import util
 
+
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
 OUTPUT_DIR = os.environ.get('DRIZZLE_TEST_OUTPUT_DIR', tempfile.mkdtemp())
+
 
 @pytest.yield_fixture(autouse=True, scope='module')
 def output_dir():
     yield
     if 'DRIZZLE_TEST_OUTPUT_DIR' not in os.environ:
         shutil.rmtree(OUTPUT_DIR)
+
 
 def read_header(filename):
     """
@@ -36,6 +34,7 @@ def read_header(filename):
     hdu.close()
     return header
 
+
 def read_image(filename):
     """
     Read the image from a fits file
@@ -47,6 +46,7 @@ def read_image(filename):
     hdu.close()
     return image
 
+
 def read_wcs(filename):
     """
     Read the wcs of a fits file
@@ -57,6 +57,7 @@ def read_wcs(filename):
     the_wcs = wcs.WCS(hdu[1].header)
     hdu.close()
     return the_wcs
+
 
 def test_null_run():
     """
@@ -90,6 +91,7 @@ def test_null_run():
     assert(pheader['EXPTIME'] == 0.0)
     assert(pheader['DRIZEXPT'] == 1.0)
 
+
 def test_file_init():
     """
     Initialize drizzle object from a file
@@ -105,6 +107,7 @@ def test_file_init():
     assert(driz.kernel == 'turbo')
     assert(driz.pixfrac == 0.5)
     assert(driz.fillval == 'NaN')
+
 
 def test_add_header():
     """
@@ -130,6 +133,7 @@ def test_add_header():
     assert(header['TWOVAL'] == 2.0)
     assert(header['DRIZKERN'] == 'square')
 
+
 def test_add_file():
     """
     Add an image read from a file
@@ -147,6 +151,7 @@ def test_add_file():
     test_image =  read_image(test_file)
     diff_image = np.absolute(output_image - test_image)
     assert(np.amax(diff_image) == 0.0)
+
 
 def test_blot_file():
     """
