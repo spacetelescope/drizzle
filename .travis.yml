@@ -17,7 +17,7 @@ jobs:
     - name: Dev dependencies
       install:
         # Install a nightly wheel of numpy from the anaconda folks
-        - pip install -i https://pypi.anaconda.org/scipy-wheels-nightly/simple --pre numpy
+        - pip install -i https://pypi.anaconda.org/scipy-wheels-nightly/simple --pre -I numpy
         - pip install git+https://github.com/astropy/astropy
         - pip install -e .[test]
 
