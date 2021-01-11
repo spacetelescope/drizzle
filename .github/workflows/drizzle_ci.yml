@@ -1,4 +1,4 @@
-name: Drizzle Package Continuous Integration
+name: Drizzle Package CI
 
 on:
   push:
