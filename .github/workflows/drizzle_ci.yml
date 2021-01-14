@@ -99,7 +99,8 @@ jobs:
         python -m pip install -e .[test]
     - name: Test with pytest and code coverage
       run: |
-        pytest --cov-report=xml --cov=. --cov-config=./drizzle/tests/coveragerc
+        # pytest --cov-report=xml --cov=. --cov-config=./drizzle/tests/coveragerc
+        pytest --cov-report=xml --cov=. --rcfile=./drizzle/tests/coveragerc
     - name: Upload coverage to codecoverage
       uses: codecov/codecov-action@v1
       with:
