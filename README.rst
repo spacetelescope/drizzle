@@ -5,9 +5,8 @@ drizzle Documentation
     :target: http://www.astropy.org
     :alt: Powered by Astropy Badge
 
-.. image:: https://travis-ci.org/spacetelescope/drizzle.svg?branch=master
-    :target: https://travis-ci.org/spacetelescope/drizzle
-    :alt: Travis CI
+.. image:: https://github.com/spacetelescope/drizzle/workflows/CI/badge.svg?branch=master
+    :target: https://github.com/spacetelescope/drizzle/workflows
 
 The ``drizzle`` library is a Python package for combining dithered images into a
 single image. This library is derived from code used in DrizzlePac. Like
