@@ -8,7 +8,7 @@ drizzle Documentation
 .. image:: https://github.com/spacetelescope/drizzle/workflows/CI/badge.svg?branch=master
     :target: https://github.com/spacetelescope/drizzle/workflows
 
-.. |Coverage Status| image:: https://codecov.io/gh/spacetelescope/drizzle/branch/master/graph/badge.svg
+.. |Coverage Status| 
     :target: https://codecov.io/gh/spacetelescope/drizzle
     :alt: Drizzle's Coverage Status
 
