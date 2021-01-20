@@ -5,9 +5,6 @@ drizzle Documentation
     :target: http://www.astropy.org
     :alt: Powered by Astropy Badge
 
-.. image:: https://github.com/spacetelescope/drizzle/workflows/CI/badge.svg?branch=master
-    :target: https://github.com/spacetelescope/drizzle/workflows
-
 .. |Coverage Status| image:: https://codecov.io/github/spacetelescope/drizzle/branch/master/graphs/badge.svg
     :target: https://codecov.io/gh/spacetelescope/drizzle
     :alt: Drizzle's Coverage Status
