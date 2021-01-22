@@ -10,7 +10,7 @@ drizzle Documentation
     :alt: Drizzle's Coverage Status
 
 
-.. image:: https://github.com/spacetelescope/drizzle/workflows/CI/badge.svg
+.. image:: https://github.com/spacetelescope/drizzle/workflows/badge.svg
     :target: https://github.com/spacetelescope/drizzle/actions
     :alt: Drizzle's CI Status
 
