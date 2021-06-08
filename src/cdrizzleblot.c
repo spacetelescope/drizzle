@@ -51,7 +51,7 @@ struct sinc_param_t {
  * of the 2D interpolant.  The procedure assumes that 1 <= x <= isize[0] and 1 <= y <= isize[1] and
  * that coeff[1+first_point] = datain[1,1]. The interpolant is evaluated using Everett's central
  * difference formula. (Was: IIBIP3)
- * 
+ *
  * coeff:     Array of shape \a [len_coeff][len_coeff] contains the coefficients of the 2D interpolant.
  * len_coeff: The dimension (each side of the square) of the coefficient array.
  * firstt:    Offset of the first data point.  (In practice, this is always zero.)
@@ -138,7 +138,7 @@ ii_bipoly3(const float* coeff /* [len_coeff][len_coeff] */,
  * Procedure to evaluate a biquintic polynomial.  The array coeff contains the coefficents of the
  * 2D interpolant.  The routine assumes that 0 <= x < isize[0] and 0 <= y < isize[1]. The interpolant
  * is evaluated using Everett's central difference formula. (Was: IIBIP5)
- * 
+ *
  * coeff:     Array of shape \a [len_coeff][len_coeff] contains the coefficients of the 2D interpolant.
  * len_coeff: The dimension (each side of the square) of the coefficient array.
  * firstt:    Offset of the first data point.  (In practice, this is always zero.)
@@ -253,9 +253,9 @@ ii_bipoly5(const float* coeff /* [len_coeff][len_coeff] */,
 
 /** --------------------------------------------------------------------------------------------------
  * Perform nearest neighbor interpolation.
- * 
+ *
  * state: A pointer to any constant values specific to this interpolation type. (NULL).
- * data:  A 2D data array 
+ * data:  A 2D data array
  * x:     The fractional x coordinate
  * y:     The fractional y coordinate
  * value: The resulting value at x, y after interpolating the data (output)
@@ -282,9 +282,9 @@ interpolate_nearest_neighbor(const void* state UNUSED_PARAM,
 
 /** --------------------------------------------------------------------------------------------------
  * Perform basic bilinear interpolation.
- * 
+ *
  * state: A pointer to any constant values specific to this interpolation type. (NULL).
- * data:  A 2D data array 
+ * data:  A 2D data array
  * x:     The fractional x coordinate
  * y:     The fractional y coordinate
  * value: The resulting value at x, y after interpolating the data (output)
@@ -299,63 +299,60 @@ interpolate_bilinear(const void* state UNUSED_PARAM,
                      float* value,
                      struct driz_error_t* error UNUSED_PARAM) {
   integer_t nx, ny;
-  float sx, tx, sy, ty;
+  float sx, tx, sy, ty, f00;
   float hold21, hold12, hold22;
   integer_t   isize[2];
+
   get_dimensions(data, isize);
 
   assert(state == NULL);
   INTERPOLATION_ASSERTS;
 
-  nx = (integer_t)x;
-  ny = (integer_t)y;
+  nx = (integer_t) x;
+  ny = (integer_t) y;
 
-  sx = x - (float)nx;
-  tx = 1.0f - sx;
-  sy = y - (float)ny;
-  ty = 1.0f - sy;
-
-  if (nx >= isize[0] - 1) {
-    hold21 = 2.0f * get_pixel(data, nx, ny) - get_pixel(data, nx - 1, ny);
-  } else {
-    assert(nx < isize[0] - 1);
-
-    hold21 = get_pixel(data, nx + 1, ny);
+  if (nx < 0 || ny < 0 || nx >= isize[0] || ny >= isize[1]) {
+      driz_error_set_message(error,
+          "Bilinear interpolation: point outside of the image.");
+      return 1;
   }
 
-  if (ny >= isize[1]-1) {
-    hold12 = 2.0f * get_pixel(data, nx, ny) - get_pixel(data, nx, ny-1);
+  f00 = get_pixel(data, nx, ny);
+
+  if (nx == (isize[0] - 1)) {
+    if (ny == (isize[1] - 1)) {
+      /* This is the last pixel (in x and y). Assign constant value of this pixel. */
+      *value = f00;
+      return 0;
+    }
+    /* Interpolate along Y-direction only */
+    sy = y - (float)ny;
+    *value = (1.0f - sy) * f00 + sy * get_pixel(data, nx, ny + 1);
+  } else if (ny == (isize[1] - 1)) {
+    /* Interpolate along X-direction only */
+    sx = x - (float)nx;
+    *value = (1.0f - sx) * f00 + sx * get_pixel(data, nx + 1, ny);
   } else {
-    assert(ny < isize[1]-1);
+    /* Bilinear - interpolation */
+    sx = x - (float)nx;
+    tx = 1.0f - sx;
+    sy = y - (float)ny;
+    ty = 1.0f - sy;
 
-    hold12 = get_pixel(data, nx, ny+1);
+    *value = tx * ty * f00 +
+             sx * ty * get_pixel(data, nx + 1, ny) +
+             sy * tx * get_pixel(data, nx, ny + 1) +
+             sx * sy * get_pixel(data, nx + 1, ny + 1);
   }
-
-  if (nx >= isize[0] && ny >= isize[1]) {
-    hold22 = 2.0f * hold21 - (2.0f * get_pixel(data, nx, ny-1) -
-                              get_pixel(data, nx-1, ny-1));
-  } else if (nx >= isize[0]) {
-    hold22 = 2.0f * hold12 - get_pixel(data, nx-1, ny+1);
-  } else if (ny >= isize[1]) {
-    hold22 = 2.0f * hold21 - get_pixel(data, nx+1, ny+1);
-  } else {
-    hold22 = get_pixel(data, nx+1, ny+1);
-  }
-
-  *value =
-    tx * ty * get_pixel(data, nx, ny) +
-    sx * ty * hold21 +
-    sy * tx * hold12 +
-    sx * sy * hold22;
 
   return 0;
 }
 
 /** --------------------------------------------------------------------------------------------------
  * Perform cubic polynomial interpolation.
- * 
+ *
  * state: A pointer to any constant values specific to this interpolation type. (NULL).
- * data:  A 2D data array 
+ * data:  A 2D data array
  * x:     The fractional x coordinate
  * y:     The fractional y coordinate
  * value: The resulting value at x, y after interpolating the data (output)
@@ -467,9 +464,9 @@ interpolate_poly3(const void* state UNUSED_PARAM,
 
 /** --------------------------------------------------------------------------------------------------
  * Perform quintic polynomial interpolation.
- * 
+ *
  * state: A pointer to any constant values specific to this interpolation type. (NULL).
- * data:  A 2D data array 
+ * data:  A 2D data array
  * x:     The fractional x coordinate
  * y:     The fractional y coordinate
  * value: The resulting value at x, y after interpolating the data (output)
@@ -582,7 +579,7 @@ interpolate_poly5(const void* state UNUSED_PARAM,
 #define INTERPOLATE_SINC_NCONV 15
 
 static inline_macro int
-interpolate_sinc_(PyArrayObject* data, 
+interpolate_sinc_(PyArrayObject* data,
                   const integer_t firstt, const integer_t npts,
                   const float* x /*[npts]*/, const float* y /*[npts]*/,
                   const float mindx, const float mindy,
@@ -761,9 +758,9 @@ interpolate_sinc_(PyArrayObject* data,
 
 /** --------------------------------------------------------------------------------------------------
  * Perform sinc interpolation.
- * 
+ *
  * state: A pointer to a \a sinc_param_t object
- * data:  A 2D data array 
+ * data:  A 2D data array
  * x:     The fractional x coordinate
  * y:     The fractional y coordinate
  * value: The resulting value at x, y after interpolating the data (output)
@@ -784,15 +781,15 @@ interpolate_sinc(const void* state,
   assert(state);
   INTERPOLATION_ASSERTS;
 
-  return interpolate_sinc_(data, 0, 1, &x, &y, 0.001f, 0.001f, 
+  return interpolate_sinc_(data, 0, 1, &x, &y, 0.001f, 0.001f,
                            param->sinscl, value, error);
 }
 
 /** --------------------------------------------------------------------------------------------------
  * Perform Lanczos interpolation.
- * 
+ *
  * state: A pointer to a \a lanczos_param_t object
- * data:  A 2D data array 
+ * data:  A 2D data array
  * x:     The fractional x coordinate
  * y:     The fractional y coordinate
  * value: The resulting value at x, y after interpolating the data (output)
@@ -889,7 +886,7 @@ doblot(struct driz_param_t* p) {
   struct sinc_param_t sinc;
   struct lanczos_param_t lanczos;
   void* state = NULL;
-  
+
   driz_log_message("starting doblot");
   get_dimensions(p->data, isize);
   get_dimensions(p->output_data, osize);
@@ -925,7 +922,7 @@ doblot(struct driz_param_t* p) {
   } else if (p->interpolation == interp_sinc || p->interpolation == interp_lsinc) {
     sinc.sinscl = p->sinscl;
     state = &sinc;
-    
+
   } /* Otherwise state is NULL */
 
   /* In the WCS case, we can't use the scale to calculate the Jacobian,
@@ -943,7 +940,7 @@ doblot(struct driz_param_t* p) {
   /* Recalculate the area scaling factor */
   scale2 = p->scale * p->scale;
   v = 1.0;
-  
+
   for (j = 0; j < osize[1]; ++j) {
 
     /* Loop through the output positions and do the interpolation */
@@ -955,15 +952,15 @@ doblot(struct driz_param_t* p) {
         xo = get_pixmap(p->pixmap, i, j)[0];
         yo = get_pixmap(p->pixmap, i, j)[1];
       }
-      
+
       if (npy_isnan(xo) || npy_isnan(yo)) {
           driz_error_format_message(p->error, "NaN in pixmap[%d,%d]", i, j);
           return 1;
       }
-      
+
       /* Check it is on the input image */
-      if (xo >= 0.0 && xo < isize[0] &&
-          yo >= 0.0 && yo < isize[1]) {
+      if (xo >= 0.0 && xo < (float)isize[0] &&
+          yo >= 0.0 && yo < (float)isize[1]) {
 
         double value;
 
@@ -971,7 +968,7 @@ doblot(struct driz_param_t* p) {
         if (interpolate(state, p->data, xo, yo, &v, p->error)) {
           goto doblot_exit_;
         }
-        
+
         value = v * p->ef / scale2;
         if (oob_pixel(p->output_data, i, j)) {
           driz_error_format_message(p->error, "OOB in output_data[%d,%d]", i, j);
