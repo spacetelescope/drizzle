@@ -300,8 +300,7 @@ interpolate_bilinear(const void* state UNUSED_PARAM,
                      struct driz_error_t* error UNUSED_PARAM) {
   integer_t nx, ny;
   float sx, tx, sy, ty, f00;
-  float hold21, hold12, hold22;
-  integer_t   isize[2];
+  integer_t isize[2];
 
   get_dimensions(data, isize);
 
