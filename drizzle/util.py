@@ -1,5 +1,3 @@
-from __future__ import division, print_function, unicode_literals, absolute_import
-
 import numpy as np
 
 
@@ -46,6 +44,7 @@ def find_keyword_extn(fimg, keyword, value=None):
     # Return the index of the extension which contained the
     # desired EXTNAME value.
     return extnum
+
 
 def get_extn(fimg, extn=''):
     """
@@ -98,6 +97,7 @@ def get_extn(fimg, extn=''):
 
     return _extn
 
+
 def get_keyword(fimg, keyword, default=None):
     """
     Return a keyword value from the header of an image,
@@ -134,6 +134,7 @@ def get_keyword(fimg, keyword, default=None):
 
     return value
 
+
 def is_blank(value):
     """
     Determines whether or not a value is considered 'blank'.
@@ -150,6 +151,7 @@ def is_blank(value):
     True or False
     """
     return value.strip() == ""
+
 
 def parse_extn(extn=''):
     """
@@ -191,6 +193,7 @@ def parse_extn(extn=''):
     else:
         return (lext[0], 1)
 
+
 def parse_filename(filename):
     """
     Parse out filename from any specified extensions.
@@ -212,12 +215,13 @@ def parse_filename(filename):
     if _indx > 0:
         # Read extension name provided
         _fname = filename[:_indx]
-        _extn = filename[_indx+1:-1]
+        _extn = filename[_indx + 1:-1]
     else:
         _fname = filename
         _extn = ''
 
     return _fname, _extn
+
 
 def set_pscale(the_wcs):
     """

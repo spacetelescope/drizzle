@@ -1,9 +1,6 @@
 import math
 import os
-import shutil
-import tempfile
 
-import pytest
 import numpy as np
 from astropy import wcs
 from astropy.io import fits
@@ -127,7 +124,8 @@ def centroid_statistics(title, fname, image1, image2, amp, size):
         diff = [distances[0][0], distances[0][0], distances[0][0]]
 
         fd.write("1 match\n")
-        fd.write("distance = %f flux difference = %f\n" % (distances[0][0], distances[0][1]))
+        fd.write("distance = %f flux difference = %f\n" %
+                 (distances[0][0], distances[0][1]))
 
         for j in range(2, 4):
             ylo = int(distances[0][j][0]) - 1
@@ -136,7 +134,8 @@ def centroid_statistics(title, fname, image1, image2, amp, size):
             xhi = int(distances[0][j][1]) + 2
             subimage = images[j][ylo:yhi,xlo:xhi]
             fd.write("\n%s image centroid = (%f,%f) image flux = %f\n" %
-                     (im_type[j], distances[0][j][0], distances[0][j][1], distances[0][j][2]))
+                     (im_type[j], distances[0][j][0], distances[0][j][1],
+                      distances[0][j][2]))
             fd.write(str(subimage) + "\n")
 
     else:
@@ -145,7 +144,8 @@ def centroid_statistics(title, fname, image1, image2, amp, size):
         for k in range(0,3):
             i = indexes[k]
             diff.append(distances[i][0])
-            fd.write("\n%s distance = %f flux difference = %f\n" % (stats[k], distances[i][0], distances[i][1]))
+            fd.write("\n%s distance = %f flux difference = %f\n" %
+                     (stats[k],distances[i][0], distances[i][1]))
 
             for j in range(2, 4):
                 ylo = int(distances[i][j][0]) - 1
@@ -154,7 +154,8 @@ def centroid_statistics(title, fname, image1, image2, amp, size):
                 xhi = int(distances[i][j][1]) + 2
                 subimage = images[j][ylo:yhi,xlo:xhi]
                 fd.write("\n%s %s image centroid = (%f,%f) image flux = %f\n" %
-                         (stats[k], im_type[j], distances[i][j][0], distances[i][j][1], distances[i][j][2]))
+                         (stats[k], im_type[j], distances[i][j][0],
+                          distances[i][j][1], distances[i][j][2]))
                 fd.write(str(subimage) + "\n")
 
     fd.close()
