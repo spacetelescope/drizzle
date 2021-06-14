@@ -16,7 +16,7 @@ DATA_DIR = os.path.join(TEST_DIR, 'data')
 OUTPUT_DIR = os.environ.get('DRIZZLE_TEST_OUTPUT_DIR', tempfile.mkdtemp())
 
 
-@pytest.yield_fixture(autouse=True, scope='module')
+@pytest.fixture(autouse=True, scope='module')
 def output_dir():
     yield
     if 'DRIZZLE_TEST_OUTPUT_DIR' not in os.environ:

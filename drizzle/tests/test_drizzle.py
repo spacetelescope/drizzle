@@ -17,7 +17,7 @@ DATA_DIR = os.path.join(TEST_DIR, 'data')
 OUTPUT_DIR = os.environ.get('DRIZZLE_TEST_OUTPUT_DIR', tempfile.mkdtemp())
 
 
-@pytest.yield_fixture(autouse=True, scope='module')
+@pytest.fixture(autouse=True, scope='module')
 def output_dir():
     yield
     if 'DRIZZLE_TEST_OUTPUT_DIR' not in os.environ:
@@ -541,23 +541,3 @@ def test_blot_with_lan5():
 
         assert(med_diff < 1.0e-6)
         assert(max_diff < 1.0e-5)
-
-if __name__ == "__main__":
-    """
-    Run tests from command line
-    """
-    for flag in sys.argv[1:]:
-        if flag == 'ok':
-            ok = True
-
-    test_square_with_point()
-    test_square_with_grid()
-    test_turbo_with_grid()
-    test_gaussian_with_grid()
-    test_lanczos_with_grid()
-    test_tophat_with_grid()
-    test_point_with_grid()
-    test_blot_with_point()
-    test_blot_with_default()
-    test_blot_with_lan3()
-    test_blot_with_lan5()
