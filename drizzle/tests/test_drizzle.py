@@ -586,3 +586,22 @@ def test_blot_with_lan5(tmpdir):
                                                            template_data, 20.0, 16)
         assert med_diff < 1.0e-6
         assert max_diff < 1.0e-5
+
+
+def test_context_planes():
+    """Reproduce error seen in issue #50"""
+    shape = [10, 10]
+    outwcs = wcs.WCS()
+    outwcs.pixel_shape = shape
+    driz = drizzle.Drizzle(outwcs=outwcs)
+
+    image = np.ones(shape)
+    inwcs = wcs.WCS()
+    inwcs.pixel_shape = shape
+
+    for i in range(32):
+        driz.add_image(image, inwcs)
+    assert driz.outcon.shape == (1, 10, 10)
+
+    driz.add_image(image, inwcs)
+    assert driz.outcon.shape == (2, 10, 10)

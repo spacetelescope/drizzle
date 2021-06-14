@@ -453,7 +453,7 @@ class Drizzle(object):
 
         if self.outcon.shape[0] == planeid:
             plane = np.zeros_like(self.outcon[0])
-            self.outcon = np.append(self.outcon, plane, axis=0)
+            self.outcon = np.append(self.outcon, [plane], axis=0)
 
         # Increment the id
         self.uniqid += 1
