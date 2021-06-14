@@ -2,6 +2,7 @@ import numpy as np
 
 from drizzle import cdrizzle
 
+
 def test_cdrizzle():
     """
     Call C unit tests for cdrizzle, which are in the src/tests directory
