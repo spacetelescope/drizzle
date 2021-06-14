@@ -1,16 +1,12 @@
-from __future__ import division, print_function, unicode_literals, absolute_import
-
-# THIRD-PARTY
+"""
+STScI Python compatable drizzle module
+"""
 import numpy as np
 
-# LOCAL
 from . import util
 from . import calc_pixmap
 from . import cdrizzle
 
-"""
-STScI Python compatable drizzle module
-"""
 
 def dodrizzle(insci, input_wcs, inwht,
               output_wcs, outsci, outwht, outcon,
@@ -154,7 +150,7 @@ def dodrizzle(insci, input_wcs, inwht,
 
     # Compute what plane of the context image this input would
     # correspond to:
-    planeid = int((uniqid-1) / 32)
+    planeid = int((uniqid - 1) / 32)
 
     # Check if the context image has this many planes
     if outcon.ndim == 3:

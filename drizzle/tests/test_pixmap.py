@@ -1,7 +1,7 @@
 import os.path
 
 import numpy as np
-import numpy.testing as npt
+from numpy.testing import assert_equal, assert_almost_equal
 from astropy import wcs
 from astropy.io import fits
 
@@ -21,7 +21,8 @@ def test_map_rectangular():
 
     pixmap = np.indices((naxis1, naxis2), dtype='float32')
     pixmap = pixmap.transpose()
-    npt.assert_equal(pixmap[5,500], (500,5))
+
+    assert_equal(pixmap[5,500], (500,5))
 
 
 def test_map_to_self():
@@ -39,8 +40,11 @@ def test_map_to_self():
     ok_pixmap = ok_pixmap.transpose()
 
     pixmap = calc_pixmap.calc_pixmap(input_wcs, input_wcs)
-    npt.assert_equal(pixmap.shape, ok_pixmap.shape) # Got x-y transpose right
-    npt.assert_almost_equal(pixmap, ok_pixmap, decimal=5) # Mapping an array to itself
+
+    # Got x-y transpose right
+    assert_equal(pixmap.shape, ok_pixmap.shape)
+    # Mapping an array to itself
+    assert_almost_equal(pixmap, ok_pixmap, decimal=5)
 
 
 def test_translated_map():
@@ -66,5 +70,8 @@ def test_translated_map():
     ok_pixmap = ok_pixmap.transpose()
 
     pixmap = calc_pixmap.calc_pixmap(first_wcs, second_wcs)
-    npt.assert_equal(pixmap.shape, ok_pixmap.shape) # Got x-y transpose right
-    npt.assert_almost_equal(pixmap, ok_pixmap, decimal=5) # Mapping an array to a translated array
+
+    # Got x-y transpose right
+    assert_equal(pixmap.shape, ok_pixmap.shape)
+    # Mapping an array to a translated array
+    assert_almost_equal(pixmap, ok_pixmap, decimal=5)

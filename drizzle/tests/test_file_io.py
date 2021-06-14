@@ -1,6 +1,4 @@
 import os
-import shutil
-import tempfile
 
 import pytest
 import numpy as np
@@ -13,14 +11,6 @@ from drizzle import util
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
-OUTPUT_DIR = os.environ.get('DRIZZLE_TEST_OUTPUT_DIR', tempfile.mkdtemp())
-
-
-@pytest.yield_fixture(autouse=True, scope='module')
-def output_dir():
-    yield
-    if 'DRIZZLE_TEST_OUTPUT_DIR' not in os.environ:
-        shutil.rmtree(OUTPUT_DIR)
 
 
 def read_header(filename):
@@ -28,10 +18,8 @@ def read_header(filename):
     Read the primary header from a fits file
     """
     fileroot, extn = util.parse_filename(os.path.join(DATA_DIR, filename))
-    hdu = fits.open(fileroot)
-
-    header = hdu[0].header
-    hdu.close()
+    with fits.open(fileroot) as hdulist:
+        header = hdulist[0].header
     return header
 
 
@@ -40,11 +28,9 @@ def read_image(filename):
     Read the image from a fits file
     """
     fileroot, extn = util.parse_filename(os.path.join(DATA_DIR, filename))
-    hdu = fits.open(fileroot)
-
-    image = hdu[1].data
-    hdu.close()
-    return image
+    with fits.open(fileroot, memmap=False) as hdulist:
+        data = hdulist[1].data.copy()
+    return data
 
 
 def read_wcs(filename):
@@ -52,69 +38,68 @@ def read_wcs(filename):
     Read the wcs of a fits file
     """
     fileroot, extn = util.parse_filename(os.path.join(DATA_DIR, filename))
-    hdu = fits.open(fileroot)
-
-    the_wcs = wcs.WCS(hdu[1].header)
-    hdu.close()
+    with fits.open(fileroot) as hdulist:
+        the_wcs = wcs.WCS(hdulist[1].header)
     return the_wcs
 
 
-def test_null_run():
-    """
-    Create an empty drizzle image
-    """
-    output_file = os.path.join(OUTPUT_DIR, 'output_null_run.fits')
+@pytest.fixture
+def run_drizzle_reference_square_points(tmpdir):
+    """Create an empty drizzle image"""
+    output_file = str(tmpdir.join('output_null_run.fits'))
     output_template = os.path.join(DATA_DIR, 'reference_square_point.fits')
 
     output_wcs = read_wcs(output_template)
-    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="expsq",
-                                   pixfrac=0.5, kernel="turbo",
-                                   fillval="NaN")
+    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="expsq", pixfrac=0.5,
+                           kernel="turbo", fillval="NaN")
     driz.write(output_file)
 
-    assert(os.path.exists(output_file))
-    handle = fits.open(output_file)
-
-    assert(handle.index_of("SCI") == 1)
-    assert(handle.index_of("WHT") == 2)
-    assert(handle.index_of("CTX") == 3)
-
-    pheader = handle[0].header
-    assert(pheader['DRIZOUDA'] == 'SCI')
-    assert(pheader['DRIZOUWE'] == 'WHT')
-    assert(pheader['DRIZOUCO'] == 'CTX')
-    assert(pheader['DRIZWTSC'] == 'expsq')
-    assert(pheader['DRIZKERN'] == 'turbo')
-    assert(pheader['DRIZPIXF'] == 0.5)
-    assert(pheader['DRIZFVAL'] == 'NaN')
-    assert(pheader['DRIZOUUN'] == 'cps')
-    assert(pheader['EXPTIME'] == 0.0)
-    assert(pheader['DRIZEXPT'] == 1.0)
+    return output_file
 
 
-def test_file_init():
+def test_null_run(run_drizzle_reference_square_points):
+    output_file = run_drizzle_reference_square_points
+    with fits.open(output_file) as hdulist:
+
+        assert hdulist.index_of("SCI") == 1
+        assert hdulist.index_of("WHT") == 2
+        assert hdulist.index_of("CTX") == 3
+
+        pheader = hdulist["PRIMARY"].header
+
+    assert pheader['DRIZOUDA'] == 'SCI'
+    assert pheader['DRIZOUWE'] == 'WHT'
+    assert pheader['DRIZOUCO'] == 'CTX'
+    assert pheader['DRIZWTSC'] == 'expsq'
+    assert pheader['DRIZKERN'] == 'turbo'
+    assert pheader['DRIZPIXF'] == 0.5
+    assert pheader['DRIZFVAL'] == 'NaN'
+    assert pheader['DRIZOUUN'] == 'cps'
+    assert pheader['EXPTIME'] == 0.0
+    assert pheader['DRIZEXPT'] == 1.0
+
+
+def test_file_init(run_drizzle_reference_square_points):
     """
     Initialize drizzle object from a file
     """
-    input_file = os.path.join(OUTPUT_DIR, 'output_null_run.fits')
-    output_file = os.path.join(OUTPUT_DIR, 'output_null_run.fits')
+    input_file = run_drizzle_reference_square_points
 
     driz = drizzle.Drizzle(infile=input_file)
-    driz.write(output_file)
 
-    assert(driz.outexptime == 1.0)
-    assert(driz.wt_scl == 'expsq')
-    assert(driz.kernel == 'turbo')
-    assert(driz.pixfrac == 0.5)
-    assert(driz.fillval == 'NaN')
+    assert driz.outexptime == 1.0
+    assert driz.wt_scl == 'expsq'
+    assert driz.kernel == 'turbo'
+    assert driz.pixfrac == 0.5
+    assert driz.fillval == 'NaN'
 
 
-def test_add_header():
-    """
-    Add extra keywords read from the header
-    """
+@pytest.fixture
+def add_header(tmpdir):
+    """Add extra keywords read from the header"""
+    output_file = str(tmpdir.join('output_add_header.fits'))
+
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output_file = os.path.join(OUTPUT_DIR, 'output_add_header.fits')
     output_template = os.path.join(DATA_DIR, 'reference_square_point.fits')
 
     driz = drizzle.Drizzle(infile=output_template)
@@ -128,19 +113,25 @@ def test_add_header():
 
     driz.write(output_file, outheader=header)
 
+    return output_file
+
+
+def test_add_header(add_header):
+    output_file = add_header
     header = read_header(output_file)
-    assert(header['ONEVAL'] == 1.0)
-    assert(header['TWOVAL'] == 2.0)
-    assert(header['DRIZKERN'] == 'square')
+    assert header['ONEVAL'] == 1.0
+    assert header['TWOVAL'] == 2.0
+    assert header['DRIZKERN'] == 'square'
 
 
-def test_add_file():
+def test_add_file(add_header, tmpdir):
     """
     Add an image read from a file
     """
+    test_file = add_header
+    output_file = str(tmpdir.join('output_add_file.fits'))
+
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits[1]')
-    output_file = os.path.join(OUTPUT_DIR, 'output_add_file.fits')
-    test_file = os.path.join(OUTPUT_DIR, 'output_add_header.fits')
     output_template = os.path.join(DATA_DIR, 'reference_square_point.fits')
 
     driz = drizzle.Drizzle(infile=output_template)
@@ -148,18 +139,20 @@ def test_add_file():
     driz.write(output_file)
 
     output_image = read_image(output_file)
-    test_image =  read_image(test_file)
+    test_image = read_image(test_file)
     diff_image = np.absolute(output_image - test_image)
-    assert(np.amax(diff_image) == 0.0)
+
+    assert np.amax(diff_image) == 0.0
 
 
-def test_blot_file():
+def test_blot_file(tmpdir):
     """
     Blot an image read from a file
     """
+    output_file = str(tmpdir.join('output_blot_file.fits'))
+    test_file = str(tmpdir.join('output_blot_image.fits'))
+
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits[1]')
-    output_file = os.path.join(OUTPUT_DIR, 'output_blot_file.fits')
-    test_file = os.path.join(OUTPUT_DIR, 'output_blot_image.fits')
     output_template = os.path.join(DATA_DIR, 'reference_blot_image.fits')
 
     blotwcs = read_wcs(input_file)
@@ -175,6 +168,7 @@ def test_blot_file():
     driz.write(output_file)
 
     output_image = read_image(output_file)
-    test_image =  read_image(test_file)
+    test_image = read_image(test_file)
     diff_image = np.absolute(output_image - test_image)
-    assert(np.amax(diff_image) == 0.0)
+
+    assert np.amax(diff_image) == 0.0

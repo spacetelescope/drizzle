@@ -1,28 +1,18 @@
-# -*- coding: utf-8 -*-
-
-# Licensed under a 3-clause BSD style license - see LICENSE.rst
-
 """
 The `drizzle` module defines the `Drizzle` class, for combining input
 images into a single output image using the drizzle algorithm.
 """
-
-from __future__ import division, print_function, unicode_literals, absolute_import
-
-# SYSTEM
 import os
 import os.path
-
-# THIRD-PARTY
 
 import numpy as np
 from astropy import wcs
 from astropy.io import fits
 
-# LOCAL
 from . import util
 from . import doblot
 from . import dodrizzle
+
 
 class Drizzle(object):
     """
@@ -180,11 +170,8 @@ class Drizzle(object):
             self.outwht = np.zeros(self.outwcs.pixel_shape[::-1],
                                    dtype=np.float32)
         if self.outcon is None:
-            self.outcon = np.zeros((1,
-                                    outwcs_naxis2,
-                                    outwcs_naxis1),
-                                    dtype=np.int32)
-
+            self.outcon = np.zeros((1, outwcs_naxis2, outwcs_naxis1),
+                                   dtype=np.int32)
 
     def add_fits_file(self, infile, inweight="",
                       xmin=0, xmax=0, ymin=0, ymax=0,
@@ -286,7 +273,6 @@ class Drizzle(object):
                        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax,
                        expin=expin, in_units=in_units, wt_scl=wt_scl)
 
-
     def add_image(self, insci, inwcs, inwht=None,
                   xmin=0, xmax=0, ymin=0, ymax=0,
                   expin=1.0, in_units="cps", wt_scl=1.0):
@@ -380,7 +366,6 @@ class Drizzle(object):
                             pixfrac=self.pixfrac, kernel=self.kernel,
                             fillval=self.fillval)
 
-
     def blot_fits_file(self, infile, interp='poly5', sinscl=1.0):
         """
         Resample the output using another image's world coordinate system.
@@ -449,7 +434,6 @@ class Drizzle(object):
 
         self.outwcs = blotwcs
 
-
     def increment_id(self):
         """
         Increment the id count and add a plane to the context image if needed
@@ -473,7 +457,6 @@ class Drizzle(object):
 
         # Increment the id
         self.uniqid += 1
-
 
     def write(self, outfile, out_units="cps", outheader=None):
         """
@@ -546,8 +529,7 @@ class Drizzle(object):
         if out_units == 'counts':
             np.multiply(self.outsci, self.outexptime, self.outsci)
             outexptime = self.outexptime
-        phdu.header['DRIZEXPT'] = \
-        (outexptime, 'Drizzle, exposure time scaling factor')
+        phdu.header['DRIZEXPT'] = (outexptime, 'Drizzle, exposure time scaling factor')
 
         # Copy the optional header to the primary header
 
