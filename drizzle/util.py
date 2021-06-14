@@ -248,5 +248,5 @@ def set_pscale(the_wcs):
             pc = 1
 
     pccd = np.array(cdelt * pc)
-    scales = np.sqrt((pccd ** 2).sum(axis=0, dtype=np.float))
+    scales = np.sqrt((pccd ** 2).sum(axis=0, dtype=float))
     the_wcs.pscale = scales[0]
