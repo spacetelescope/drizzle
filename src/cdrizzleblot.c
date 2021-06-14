@@ -19,9 +19,9 @@
 
 typedef int (interp_function)(const void*,
                               PyArrayObject*,
-                              const float, const float,
+                              const double, const double,
                               /* Output parameters */
-                              float*,
+                              double*,
                               struct driz_error_t*);
 
 /** --------------------------------------------------------------------------------------------------
@@ -32,8 +32,8 @@ typedef int (interp_function)(const void*,
   assert(data); \
   assert(isize[0] > 0); \
   assert(isize[1] > 0); \
-  assert(x >= 0.0f && x < (float)isize[0]);      \
-  assert(y >= 0.0f && y < (float)isize[1]);      \
+  assert(x >= 0.0f && x < (double)isize[0]);      \
+  assert(y >= 0.0f && y < (double)isize[1]);      \
   assert(value); \
   assert(error); \
 
@@ -43,7 +43,7 @@ typedef int (interp_function)(const void*,
 
 struct sinc_param_t {
   /*The scaling factor for sinc interpolation */
-  float sinscl;
+  double sinscl;
 };
 
 /** --------------------------------------------------------------------------------------------------
@@ -62,15 +62,15 @@ struct sinc_param_t {
  */
 
 static inline_macro void
-ii_bipoly3(const float* coeff /* [len_coeff][len_coeff] */,
+ii_bipoly3(const double* coeff /* [len_coeff][len_coeff] */,
            const integer_t len_coeff, const integer_t firstt,
            const integer_t npts,
-           const float* x /* [npts] */, const float* y /* [npts] */,
+           const double* x /* [npts] */, const double* y /* [npts] */,
            /* Output parameters */
-           float* zfit /* [npts] */) {
-  float sx, tx, sx2m1, tx2m1, sy, ty;
-  float cd20[4], cd21[4], ztemp[4];
-  float cd20y, cd21y;
+           double* zfit /* [npts] */) {
+  double sx, tx, sx2m1, tx2m1, sy, ty;
+  double cd20[4], cd21[4], ztemp[4];
+  double cd20y, cd21y;
   integer_t nxold, nyold;
   integer_t nx, ny;
   integer_t firstw, index;
@@ -81,7 +81,7 @@ ii_bipoly3(const float* coeff /* [len_coeff][len_coeff] */,
     nx = (integer_t)x[i];
     assert(nx >= 0);
 
-    sx = x[i] - (float)nx;
+    sx = x[i] - (double)nx;
     tx = 1.0f - sx;
     sx2m1 = sx*sx - 1.0f;
     tx2m1 = tx*tx - 1.0f;
@@ -89,7 +89,7 @@ ii_bipoly3(const float* coeff /* [len_coeff][len_coeff] */,
     ny = (integer_t)y[i];
     assert(ny >= 0);
 
-    sy = y[i] - (float)ny;
+    sy = y[i] - (double)ny;
     ty = 1.0f - sy;
 
     /* Calculate pointer to data[nx, ny-1] */
@@ -149,19 +149,19 @@ ii_bipoly3(const float* coeff /* [len_coeff][len_coeff] */,
  */
 
 static inline_macro void
-ii_bipoly5(const float* coeff /* [len_coeff][len_coeff] */,
+ii_bipoly5(const double* coeff /* [len_coeff][len_coeff] */,
            const integer_t len_coeff, const integer_t firstt,
            const integer_t npts,
-           const float* x /* [npts] */, const float* y /* [npts] */,
+           const double* x /* [npts] */, const double* y /* [npts] */,
            /* Output parameters */
-           float* zfit /* [npts] */) {
+           double* zfit /* [npts] */) {
   integer_t nxold, nyold;
   integer_t nx, ny;
-  float sx, sx2, tx, tx2, sy, sy2, ty, ty2;
-  float sx2m1, sx2m4, tx2m1, tx2m4;
-  float cd20[6], cd21[6], cd40[6], cd41[6];
-  float cd20y, cd21y, cd40y, cd41y;
-  float ztemp[6];
+  double sx, sx2, tx, tx2, sy, sy2, ty, ty2;
+  double sx2m1, sx2m4, tx2m1, tx2m4;
+  double cd20[6], cd21[6], cd40[6], cd41[6];
+  double cd20y, cd21y, cd40y, cd41y;
+  double ztemp[6];
   integer_t firstw, index;
   integer_t i, j;
 
@@ -179,7 +179,7 @@ ii_bipoly5(const float* coeff /* [len_coeff][len_coeff] */,
     assert(nx >= 0);
     assert(ny >= 0);
 
-    sx = x[i] - (float)nx;
+    sx = x[i] - (double)nx;
     sx2 = sx * sx;
     sx2m1 = sx2 - 1.0f;
     sx2m4 = sx2 - 4.0f;
@@ -188,7 +188,7 @@ ii_bipoly5(const float* coeff /* [len_coeff][len_coeff] */,
     tx2m1 = tx2 - 1.0f;
     tx2m4 = tx2 - 4.0f;
 
-    sy = y[i] - (float)ny;
+    sy = y[i] - (double)ny;
     sy2 = sy * sy;
     ty = 1.0f - sy;
     ty2 = ty * ty;
@@ -265,9 +265,9 @@ ii_bipoly5(const float* coeff /* [len_coeff][len_coeff] */,
 static int
 interpolate_nearest_neighbor(const void* state UNUSED_PARAM,
                              PyArrayObject* data,
-                             const float x, const float y,
+                             const double x, const double y,
                              /* Output parameters */
-                             float* value,
+                             double* value,
                              struct driz_error_t* error UNUSED_PARAM) {
 
   integer_t   isize[2];
@@ -294,12 +294,12 @@ interpolate_nearest_neighbor(const void* state UNUSED_PARAM,
 static int
 interpolate_bilinear(const void* state UNUSED_PARAM,
                      PyArrayObject* data,
-                     const float x, const float y,
+                     const double x, const double y,
                      /* Output parameters */
-                     float* value,
+                     double* value,
                      struct driz_error_t* error UNUSED_PARAM) {
   integer_t nx, ny;
-  float sx, tx, sy, ty, f00;
+  double sx, tx, sy, ty, f00;
   integer_t isize[2];
 
   get_dimensions(data, isize);
@@ -325,17 +325,17 @@ interpolate_bilinear(const void* state UNUSED_PARAM,
       return 0;
     }
     /* Interpolate along Y-direction only */
-    sy = y - (float)ny;
+    sy = y - (double)ny;
     *value = (1.0f - sy) * f00 + sy * get_pixel(data, nx, ny + 1);
   } else if (ny == (isize[1] - 1)) {
     /* Interpolate along X-direction only */
-    sx = x - (float)nx;
+    sx = x - (double)nx;
     *value = (1.0f - sx) * f00 + sx * get_pixel(data, nx + 1, ny);
   } else {
     /* Bilinear - interpolation */
-    sx = x - (float)nx;
+    sx = x - (double)nx;
     tx = 1.0f - sx;
-    sy = y - (float)ny;
+    sy = y - (double)ny;
     ty = 1.0f - sy;
 
     *value = tx * ty * f00 +
@@ -361,18 +361,18 @@ interpolate_bilinear(const void* state UNUSED_PARAM,
 static int
 interpolate_poly3(const void* state UNUSED_PARAM,
                   PyArrayObject* data,
-                  const float x, const float y,
+                  const double x, const double y,
                   /* Output parameters */
-                  float* value,
+                  double* value,
                   struct driz_error_t* error UNUSED_PARAM) {
   integer_t nx, ny;
   const integer_t rowleh = 4;
   const integer_t nterms = 4;
-  float coeff[4][4];
+  double coeff[4][4];
   integer_t i, j;
   integer_t firstw, lastrw;
-  float xval, yval;
-  float* ci;
+  double xval, yval;
+  double* ci;
   integer_t   isize[2];
   get_dimensions(data, isize);
 
@@ -453,8 +453,8 @@ interpolate_poly3(const void* state UNUSED_PARAM,
                          &coeff[3][0]);
   }
 
-  xval = 2.0f + (x - (float)nx);
-  yval = 2.0f + (y - (float)ny);
+  xval = 2.0f + (x - (double)nx);
+  yval = 2.0f + (y - (double)ny);
 
   ii_bipoly3(&coeff[0][0], rowleh, 0, 1, &xval, &yval, value);
 
@@ -475,18 +475,18 @@ interpolate_poly3(const void* state UNUSED_PARAM,
 static int
 interpolate_poly5(const void* state UNUSED_PARAM,
                   PyArrayObject* data,
-                  const float x, const float y,
+                  const double x, const double y,
                   /* Output parameters */
-                  float* value,
+                  double* value,
                   struct driz_error_t* error UNUSED_PARAM) {
   integer_t nx, ny;
   const integer_t rowleh = 6;
   const integer_t nterms = 6;
-  float coeff[6][6];
+  double coeff[6][6];
   integer_t i, j;
   integer_t firstw, lastrw;
-  float xval, yval;
-  float* ci;
+  double xval, yval;
+  double* ci;
   integer_t   isize[2];
   get_dimensions(data, isize);
 
@@ -563,8 +563,8 @@ interpolate_poly5(const void* state UNUSED_PARAM,
                          &coeff[5][0]);
   }
 
-  xval = 3.0f + (x - (float)nx);
-  yval = 3.0f + (y - (float)ny);
+  xval = 3.0f + (x - (double)nx);
+  yval = 3.0f + (y - (double)ny);
 
   ii_bipoly5(&coeff[0][0], rowleh, 0, 1, &xval, &yval, value);
 
@@ -580,25 +580,25 @@ interpolate_poly5(const void* state UNUSED_PARAM,
 static inline_macro int
 interpolate_sinc_(PyArrayObject* data,
                   const integer_t firstt, const integer_t npts,
-                  const float* x /*[npts]*/, const float* y /*[npts]*/,
-                  const float mindx, const float mindy,
-                  const float sinscl,
+                  const double* x /*[npts]*/, const double* y /*[npts]*/,
+                  const double mindx, const double mindy,
+                  const double sinscl,
                   /* Output parameters */
-                  float* value,
+                  double* value,
                   struct driz_error_t* error UNUSED_PARAM) {
   const integer_t nconv = INTERPOLATE_SINC_NCONV;
   const integer_t nsinc = (nconv - 1) / 2;
   /* TODO: This is to match Fortan, but is probably technically less precise */
-  const float halfpi = 1.5707963267948966192f; /* M_PI / 2.0; */
-  const float sconst = powf((halfpi / (float)nsinc), 2.0f);
-  const float a2 = -0.49670f;
-  const float a4 = 0.03705f;
-  float taper[INTERPOLATE_SINC_NCONV];
-  float ac[INTERPOLATE_SINC_NCONV], ar[INTERPOLATE_SINC_NCONV];
-  float sdx, dx, dy, dxn, dyn, dx2;
-  float ax, ay, px, py;
-  float sum, sumx, sumy;
-  float tmp;
+  const double halfpi = 1.5707963267948966192f; /* M_PI / 2.0; */
+  const double sconst = powf((halfpi / (double)nsinc), 2.0f);
+  const double a2 = -0.49670f;
+  const double a4 = 0.03705f;
+  double taper[INTERPOLATE_SINC_NCONV];
+  double ac[INTERPOLATE_SINC_NCONV], ar[INTERPOLATE_SINC_NCONV];
+  double sdx, dx, dy, dxn, dyn, dx2;
+  double ax, ay, px, py;
+  double sum, sumx, sumy;
+  double tmp;
   integer_t minj, maxj, offj;
   integer_t mink, maxk, offk;
   integer_t nx, ny;
@@ -625,7 +625,7 @@ interpolate_sinc_(PyArrayObject* data,
     for (j = -nsinc; j <= nsinc; ++j) {
       assert(j + nsinc >= 0 && j + nsinc < INTERPOLATE_SINC_NCONV);
 
-      dx2 = sconst * (float)j * (float)j;
+      dx2 = sconst * (double)j * (double)j;
       tmp = powf(1.0f + a2*dx2 + a4*dx2*dx2, 2.0);
       if (errno != 0) {
         driz_error_set_message(error, "pow failed");
@@ -645,8 +645,8 @@ interpolate_sinc_(PyArrayObject* data,
       continue;
     }
 
-    dx = (x[i] - (float)nx) * sinscl;
-    dy = (y[i] - (float)ny) * sinscl;
+    dx = (x[i] - (double)nx) * sinscl;
+    dy = (y[i] - (double)ny) * sinscl;
 
     if (fabsf(dx) < mindx && fabsf(dy) < mindy) {
       index = firstt + (ny - 1) * isize[0] + nx - 1; /* TODO: Base check */
@@ -654,14 +654,14 @@ interpolate_sinc_(PyArrayObject* data,
       continue;
     }
 
-    dxn = 1.0f + (float)nsinc + dx;
-    dyn = 1.0f + (float)nsinc + dy;
+    dxn = 1.0f + (double)nsinc + dx;
+    dyn = 1.0f + (double)nsinc + dy;
     sumx = 0.0f;
     sumy = 0.0f;
     for (j = 0; j < nconv; ++j) {
       /* TODO: These out of range indices also seem to be in Fortran... */
-      ax = dxn - (float)j - 1; /* TODO: Base check */
-      ay = dyn - (float)j - 1; /* TODO: Base check */
+      ax = dxn - (double)j - 1; /* TODO: Base check */
+      ay = dyn - (double)j - 1; /* TODO: Base check */
       assert(ax != 0.0);
       assert(ay != 0.0);
 
@@ -769,9 +769,9 @@ interpolate_sinc_(PyArrayObject* data,
 static int
 interpolate_sinc(const void* state,
                  PyArrayObject* data,
-                 const float x, const float y,
+                 const double x, const double y,
                  /* Output parameters */
-                 float* value,
+                 double* value,
                  struct driz_error_t* error) {
   const struct sinc_param_t* param = (const struct sinc_param_t*)state;
   integer_t   isize[2];
@@ -798,13 +798,13 @@ interpolate_sinc(const void* state,
 static int
 interpolate_lanczos(const void* state,
                     PyArrayObject* data,
-                    const float x, const float y,
+                    const double x, const double y,
                     /* Output parameters */
-                    float* value,
+                    double* value,
                     struct driz_error_t* error UNUSED_PARAM) {
   integer_t ixs, iys, ixe, iye;
   integer_t xoff, yoff;
-  float luty, sum;
+  double luty, sum;
   integer_t nbox;
   integer_t i, j;
   const struct lanczos_param_t* lanczos = (const struct lanczos_param_t*)state;
@@ -834,12 +834,12 @@ interpolate_lanczos(const void* state,
   /* Loop over the box, which is assumed to be scaled appropriately */
   sum = 0.0;
   for (j = iys; j <= iye; ++j) {
-    yoff = (integer_t)(fabs((y - (float)j) / lanczos->space));
+    yoff = (integer_t)(fabs((y - (double)j) / lanczos->space));
     assert(yoff >= 0 && yoff < lanczos->nlut);
 
     luty = lanczos->lut[yoff];
     for (i = ixs; i <= ixe; ++i) {
-      xoff = (integer_t)(fabs((x - (float)i) / lanczos->space));
+      xoff = (integer_t)(fabs((x - (double)i) / lanczos->space));
       assert(xoff >= 0 && xoff < lanczos->nlut);
 
       sum += get_pixel(data, i, j) * lanczos->lut[xoff] * luty;
@@ -877,9 +877,9 @@ int
 doblot(struct driz_param_t* p) {
 
   const size_t nlut = 2048;
-  const float space = 0.01;
+  const double space = 0.01;
   integer_t isize[2], osize[2];
-  float scale2, xo, yo, v;
+  double scale2, xo, yo, v;
   integer_t i, j;
   interp_function* interpolate;
   struct sinc_param_t sinc;
@@ -903,7 +903,7 @@ doblot(struct driz_param_t* p) {
   /* Some interpolation functions need some pre-calculated state */
   if (p->interpolation == interp_lanczos3 || p->interpolation == interp_lanczos5) {
 
-    if ((lanczos.lut = (float*)malloc(nlut * sizeof(float))) == NULL) {
+    if ((lanczos.lut = (double*)malloc(nlut * sizeof(double))) == NULL) {
       driz_error_set_message(p->error, "Out of memory");
       goto doblot_exit_;
     }
@@ -958,8 +958,8 @@ doblot(struct driz_param_t* p) {
       }
 
       /* Check it is on the input image */
-      if (xo >= 0.0 && xo < (float)isize[0] &&
-          yo >= 0.0 && yo < (float)isize[1]) {
+      if (xo >= 0.0 && xo < (double)isize[0] &&
+          yo >= 0.0 && yo < (double)isize[1]) {
 
         double value;
 

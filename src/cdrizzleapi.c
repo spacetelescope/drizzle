@@ -30,10 +30,10 @@ FILE *driz_log_handle = NULL;
 static void
 scale_image(PyArrayObject *image, double scale_factor) {
   long  i, size;
-  float *imptr;
+  double *imptr;
 
   assert(image);
-  imptr = (float *) PyArray_DATA(image);
+  imptr = (double *) PyArray_DATA(image);
 
   size = PyArray_DIMS(image)[0] * PyArray_DIMS(image)[1];
 
@@ -68,8 +68,8 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   double pfract = 1.0;
   char *kernel_str = "square";
   char *inun_str = "cps";
-  float expin = 1.0;
-  float wtscl = 1.0;
+  double expin = 1.0;
+  double wtscl = 1.0;
   char *fillstr = "INDEF";
 
   /* Derived values */
@@ -79,8 +79,8 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   enum e_unit_t inun;
   char *fillstr_end;
   bool_t do_fill;
-  float fill_value;
-  float inv_exposure_time;
+  double fill_value;
+  double inv_exposure_time;
   struct driz_error_t error;
   struct driz_param_t p;
   integer_t isize[2], psize[2], wsize[2];
@@ -278,11 +278,11 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
   long ymin = 0;
   long ymax = 0;
   double scale = 1.0;
-  float kscale = 1.0;
+  double kscale = 1.0;
   char *interp_str = "poly5";
-  float ef = 1.0;
-  float misval = 0.0;
-  float sinscl = 1.0;
+  double ef = 1.0;
+  double misval = 0.0;
+  double sinscl = 1.0;
 
   PyArrayObject *img = NULL, *out = NULL, *map = NULL;
   enum e_interp_t interp;

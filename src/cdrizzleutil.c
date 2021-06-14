@@ -263,10 +263,10 @@ bool2str(bool_t value) {
 */
 void
 create_lanczos_lut(const int kernel_order, const size_t npix,
-                   const float del, float* lanczos_lut) {
+                   const double del, double* lanczos_lut) {
   integer_t i;
-  const float forder = (float)kernel_order;
-  float poff;
+  const double forder = (double)kernel_order;
+  double poff;
 
   assert(lanczos_lut);
   assert(kernel_order < 6);
@@ -275,7 +275,7 @@ create_lanczos_lut(const int kernel_order, const size_t npix,
   lanczos_lut[0] = 1.0;
 
   for (i = 1; i < npix; ++i) {
-    poff = M_PI * (float)i * del;
+    poff = M_PI * (double)i * del;
     if (poff < M_PI * forder) {
       lanczos_lut[i] = sin(poff) / poff * sin(poff / forder) / (poff / forder);
     } else {
@@ -285,7 +285,7 @@ create_lanczos_lut(const int kernel_order, const size_t npix,
 }
 
 void
-put_fill(struct driz_param_t* p, const float fill_value) {
+put_fill(struct driz_param_t* p, const double fill_value) {
   integer_t i, j, osize[2];
 
   assert(p);

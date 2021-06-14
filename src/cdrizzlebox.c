@@ -24,7 +24,7 @@
 
 inline_macro static int
 update_data(struct driz_param_t* p, const integer_t ii, const integer_t jj,
-            const float d, const float vc, const float dow) {
+            const double d, const double vc, const double dow) {
 
   const double vc_plus_dow = vc + dow;
   
@@ -244,7 +244,7 @@ static int
 do_kernel_point(struct driz_param_t* p) {
   integer_t i, j, ii, jj;
   integer_t xbounds[2], ybounds[2], osize[2];
-  float scale2, vc, d, dow;
+  double scale2, vc, d, dow;
   integer_t bv;
   int margin;
 
@@ -339,7 +339,7 @@ static int
 do_kernel_tophat(struct driz_param_t* p) {
   integer_t bv, i, j, ii, jj, nhit, nxi, nxa, nyi, nya;
   integer_t xbounds[2], ybounds[2], osize[2];
-  float scale2, pfo, pfo2, vc, d, dow;
+  double scale2, pfo, pfo2, vc, d, dow;
   double xxi, xxa, yyi, yya, ddx, ddy, r2;
   int margin;
   
@@ -462,7 +462,7 @@ static int
 do_kernel_gaussian(struct driz_param_t* p) {
   integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit;
   integer_t xbounds[2], ybounds[2], osize[2];
-  float vc, d, dow;
+  double vc, d, dow;
   double gaussian_efac, gaussian_es;
   double pfo, ac,  scale2, xxi, xxa, yyi, yya, w, ddx, ddy, r2, dover;
   const double nsig = 2.5;
@@ -563,7 +563,7 @@ do_kernel_gaussian(struct driz_param_t* p) {
               vc = get_pixel(p->output_counts, ii, jj);
             }
 
-            dow = (float)dover * w;
+            dow = (double)dover * w;
   
             /* If we are create or modifying the context image, we do so
                here. */
@@ -596,13 +596,13 @@ static int
 do_kernel_lanczos(struct driz_param_t* p) {
   integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit, ix, iy;
   integer_t xbounds[2], ybounds[2], osize[2];
-  float scale2, vc, d, dow;
+  double scale2, vc, d, dow;
   double pfo, xx, yy, xxi, xxa, yyi, yya, w, dx, dy, dover;
   int kernel_order;
   int margin;
   struct lanczos_param_t lanczos;
   const size_t nlut = 512;
-  const float del = 0.01;
+  const double del = 0.01;
 
   dx = 1.0;
   dy = 1.0;
@@ -612,7 +612,7 @@ do_kernel_lanczos(struct driz_param_t* p) {
   pfo = (double)kernel_order * p->pixel_fraction / p->scale;
   bv = compute_bit_value(p->uuid);
   
-  if ((lanczos.lut = malloc(nlut * sizeof(float))) == NULL) {
+  if ((lanczos.lut = malloc(nlut * sizeof(double))) == NULL) {
     driz_error_set_message(p->error, "Out of memory");
     return driz_error_is_set(p->error);
   }
@@ -703,7 +703,7 @@ do_kernel_lanczos(struct driz_param_t* p) {
             } else {
               vc = get_pixel(p->output_counts, ii, jj);
             }
-            dow = (float)(dover * w);
+            dow = (double)(dover * w);
   
             /* If we are create or modifying the context image, we do so
                here. */
@@ -740,7 +740,7 @@ static int
 do_kernel_turbo(struct driz_param_t* p) {
   integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit, iis, iie, jjs, jje;
   integer_t xbounds[2], ybounds[2], osize[2];
-  float vc, d, dow;
+  double vc, d, dow;
   double pfo, scale2, ac;
   double xxi, xxa, yyi, yya, w, dover;
   int margin;
@@ -797,7 +797,7 @@ do_kernel_turbo(struct driz_param_t* p) {
           driz_error_format_message(p->error, "OOB in data[%d,%d]", i, j);
           return 1;
         } else {
-          d = get_pixel(p->data, i, j) * (float)scale2;
+          d = get_pixel(p->data, i, j) * (double)scale2;
         }
 
         /* Scale the weighting mask by the scale factor and inversely by
@@ -834,7 +834,7 @@ do_kernel_turbo(struct driz_param_t* p) {
               } else {
                 vc = get_pixel(p->output_counts, ii, jj);
               }
-              dow = (float)(dover * w);
+              dow = (double)(dover * w);
   
               /* If we are create or modifying the context image,
                  we do so here. */
@@ -871,7 +871,7 @@ int
 do_kernel_square(struct driz_param_t* p) {
   integer_t bv, i, j, ii, jj, min_ii, max_ii, min_jj, max_jj, nhit;
   integer_t xbounds[2], ybounds[2], osize[2];
-  float scale2, vc, d, dow;
+  double scale2, vc, d, dow;
   double dh, jaco, tem, dover, w;
   double xyin[4][2], xyout[2], xout[4], yout[4];
   int margin;
@@ -982,7 +982,7 @@ do_kernel_square(struct driz_param_t* p) {
   
             /* Re-normalise the area overlap using the Jacobian */
             dover /= jaco;
-            dow = (float)(dover * w);
+            dow = (double)(dover * w);
 
             /* Count the hits */
             ++nhit;  
