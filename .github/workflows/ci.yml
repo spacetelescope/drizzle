@@ -40,12 +40,17 @@ jobs:
             os: ubuntu-latest
             toxenv: py37
 
+          - name: Python 3.6
+            python-version: 3.6
+            os: ubuntu-latest
+            toxenv: py36
+
           - name: Code Style Checks
             python-version: 3.9
             os: ubuntu-latest
             toxenv: codestyle
 
-          - name: Bandit Checks
+          - name: Security Check
             python-version: 3.9
             os: ubuntu-latest
             toxenv: bandit
