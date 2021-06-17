@@ -8,14 +8,13 @@ on:
     tags: 
       - "*"
   pull_request:
-    branches:
   schedule:
     # Run every Monday at 6am UTC
     - cron: '0 6 * * 1'
 
 jobs:
   tox:
-    name: ${{ matrix.name }} 
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -24,42 +23,36 @@ jobs:
           - name: Python 3.9 with Code Coverage
             python-version: 3.9
             os: ubuntu-latest
-            dependencies: 
             toxenv: py39-cov
 
           - name: Python 3.9 with Development Dependencies
             python-version: 3.9
             os: ubuntu-latest
-            dependencies: 
             toxenv: py39-devdeps
 
           - name: Python 3.8
             python-version: 3.8
             os: ubuntu-latest
-            dependencies: 
             toxenv: py38-test
 
           - name: Python 3.7
             python-version: 3.7
             os: ubuntu-latest
-            dependencies: 
             toxenv: py37-test
 
           - name: Code Style Checks
             python-version: 3.9
             os: ubuntu-latest
-            dependencies: 
             toxenv: codestyle
 
           - name: Bandit Checks
             python-version: 3.9
             os: ubuntu-latest
-            dependencies: 
             toxenv: bandit
 
           - name: Build documentation
-            runs-on: ubuntu-latest
             python-version: 3.9
+            os: ubuntu-latest
             toxenv: build-docs
 
     steps:
@@ -90,24 +83,3 @@ jobs:
         uses: codecov/codecov-action@v1
         with:
           file: ./coverage.xml
-
-  doc_build:
-    name: Document Build
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.9
-    - name: Install dependencies
-      run: |
-        sudo apt-get install graphviz texlive-latex-extra dvipng
-        python -m pip install --upgrade pip
-        python -m pip install -e .[docs]
-    - name: Build documents with sphinx
-      run: |
-        cd docs
-        sphinx-build . ./_build
-
