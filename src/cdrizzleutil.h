@@ -109,20 +109,20 @@ enum e_interp_t {
 /* Lanczos values */
 struct lanczos_param_t {
   size_t nlut;
-  float* lut;
+  double* lut;
   double sdp;
   integer_t nbox;
-  float space;
-  float misval;
+  double space;
+  double misval;
 };
 
 struct driz_param_t {
   /* Options */
   enum e_kernel_t kernel; /* Kernel shape and size */
   double          pixel_fraction; /* was: PIXFRAC */
-  float           exposure_time; /* Exposure time was: EXPIN */
-  float           weight_scale; /* Weight scale was: WTSCL */
-  float           fill_value; /* Filling was: FILVAL */
+  double          exposure_time; /* Exposure time was: EXPIN */
+  double          weight_scale; /* Weight scale was: WTSCL */
+  double          fill_value; /* Filling was: FILVAL */
   bool_t          do_fill; /* was: FILL */
   enum e_unit_t   in_units; /* CPS / counts was: INCPS, either counts or CPS */
   enum e_unit_t   out_units; /* CPS / counts was: INCPS, either counts or CPS */
@@ -139,10 +139,10 @@ struct driz_param_t {
 
   /* Blotting-specific parameters */
   enum e_interp_t interpolation; /* was INTERP */
-  float ef; 
-  float misval;
-  float sinscl;
-  float kscale;
+  double ef; 
+  double misval;
+  double sinscl;
+  double kscale;
 
   /* Input images */
   PyArrayObject *data; 
@@ -261,21 +261,21 @@ oob_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
 #define oob_pixel(image, xpix, ypix)   0
 #endif
 
-static inline_macro float
+static inline_macro double
 get_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
-  return *(float*) PyArray_GETPTR2(image, ypix, xpix);
+  return *(double*) PyArray_GETPTR2(image, ypix, xpix);
 }
 
-static inline_macro float
+static inline_macro double
 get_pixel_at_pos(PyArrayObject *image, integer_t pos) {
-  float *imptr;
-  imptr = (float *) PyArray_DATA(image);
+  double *imptr;
+  imptr = (double *) PyArray_DATA(image);
   return imptr[pos];
 }
 
 static inline_macro void
 set_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix, double value) {  
-  *(float*) PyArray_GETPTR2(image, ypix, xpix) = value;
+  *(double*) PyArray_GETPTR2(image, ypix, xpix) = value;
   return;
 }
 
@@ -341,10 +341,10 @@ was: FILALU
 */
 void
 create_lanczos_lut(const int kernel_order, const size_t npix,
-                   const float del, float* lanczos_lut);
+                   const double del, double* lanczos_lut);
 
 void
-put_fill(struct driz_param_t* p, const float fill_value);
+put_fill(struct driz_param_t* p, const double fill_value);
 
 /**
  Calculate the refractive index of MgF2 for a given C wavelength (in
@@ -360,11 +360,11 @@ was: WSUMR
 */
 static inline_macro void
 weighted_sum_vectors(const integer_t npix,
-                     const float* a /*[npix]*/, const float w1,
-                     const float* b /*[npix]*/, const float w2,
+                     const double* a /*[npix]*/, const double w1,
+                     const double* b /*[npix]*/, const double w2,
                      /* Output arguments */
-                     float* c /*[npix]*/) {
-  float* c_end = c + npix;
+                     double* c /*[npix]*/) {
+  double* c_end = c + npix;
 
   assert(a);
   assert(b);
