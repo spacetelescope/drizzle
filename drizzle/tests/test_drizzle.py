@@ -5,7 +5,7 @@ import numpy as np
 from astropy import wcs
 from astropy.io import fits
 
-from drizzle import drizzle
+from drizzle import drizzle, cdrizzle
 
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -249,6 +249,36 @@ def test_square_with_point(tmpdir):
 
         assert med_diff < 1.0e-6
         assert max_diff < 1.0e-5
+
+
+def test_zero_input_weight(tmpdir):
+    """
+    Test do_driz square kernel with grid
+    """
+    insci = np.ones((200, 400), dtype=np.float32)
+    inwht = np.ones((200, 400), dtype=np.float32)
+    inwht[:, 150:153] = 0
+    pixmap = np.rollaxis(np.mgrid[1:201, 1:401][::-1], 0, 3)
+
+    outsci = np.zeros((210, 410), dtype=np.float32)
+    outwht = np.zeros((210, 410), dtype=np.float32)
+    outcon = np.zeros((210, 410), dtype=np.int32)
+
+    _vers, nmiss, nskip = cdrizzle.tdriz(
+        insci, inwht, pixmap,
+        outsci, outwht, outcon,
+        uniqid=1,
+        xmin=0, xmax=400,
+        ymin=0, ymax=200,
+        pixfrac=1,
+        kernel='point',
+        in_units='cps',
+        expscale=1,
+        wtscale=1,
+        fillstr='INDEF'
+    )
+
+    assert np.allclose(np.sum(outsci), 200 * (400 - 3))
 
 
 def test_square_with_grid(tmpdir):

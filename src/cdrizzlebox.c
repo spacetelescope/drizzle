@@ -26,10 +26,13 @@ inline_macro static int
 update_data(struct driz_param_t* p, const integer_t ii, const integer_t jj,
             const float d, const float vc, const float dow) {
 
-  const double vc_plus_dow = vc + dow;
+  double vc_plus_dow;
   
-  /* Just a simple calculation without logical tests */
-  if (vc == 0.0) {
+  if (dow == 0.0f) return 0;
+  
+  vc_plus_dow = vc + dow;
+  
+  if (vc == 0.0f) {
     if (oob_pixel(p->output_data, ii, jj)) {
       driz_error_format_message(p->error, "OOB in output_data[%d,%d]", ii, jj);
       return 1;
@@ -37,7 +40,7 @@ update_data(struct driz_param_t* p, const integer_t ii, const integer_t jj,
       set_pixel(p->output_data, ii, jj, d);
     }
 
-  } else if (vc_plus_dow != 0.0) {
+  } else {
     if (oob_pixel(p->output_data, ii, jj)) {
       driz_error_format_message(p->error, "OOB in output_data[%d,%d]", ii, jj);
       return 1;

@@ -1,7 +1,9 @@
 1.13.4 (unreleased)
 ===================
 
-
+- drizzle ignores the weight of input image pixels when the weight of the
+  corresponding output pixel (onto which input pixel flux is to be dropped)
+  is zero. [#79]
 
 
 1.13.3 (2021-06-17)
