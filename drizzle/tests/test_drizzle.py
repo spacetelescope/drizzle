@@ -257,8 +257,8 @@ def test_zero_input_weight(tmpdir):
     """
     insci = np.ones((200, 400), dtype=np.float32)
     inwht = np.ones((200, 400), dtype=np.float32)
-    inwht[:, 150:153] = 0
-    pixmap = np.rollaxis(np.mgrid[1:201, 1:401][::-1], 0, 3)
+    inwht[:, 150:155] = 0
+    pixmap = np.moveaxis(np.mgrid[1:201, 1:401][::-1], 0, -1)
 
     outsci = np.zeros((210, 410), dtype=np.float32)
     outwht = np.zeros((210, 410), dtype=np.float32)
@@ -278,7 +278,7 @@ def test_zero_input_weight(tmpdir):
         fillstr='INDEF'
     )
 
-    assert np.allclose(np.sum(outsci), 200 * (400 - 3))
+    assert np.allclose(np.sum(outsci), 200 * (400 - 5))
 
 
 def test_square_with_grid(tmpdir):
