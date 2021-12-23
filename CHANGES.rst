@@ -1,4 +1,4 @@
-1.13.4 (unreleased)
+1.13.4 (2021-12-23)
 ===================
 
 - drizzle ignores the weight of input image pixels when the weight of the
