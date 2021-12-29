@@ -1,5 +1,6 @@
 import math
 import os
+import pytest
 
 import numpy as np
 from astropy import wcs
@@ -251,37 +252,43 @@ def test_square_with_point(tmpdir):
         assert max_diff < 1.0e-5
 
 
-def test_zero_input_weight(tmpdir):
+@pytest.mark.parametrize(
+    'kernel', ['square', 'point', 'turbo', 'gaussian', 'lanczos3']
+)
+def test_zero_input_weight(kernel):
     """
     Test do_driz square kernel with grid
     """
+    # initialize input:
     insci = np.ones((200, 400), dtype=np.float32)
     inwht = np.ones((200, 400), dtype=np.float32)
     inwht[:, 150:155] = 0
-    tflux = np.sum(inwht)
+
+    # initialize output:
+    outsci = np.zeros((210, 410), dtype=np.float32)
+    outwht = np.zeros((210, 410), dtype=np.float32)
+    outctx = np.zeros((210, 410), dtype=np.int32)
+
+    # define coordinate mapping:
     pixmap = np.moveaxis(np.mgrid[1:201, 1:401][::-1], 0, -1)
 
-    for kernel in ['square', 'point', 'turbo']:
-        # initialize output:
-        outsci = np.zeros((210, 410), dtype=np.float32)
-        outwht = np.zeros((210, 410), dtype=np.float32)
-        outcon = np.zeros((210, 410), dtype=np.int32)
+    # resample:
+    cdrizzle.tdriz(
+        insci, inwht, pixmap,
+        outsci, outwht, outctx,
+        uniqid=1,
+        xmin=0, xmax=400,
+        ymin=0, ymax=200,
+        pixfrac=1,
+        kernel=kernel,
+        in_units='cps',
+        expscale=1,
+        wtscale=1,
+        fillstr='INDEF'
+    )
 
-        _vers, nmiss, nskip = cdrizzle.tdriz(
-            insci, inwht, pixmap,
-            outsci, outwht, outcon,
-            uniqid=1,
-            xmin=0, xmax=400,
-            ymin=0, ymax=200,
-            pixfrac=1,
-            kernel=kernel,
-            in_units='cps',
-            expscale=1,
-            wtscale=1,
-            fillstr='INDEF'
-        )
-
-        assert np.allclose(np.sum(outsci), tflux)
+    # check that no pixel with 0 weight has any counts:
+    assert np.sum(np.abs(outsci[(outwht == 0)])) == 0.0
 
 
 def test_square_with_grid(tmpdir):
