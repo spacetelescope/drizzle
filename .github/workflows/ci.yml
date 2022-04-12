@@ -40,11 +40,6 @@ jobs:
             os: ubuntu-latest
             toxenv: py38
 
-          - name: Python 3.7
-            python-version: 3.7
-            os: ubuntu-latest
-            toxenv: py37
-
           - name: Code Style Checks
             python-version: 3.9
             os: ubuntu-latest
