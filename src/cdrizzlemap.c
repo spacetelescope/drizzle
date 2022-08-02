@@ -278,8 +278,8 @@ interpolation_bounds(
 
         /* Check if the pixel value is NaN */ 
         oob_pixel(pixmap, xy[0], xy[1]); 
-        double pixval = get_pixmap(pixmap, xy[0], xy[1])[idim];
-    
+        double pixval = get_pixmap(pixmap, xy[0], xy[1])[jdim];
+
         /* If not, copy it to output as a good point */
         if (! npy_isnan(pixval)) {
           for (kdim = 0; kdim < 2; ++kdim) {
@@ -313,6 +313,12 @@ interpolation_bounds(
  * a mapping of the pixel centers between the two by interpolating
  * between the centers in the mapping
  *
+ * The interpolation takes place along 1 dimension, however,
+ * the indices are inverted relative to the pixmap values.  This
+ * requires getting the bounds in 1 dimension, then working with
+ * the actual pixmap values in the other dimension.  Otherwise, use of
+ * pixfrac will be ignored and sub-pixel shifts will be introduced.
+ *
  * pixmap: The mapping of the pixel centers from input to output image
  * xyin:   An (x,y) point on the input image
  * xyout:  The same (x, y) point on the output image (output)
@@ -328,8 +334,10 @@ interpolate_point(
   int xypix[4][2];
   double partial[4];
   int ipix, jpix, npix, idim;
+  int jdim;
 
   for (idim = 0; idim < 2; ++idim) {
+    jdim = (idim + 1) % 2;
     /* Find the four points that bound the linear interpolation */
     if (interpolation_bounds(pixmap, xyin, idim, (int *)xypix)) {
         return 1;
@@ -340,7 +348,7 @@ interpolate_point(
       oob_pixel(pixmap, xypix[ipix][0], xypix[ipix][1]);
       partial[ipix] = get_pixmap(pixmap,
                                  xypix[ipix][0],
-                                 xypix[ipix][1])[idim];
+                                 xypix[ipix][1])[jdim];
     }
 
     /* Do linear interpolation between each set of points */
@@ -353,7 +361,7 @@ interpolate_point(
       }
     }
 
-    xyout[idim] = partial[0];
+    xyout[jdim] = partial[0];
   }
 
   return 0;
