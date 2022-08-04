@@ -3,6 +3,10 @@
 
 - Pin astropy min version to 5.0.4. [#81]
 
+- Fix a bug in the interpolation algorithm used by the 'square' kernel that
+  resulted in shifts of the resampled image typically by 0.5 pixels compared
+  to the location indicated by the WCS. [#83]
+
 1.13.4 (2021-12-23)
 ===================
 
