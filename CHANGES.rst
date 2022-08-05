@@ -1,4 +1,14 @@
-1.13.5 (unreleased)
+.. _release_notes:
+
+=============
+Release Notes
+=============
+
+.. 1.13.6 (unreleased)
+   ===================
+
+
+1.13.5 (2021-08-04)
 ===================
 
 - Pin astropy min version to 5.0.4. [#81]
