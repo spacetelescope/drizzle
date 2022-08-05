@@ -4,8 +4,15 @@
 Release Notes
 =============
 
-.. 1.13.6 (unreleased)
+.. 1.13.7 (unreleased)
    ===================
+
+1.13.6 (2021-08-05)
+===================
+
+- Fixed a bug in how interpolation and pixel mapping was reporting invalid
+  values. This bug may have resulted in resampled images containing all
+  zeroes. [#85]
 
 
 1.13.5 (2021-08-04)

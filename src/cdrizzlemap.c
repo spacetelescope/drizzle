@@ -297,6 +297,8 @@ int interpolate_point(PyArrayObject *pixmap, const double xyin[2], double xyout[
   xyout[0] = f00 * x1 * y1 + f10 * x * y1 + f01 * x1 * y + f11 * x * y;
   xyout[1] = g00 * x1 * y1 + g10 * x * y1 + g01 * x1 * y + g11 * x * y;
 
+  if (npy_isnan(xyout[0]) || npy_isnan(xyout[1])) return 1;
+
   return 0;
 }
 
@@ -324,12 +326,7 @@ map_pixel(
   for (k = 0; k < 2; ++k) {
     xyout[k] = get_pixmap(pixmap, i, j)[k];
 
-    if (npy_isnan(xyout[k])) {
-      double xyin[2];
-      xyin[0] = i;
-      xyin[1] = j;
-      return interpolate_point(pixmap, xyin, xyout);
-    }
+    if (npy_isnan(xyout[k])) return 1;
   }
 
   return 0;
