@@ -4,8 +4,17 @@
 Release Notes
 =============
 
-.. 1.13.7 (unreleased)
+.. 1.13.8 (unreleased)
    ===================
+
+
+1.13.7 (2023-02-09)
+===================
+
+- Fixed a bug in identification of lines in input images that should be skipped
+  because they would not map to the output image. This bug may result in large
+  chunks of input image incorrectly missing from the resampled image. [#89]
+
 
 1.13.6 (2021-08-05)
 ===================
@@ -23,6 +32,7 @@ Release Notes
 - Fix a bug in the interpolation algorithm used by the 'square' kernel that
   resulted in shifts of the resampled image typically by 0.5 pixels compared
   to the location indicated by the WCS. [#83]
+
 
 1.13.4 (2021-12-23)
 ===================

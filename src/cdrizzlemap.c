@@ -104,13 +104,18 @@ shrink_segment(struct segment *self,
                PyArrayObject *array,
                int (*is_bad_value)(PyArrayObject *, int, int)) {
 
-  int i, j, imin, imax, jmin, jmax;
+  int i, j, imin, imax, jmin, jmax, i1, i2, j1, j2;
 
   imin = self->point[1][0];
   jmin = self->point[1][1];
 
-  for (j = self->point[0][1]; j < self->point[1][1]; ++j) {
-    for (i = self->point[0][0]; i < self->point[1][0]; ++ i) {
+  j1 = (int) ceil(self->point[1][1]);
+  j2 = (int) self->point[0][1];
+  i1 = (int) ceil(self->point[1][0]);
+  i2 = (int) self->point[0][0];
+
+  for (j = j2; j < j1; ++j) {
+    for (i = i2; i < i1; ++i) {
       if (! is_bad_value(array, i, j)) {
         if (i < imin) {
           imin = i;
@@ -125,9 +130,8 @@ shrink_segment(struct segment *self,
 
   imax = self->point[0][0];
   jmax = self->point[0][1];
-
-  for (j = self->point[1][1]; j > self->point[0][1]; --j) {
-    for (i = self->point[1][0]; i > self->point[0][0]; -- i) {
+  for (j = j1; j > j2; --j) {
+    for (i = i1; i > i2; --i) {
       if (! is_bad_value(array, i-1, j-1)) {
         if (i > imax) {
           imax = i;
@@ -139,7 +143,6 @@ shrink_segment(struct segment *self,
       }
     }
   }
-
   initialize_segment(self, imin, jmin, imax, jmax);
   self->invalid = imin >= imax || jmin >= jmax;
   return;
