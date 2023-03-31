@@ -27,4 +27,5 @@ extend-ignore = [
 extend-exclude = [
     "docs",
     ".eggs",
+    ".tox",
 ]
