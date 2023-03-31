@@ -8,3 +8,23 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
+
+[tool.ruff]
+line-length = 100
+extend-select = [
+    "F",
+    "W",
+    "E",
+    "C4",
+    "C90",
+    "COM",
+]
+extend-ignore = [
+    "E231", # Missing whitespace after ',', ';', or ':'
+    "W503", # Line break occurred before a binary operator
+    "W504", # Line break occurred after a binary operator
+]
+extend-exclude = [
+    "docs",
+    ".eggs",
+]
