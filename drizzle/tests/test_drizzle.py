@@ -253,7 +253,7 @@ def test_square_with_point(tmpdir):
 
 
 @pytest.mark.parametrize(
-    'kernel', ['square', 'point', 'turbo', 'gaussian', 'lanczos3']
+    'kernel', ['square', 'point', 'turbo', 'gaussian', 'lanczos3'],
 )
 def test_zero_input_weight(kernel):
     """
@@ -284,7 +284,7 @@ def test_zero_input_weight(kernel):
         in_units='cps',
         expscale=1,
         wtscale=1,
-        fillstr='INDEF'
+        fillstr='INDEF',
     )
 
     # check that no pixel with 0 weight has any counts:

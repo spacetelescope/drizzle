@@ -8,3 +8,18 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
+
+[tool.ruff]
+line-length = 100
+extend-select = [
+    "F",
+    "W",
+    "E",
+    "C4",
+    "COM",
+]
+extend-exclude = [
+    "docs",
+    ".eggs",
+    ".tox",
+]
