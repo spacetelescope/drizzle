@@ -21,7 +21,7 @@ def get_extensions():
     cfg = {
         'include_dirs': [],
         'libraries': [],
-        'define_macros': []
+        'define_macros': [],
     }
     cfg['include_dirs'].append(numpy.get_include())
     cfg['include_dirs'].append(srcdir)
