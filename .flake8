@@ -1,0 +1,10 @@
+[flake8]
+max-line-length = 100
+select = F, W, E, C
+ignore =
+    E231, # Missing whitespace after ',', ';', or ':'
+    W503, # Line break occurred before a binary operator
+    W504, # Line break occurred after a binary operator
+exclude =
+    docs,
+    .eggs

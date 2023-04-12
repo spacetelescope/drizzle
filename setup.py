@@ -35,4 +35,4 @@ def get_extensions():
     return [Extension(str('drizzle.cdrizzle'), sources, **cfg)]
 
 
-setup(use_scm_version=True, ext_modules=get_extensions())
+setup(ext_modules=get_extensions())
