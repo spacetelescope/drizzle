@@ -28,6 +28,7 @@
 import datetime
 from os import path
 import sys
+from pathlib import Path
 
 
 # Get configuration information from pyproject.toml
