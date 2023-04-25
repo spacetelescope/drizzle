@@ -37,6 +37,24 @@ else:
 
 sys.path.insert(1, '..')
 
+
+def find_mod_objs_patched(*args, **kwargs):
+    from sphinx_automodapi.utils import find_mod_objs
+
+    return find_mod_objs(args[0], onlylocals=True)
+
+
+def patch_automodapi(app):
+    """Monkey-patch the automodapi extension to exclude imported members"""
+    from sphinx_automodapi import automodsumm
+
+    automodsumm.find_mod_objs = find_mod_objs_patched
+
+
+def setup(app):
+    app.connect("builder-inited", patch_automodapi)
+
+
 with open(Path(__file__).parent.parent / "pyproject.toml", "rb") as configuration_file:
     conf = tomllib.load(configuration_file)
 metadata = conf["project"]
