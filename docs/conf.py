@@ -29,14 +29,16 @@ import datetime
 import os
 import sys
 
-# Get configuration information from setup.cfg
-from configparser import ConfigParser
+if sys.version_info < (3, 11):
+    import tomli as tomllib
+else:
+    import tomllib
 
 sys.path.insert(1, '..')
 
-conf = ConfigParser()
-conf.read([os.path.join(os.path.dirname(__file__), '..', 'setup.cfg')])
-setup_cfg = dict(conf.items('metadata'))
+with open(Path(__file__).parent.parent / "pyproject.toml", "rb") as configuration_file:
+    conf = tomllib.load(configuration_file)
+metadata = conf["project"]
 
 extensions = [
     'sphinx_automodapi.automodapi',
@@ -68,17 +70,16 @@ rst_epilog = """
 # -- Project information ------------------------------------------------------
 
 # This does not *have* to match the package name, but typically does
-project = setup_cfg['name']
-author = setup_cfg['author']
-copyright = '{0}, {1}'.format(
-    datetime.datetime.now().year, setup_cfg['author'])
+project = metadata['name']
+author = metadata['authors'][0]['name']
+copyright = '{datetime.datetime.now().year}, {author }'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 
-__import__(setup_cfg['name'])
-package = sys.modules[setup_cfg['name']]
+__import__(project)
+package = sys.modules[project]
 
 # The short X.Y version.
 version = package.__version__.split('-', 1)[0]
@@ -118,7 +119,7 @@ release = package.__version__
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = '{0} v{1}'.format(project, release)
+html_title = '{project} v{release}'
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = project + 'doc'
