@@ -3,8 +3,16 @@ version: 2
 sphinx:
   configuration: docs/conf.py
 
+build:
+  os: ubuntu-22.04
+  tools:
+    python: mambaforge-4.10
+
+conda:
+  environment: docs/rtd_environment.yaml
+
 python:
-  version: "3.8"
+  system_packages: false
   install:
     - method: pip
       path: .
