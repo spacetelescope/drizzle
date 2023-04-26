@@ -1,7 +1,7 @@
 [project]
 name = "drizzle"
 description = "A package for combining dithered images into a single image"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
     { name = "STScI", email = "help@stsci.edu" },
 ]

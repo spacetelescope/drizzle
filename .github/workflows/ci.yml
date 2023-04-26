@@ -28,8 +28,6 @@ jobs:
     with:
       envs: |
         - linux: test-xdist
-          python-version: 3.8
-        - linux: test-xdist
           python-version: 3.9
         - linux: test-xdist
           python-version: 3.10
