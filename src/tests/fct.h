@@ -944,7 +944,7 @@ struct _fct_test_t
 /* Clears the failed tests ... partly for internal testing. */
 #define fct_test__clear_failed(test) \
     fct_nlist__clear(test->failed_chks, (fct_nlist_on_del_t)fctchk__del);\
- 
+
 
 static void
 fct_test__del(fct_test_t *test)
@@ -3286,12 +3286,12 @@ they are needed, but at runtime, only the cheap, first call is made. */
         fctkern_ptr__->num_expected_failures) {                    \
        fctkern_ptr__->ns.num_total_failed = 0;                     \
    }                                                               \
-   
+
 
 
 #define FCT_NUM_FAILED()       \
     fctkern_ptr__->ns.num_total_failed \
-    
+
 
 
 /* Typically used internally only, this mentions to FCTX that you EXPECT
@@ -3305,7 +3305,7 @@ from the program. */
     int _FNNAME_(int argc, char* argv[])\
     {                                   \
         FCT_INIT(argc, argv)
- 
+
 #define FCT_END_FN() FCT_END()
 
 /* This defines our start. The fctkern__ is a kernal object
@@ -3436,7 +3436,7 @@ specification. */
     FCT_FIXTURE_SUITE_END();\
     fctkern_ptr__->ns.ts_is_skip_suite =0;\
     fctkern_ptr__->ns.ts_skip_cndtn =NULL;\
- 
+
 #define FCT_SETUP_BGN()\
    if ( fct_ts__is_setup_mode(fctkern_ptr__->ns.ts_curr) ) {
 
@@ -3445,7 +3445,7 @@ specification. */
 
 #define FCT_TEARDOWN_BGN() \
    if ( fct_ts__is_teardown_mode(fctkern_ptr__->ns.ts_curr) ) {\
- 
+
 #define FCT_TEARDOWN_END() \
    fct_ts__teardown_end(fctkern_ptr__->ns.ts_curr); \
    continue; \
@@ -3457,14 +3457,14 @@ do it by 'stubbing' out the setup/teardown logic. */
    FCT_FIXTURE_SUITE_BGN(Name) {\
    FCT_SETUP_BGN() {_fct_cmt("stubbed"); } FCT_SETUP_END()\
    FCT_TEARDOWN_BGN() {_fct_cmt("stubbed");} FCT_TEARDOWN_END()\
- 
+
 #define FCT_SUITE_END() } FCT_FIXTURE_SUITE_END()
 
 #define FCT_SUITE_BGN_IF(_CONDITION_, _NAME_) \
     FCT_FIXTURE_SUITE_BGN_IF(_CONDITION_, (_NAME_)) {\
     FCT_SETUP_BGN() {_fct_cmt("stubbed"); } FCT_SETUP_END()\
     FCT_TEARDOWN_BGN() {_fct_cmt("stubbed");} FCT_TEARDOWN_END()\
- 
+
 #define FCT_SUITE_END_IF() } FCT_FIXTURE_SUITE_END_IF()
 
 typedef enum
@@ -3478,7 +3478,7 @@ typedef enum
     fctkern_ptr__->ns.test_is_skip = !(_CONDITION_);\
     fctkern_ptr__->ns.test_skip_cndtn = #_CONDITION_;\
     FCT_TEST_BGN(_NAME_) {\
- 
+
 #define FCT_TEST_END_IF() \
     } FCT_TEST_END();\
     fctkern_ptr__->ns.test_is_skip = 0;\
@@ -3542,7 +3542,7 @@ object (should be rare). */
                continue;\
             }\
          }\
- 
+
 
 
 /*
@@ -3693,6 +3693,15 @@ with. If we fail a setup up, then we go directly to a teardown mode. */
         "chk_neq_dbl: %f == %f",\
         (V1),\
         (V2)\
+        )
+
+
+#define fct_chk_int_return_status(status, expected) \
+    fct_xchk(\
+        (status == expected),\
+        "fct_chk_int_rstatus: %d (return status)== %d (expected)",\
+        (status),\
+        (expected)\
         )
 
 
@@ -3859,7 +3868,7 @@ _fct_chk_full_str(char const *s)
         #EXCEPTION                    \
       );                              \
    }                                  \
- 
+
 /*
 ---------------------------------------------------------
 GUT CHECK MACROS
@@ -3942,7 +3951,7 @@ The basic idea is that there is one test per test suite.
 #define FCT_QTEST_BGN(NAME) \
 	FCT_SUITE_BGN(NAME) {\
 		FCT_TEST_BGN(NAME) {\
- 
+
 #define FCT_QTEST_END() \
 		} FCT_TEST_END();\
 	} FCT_SUITE_END();
@@ -3951,7 +3960,7 @@ The basic idea is that there is one test per test suite.
 #define FCT_QTEST_BGN_IF(_CONDITION_, _NAME_) \
 	FCT_SUITE_BGN(_NAME_) {\
 		FCT_TEST_BGN_IF(_CONDITION_, _NAME_) {\
- 
+
 #define FCT_QTEST_END_IF() \
 		} FCT_TEST_END_IF();\
 	} FCT_SUITE_END();
