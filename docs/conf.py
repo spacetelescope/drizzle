@@ -35,7 +35,7 @@ if sys.version_info < (3, 11):
 else:
     import tomllib
 
-sys.path.insert(1, '..')
+sys.path.insert(0, '../drizzle')
 
 
 def find_mod_objs_patched(*args, **kwargs):
