@@ -37,6 +37,7 @@ jobs:
           python-version: 3.11
         - macos: test-xdist
           python-version: 3.11
+        - windows: test-xdist
         - linux: test-devdeps-xdist
         - linux: test-xdist-cov
           coverage: codecov
