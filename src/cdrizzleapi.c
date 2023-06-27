@@ -436,6 +436,94 @@ test_cdrizzle(PyObject *self, PyObject *args)
   return Py_BuildValue("");
 }
 
+
+static PyObject *
+invert_pixmap_wrap(PyObject *self, PyObject *args)
+{
+  PyObject *pixmap, *xyout;
+  PyArrayObject *xyout_arr, *pixmap_arr;
+  double *xyin;
+  npy_intp xyin_dim = 2;
+
+  xyin = (double *) malloc(2 * sizeof(double));
+
+  if (!PyArg_ParseTuple(args,"OO:invpixmap", &pixmap, &xyout)) {
+    return NULL;
+  }
+
+  xyout_arr = (PyArrayObject *)PyArray_ContiguousFromAny(xyout, NPY_DOUBLE, 1, 1);
+  if (!xyout_arr) {
+    return PyErr_Format(gl_Error, "Invalid xyout array.");
+  }
+
+  pixmap_arr = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, NPY_DOUBLE, 3, 3);
+  if (!pixmap_arr) {
+    return PyErr_Format(gl_Error, "Invalid pixmap.");
+  }
+
+  if (invert_pixmap(pixmap_arr, (double *)PyArray_DATA(xyout_arr), xyin)) {
+      return Py_BuildValue("");
+  }
+
+  PyArrayObject *arr = (PyArrayObject *)PyArray_SimpleNewFromData(
+      1, &xyin_dim,  NPY_DOUBLE, xyin);
+
+  PyArray_ENABLEFLAGS(arr, NPY_ARRAY_OWNDATA);
+
+  return Py_BuildValue("N", arr);
+}
+
+
+static PyObject *
+intersect_convex_polygons_wrap(PyObject *self, PyObject *args)
+{
+  int k;
+  PyObject *pin, *qin;
+  PyArrayObject *pin_arr, *qin_arr;
+  struct polygon p, q, pq;
+  PyObject *list, *tuple;
+
+  if (!PyArg_ParseTuple(args,"OO:intersect_convex_polygons", &pin, &qin)) {
+    return NULL;
+  }
+
+  pin_arr = (PyArrayObject *)PyArray_ContiguousFromAny(pin, NPY_DOUBLE, 2, 2);
+  if (!pin_arr) {
+    return PyErr_Format(gl_Error, "Invalid P.");
+  }
+
+  qin_arr = (PyArrayObject *)PyArray_ContiguousFromAny(qin, NPY_DOUBLE, 2, 2);
+  if (!qin_arr) {
+    return PyErr_Format(gl_Error, "Invalid Q.");
+  }
+
+  p.npv = PyArray_SHAPE(pin_arr)[0];
+  for (k = 0; k < p.npv; ++k) {
+      p.v[k].x = *((double *) PyArray_GETPTR2(pin_arr, k, 0));
+      p.v[k].y = *((double *) PyArray_GETPTR2(pin_arr, k, 1));
+  }
+
+  q.npv = PyArray_SHAPE(qin_arr)[0];
+  for (k = 0; k < q.npv; ++k) {
+      q.v[k].x = *((double *) PyArray_GETPTR2(qin_arr, k, 0));
+      q.v[k].y = *((double *) PyArray_GETPTR2(qin_arr, k, 1));
+  }
+
+  intersect_convex_polygons(&p, &q, &pq);
+
+  list = PyList_New(pq.npv);
+
+  for (k = 0; k < pq.npv; ++k) {
+      tuple = PyTuple_New(2);
+      PyTuple_SetItem(tuple, 0, PyFloat_FromDouble(pq.v[k].x));
+      PyTuple_SetItem(tuple, 1, PyFloat_FromDouble(pq.v[k].y));
+      PyList_SetItem(list, k, tuple);
+  }
+
+  return Py_BuildValue("N", list);
+}
+
+
 /** --------------------------------------------------------------------------------------------------
  * Table of functions callable from python
  */
@@ -447,6 +535,8 @@ static struct PyMethodDef cdrizzle_methods[] = {
     "tblot(image, output, xmin, xmax, ymin, ymax, scale, kscale, interp, ef, misval, sinscl, pixmap)"},
     {"test_cdrizzle", test_cdrizzle, METH_VARARGS,
     "test_cdrizzle(data, weights, pixmap, output_data, output_counts)"},
+    {"invert_pixmap", invert_pixmap_wrap, METH_VARARGS, "invert_pixmap(pixmap, xyout)"},
+    {"intersect_convex_polygons", intersect_convex_polygons_wrap, METH_VARARGS, "intersect_convex_polygons(p, q)"},
     {NULL,        NULL}        /* sentinel */
 };
 

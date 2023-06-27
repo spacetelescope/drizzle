@@ -4,8 +4,18 @@
 Release Notes
 =============
 
-.. 1.13.8 (unreleased)
+.. 1.14.1 (unreleased)
    ===================
+
+
+
+1.14.0 (unreleased)
+===================
+
+- Fixed a bug in how drizzle would compute overlaps between input images and
+  the output image. Due to this bug large parts of input image data may be
+  missing in the resampled data when output image size was set by the
+  caller to be smaller than size needed to hold *all* image data. [#104]
 
 
 1.13.7 (2023-02-09)

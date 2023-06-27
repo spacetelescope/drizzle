@@ -21,6 +21,7 @@
 #include "cdrizzleutil.h"
 #include "drizzletest.h"
 
+
 FILE *logptr = NULL;
 static integer_t image_size[2];
 static PyArrayObject *test_data;
@@ -124,12 +125,12 @@ offset_pixmap(struct driz_param_t *p, double x_offset, double y_offset) {
     int i, j;
     double xpix, ypix;
 
-    ypix = 0.0;
+    ypix = y_offset;
     for (j = 0; j < image_size[1]; j++) {
-       xpix = 0.0;
+       xpix = x_offset;
        for (i = 0; i < image_size[0]; i++) {
-            get_pixmap(p->pixmap, i, j)[0] = xpix + x_offset;
-            get_pixmap(p->pixmap, i, j)[1] = ypix + y_offset;
+            get_pixmap(p->pixmap, i, j)[0] = xpix;
+            get_pixmap(p->pixmap, i, j)[1] = ypix;
             xpix += 1.0;
        }
        ypix += 1.0;
@@ -387,88 +388,6 @@ FCT_BGN_FN(utest_cdrizzle)
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_shrink_segment_01)
-        {
-            int i, j;
-            struct driz_param_t *p;
-            struct segment xybounds;
-            struct segment xylimits;
-
-            p = setup_parameters();
-
-            initialize_segment(&xylimits, p->xmin, p->ymin, p->xmax, p->ymax);
-            initialize_segment(&xybounds, p->xmin, p->ymin, p->xmax, p->ymax);
-
-            shrink_segment(&xybounds, p->pixmap, &bad_pixel);
-
-            for (i = 0; i < 2; ++i) {
-                for (j = 0; j < 2; ++j) {
-                    fct_chk_eq_dbl(xybounds.point[i][j], xylimits.point[i][j]);
-                }
-            }
-
-            teardown_parameters(p);
-        }
-        FCT_TEST_END();
-
-       FCT_TEST_BGN(utest_shrink_segment_02)
-        {
-            int i, j, nan_max;
-            struct driz_param_t *p;
-            struct segment xybounds;
-            struct segment xylimits;
-
-            nan_max = 5;
-            p = setup_parameters();
-            for (i = 0; i < nan_max; ++i) {
-                for (j = 0; j < p->ymax; ++j) {
-                    nan_pixel(p, i, j);
-                }
-            }
-
-            initialize_segment(&xylimits, nan_max, p->ymin, p->xmax, p->ymax);
-            initialize_segment(&xybounds, p->xmin, p->ymin, p->xmax, p->ymax);
-
-            shrink_segment(&xybounds, p->pixmap, &bad_pixel);
-
-            for (i = 0; i < 2; ++i) {
-                for (j = 0; j < 2; ++j) {
-                    fct_chk_eq_dbl(xybounds.point[i][j], xylimits.point[i][j]);
-                }
-            }
-
-            teardown_parameters(p);
-        }
-        FCT_TEST_END();
-
-       FCT_TEST_BGN(utest_shrink_segment_03)
-        {
-            int i, j, nan_min, nan_max;
-            struct driz_param_t *p;
-            struct segment xybounds;
-            struct segment xylimits;
-
-            p = setup_parameters();
-            nan_pixmap(p);
-
-            nan_min = 5;
-            nan_max = 10;
-            set_pixmap(p, nan_min, nan_max, nan_min, nan_max);
-
-            initialize_segment(&xylimits, nan_min, nan_min, nan_max, nan_max);
-            initialize_segment(&xybounds, p->xmin, p->ymin, p->xmax, p->ymax);
-
-            shrink_segment(&xybounds, p->pixmap, &bad_pixel);
-            for (i = 0; i < 2; ++i) {
-                for (j = 0; j < 2; ++j) {
-                    fct_chk_eq_dbl(xybounds.point[i][j], xylimits.point[i][j]);
-                }
-            }
-
-            teardown_parameters(p);
-        }
-        FCT_TEST_END();
-
         FCT_TEST_BGN(utest_map_point_01)
         {
             double xyin[2], xyout[2];
@@ -522,16 +441,15 @@ FCT_BGN_FN(utest_cdrizzle)
             xyin[1] = 5.0;
 
             status = map_point(p->pixmap, xyin, xyout);
-            fct_chk_int_return_status(status, 0);
 
+            fct_chk_int_return_status(status, 0);
             fct_chk_eq_dbl(xyout[0], 3.25);
             fct_chk_eq_dbl(xyout[1], 5000.0);
 
             nan_pixel(p, 3, 5);
-
             status = map_point(p->pixmap, xyin, xyout);
-            fct_chk_int_return_status(status, 1);
 
+            fct_chk_int_return_status(status, 1);
             fct_chk_neq_int(xyout[0], xyout[0]);
             fct_chk_neq_int(xyout[1], xyout[1]);
 
@@ -547,6 +465,8 @@ FCT_BGN_FN(utest_cdrizzle)
 
             p = setup_parameters();
 
+            stretch_pixmap(p, 1000.0);
+
             xyin[0] = 0.25;
             xyin[1] = 5.0;
 
@@ -554,7 +474,7 @@ FCT_BGN_FN(utest_cdrizzle)
 
             fct_chk_int_return_status(status, 0);
             fct_chk_eq_dbl(xyout[0], 0.25);
-            fct_chk_eq_dbl(xyout[1], 5.0);
+            fct_chk_eq_dbl(xyout[1], 5000.0);
 
             nan_pixel(p, 0, 5);
             status = map_point(p->pixmap, xyin, xyout);
@@ -569,21 +489,29 @@ FCT_BGN_FN(utest_cdrizzle)
 
         FCT_TEST_BGN(utest_check_line_overlap_01)
         {
+            struct scanner s;
+            int ymin, ymax, shift, status;
+
             /* Test for complete overlap */
 
             const integer_t j = 0;      /* which image line to check ? */
-            const int margin = 2;       /* extra margin around edge of image */
             integer_t xbounds[2];       /* start of in-bounds */
             struct driz_param_t *p;     /* parameter structure */
 
             p = setup_parameters();
-            offset_pixmap(p, 0.0, 0.0);
+            shift = 0;
+            offset_pixmap(p, (double) shift, 0.0);
 
-            check_line_overlap(p, margin, j, xbounds);
-            print_status("end check_line_overlap"); // DBG
+            init_image_scanner(p, &s, &ymin, &ymax);
+            status = get_scanline_limits(&s, j, &xbounds[0], &xbounds[1]);
 
-            fct_chk_eq_int(xbounds[0], 0);
-            fct_chk_eq_int(xbounds[1], image_size[0]);
+            fct_chk_eq_int(status, 0);
+            fct_chk_eq_int(ymin, 0);
+            fct_chk_eq_int(ymax, image_size[1] - 1);
+            fct_chk_eq_int(xbounds[0], MIN(MAX(0, -shift), image_size[0] - 1));
+            fct_chk_eq_int(xbounds[1], MAX(0, MIN(image_size[0] - 1 - shift,
+                                                  image_size[0] - 1)));
+
 
             teardown_parameters(p);
         }
@@ -591,20 +519,28 @@ FCT_BGN_FN(utest_cdrizzle)
 
         FCT_TEST_BGN(utest_check_line_overlap_02)
         {
+            struct scanner s;
+            int ymin, ymax, shift, status;
+
             /* Test for half overlap */
 
             const integer_t j = 0;      /* which image line to check ? */
-            const integer_t margin = 2; /* extra margin around edge of image */
             integer_t xbounds[2];       /* start of in-bounds */
             struct driz_param_t *p;     /* parameter structure */
 
             p = setup_parameters();
-            offset_pixmap(p, 70.0, 0.0);
+            shift = 70;
+            offset_pixmap(p, (double) shift, 0.0);
 
-            check_line_overlap(p, margin, j, xbounds);
+            init_image_scanner(p, &s, &ymin, &ymax);
+            status = get_scanline_limits(&s, j, &xbounds[0], &xbounds[1]);
 
-            fct_chk_eq_int(xbounds[0], 0);
-            fct_chk_eq_int(xbounds[1], 32);
+            fct_chk_eq_int(status, 0);
+            fct_chk_eq_int(ymin, 0);
+            fct_chk_eq_int(ymax, image_size[1] - 1);
+            fct_chk_eq_int(xbounds[0], MIN(MAX(0, -shift), image_size[0] - 1));
+            fct_chk_eq_int(xbounds[1], MAX(0, MIN(image_size[0] - 1 - shift,
+                                                  image_size[0] - 1)));
 
             teardown_parameters(p);
         }
@@ -612,40 +548,28 @@ FCT_BGN_FN(utest_cdrizzle)
 
         FCT_TEST_BGN(utest_check_line_overlap_03)
         {
+            struct scanner s;
+            int ymin, ymax, shift, status;
+
             /* Test for negative half overlap */
 
             const integer_t j = 0;      /* which image line to check ? */
-            const integer_t margin = 2; /* extra margin around edge of image */
             integer_t xbounds[2];       /* start of in-bounds */
             struct driz_param_t *p;     /* parameter structure */
 
             p = setup_parameters();
-            offset_pixmap(p, -70.0, 0.0);
+            shift = -70;
+            offset_pixmap(p, (double) shift, 0.0);
 
-            check_line_overlap(p, margin, j, xbounds);
+            init_image_scanner(p, &s, &ymin, &ymax);
+            status = get_scanline_limits(&s, j, &xbounds[0], &xbounds[1]);
 
-            fct_chk_eq_int(xbounds[0], 68);
-            fct_chk_eq_int(xbounds[1], 100);
-
-            teardown_parameters(p);
-        }
-        FCT_TEST_END();
-
-        FCT_TEST_BGN(utest_check_image_overlap_01)
-        {
-            /* Test for complete overlap */
-
-            const int margin = 2;       /* extra margin around edge of image */
-            integer_t ybounds[2];       /* start of in-bounds */
-            struct driz_param_t *p;     /* parameter structure */
-
-            p = setup_parameters();
-            offset_pixmap(p, 0.0, 0.0);
-
-            check_image_overlap(p, margin, ybounds);
-
-            fct_chk_eq_int(ybounds[0], 0);
-            fct_chk_eq_int(ybounds[1], image_size[1]);
+            fct_chk_eq_int(status, 0);
+            fct_chk_eq_int(ymin, 0);
+            fct_chk_eq_int(ymax, image_size[1] - 1);
+            fct_chk_eq_int(xbounds[0], MIN(MAX(0, -shift), image_size[0] - 1));
+            fct_chk_eq_int(xbounds[1], MAX(0, MIN(image_size[0] - 1 - shift,
+                                                  image_size[0] - 1)));
 
             teardown_parameters(p);
         }
@@ -653,19 +577,23 @@ FCT_BGN_FN(utest_cdrizzle)
 
         FCT_TEST_BGN(utest_check_image_overlap_02)
         {
+            struct scanner s;
+            int ymin, ymax, shift;
+
             /* Test for half overlap */
 
-            const integer_t margin = 2; /* extra margin around edge of image */
             integer_t ybounds[2];       /* start of in-bounds */
             struct driz_param_t *p;     /* parameter structure */
 
             p = setup_parameters();
-            offset_pixmap(p, 0.0, 70.0);
+            shift = 70;
+            offset_pixmap(p, 0.0, (double) shift);
 
-            check_image_overlap(p, margin, ybounds);
+            init_image_scanner(p, &s, &ymin, &ymax);
 
-            fct_chk_eq_int(ybounds[0], 0);
-            fct_chk_eq_int(ybounds[1], 32);
+            fct_chk_eq_int(ymin, MIN(MAX(0, -shift), image_size[1] - 1));
+            fct_chk_eq_int(ymax, MAX(0, MIN(image_size[1] - 1 - shift,
+                                            image_size[1] - 1)));
 
             teardown_parameters(p);
         }
@@ -673,19 +601,23 @@ FCT_BGN_FN(utest_cdrizzle)
 
         FCT_TEST_BGN(utest_check_image_overlap_03)
         {
+            struct scanner s;
+            int ymin, ymax, shift;
+
             /* Test for negative half overlap */
 
-            const integer_t margin = 2; /* extra margin around edge of image */
             integer_t ybounds[2];       /* start of in-bounds */
             struct driz_param_t *p;     /* parameter structure */
 
             p = setup_parameters();
-            offset_pixmap(p, 0.0, -70.0);
+            shift = -70;
+            offset_pixmap(p, 0.0, (double) shift);
 
-            check_image_overlap(p, margin, ybounds);
+            init_image_scanner(p, &s, &ymin, &ymax);
 
-            fct_chk_eq_int(ybounds[0], 68);
-            fct_chk_eq_int(ybounds[1], 100);
+            fct_chk_eq_int(ymin, MIN(MAX(0, -shift), image_size[1] - 1));
+            fct_chk_eq_int(ymax, MAX(0, MIN(image_size[1] - 1 - shift,
+                                            image_size[1] - 1)));
 
             teardown_parameters(p);
         }
@@ -956,7 +888,7 @@ FCT_BGN_FN(utest_cdrizzle)
 
             do_kernel_square(p);
 
-            for (i = 4; i < n; ++i) {
+            for (i = 4; i < n - 2; ++i) {
                 fct_chk_eq_dbl(get_pixel(p->output_data, i, i), value/2.0);
                 fct_chk_eq_dbl(get_pixel(p->output_data, i-1, i), value/4.0);
                 fct_chk_eq_dbl(get_pixel(p->output_data, i, i-1), value/4.0);
@@ -1056,7 +988,7 @@ FCT_BGN_FN(utest_cdrizzle)
             dobox(p);
 
             fct_chk_eq_dbl(get_pixel(p->output_data, (k+2), (k+2)), get_pixel(p->data, k, k));
-            fct_chk_eq_int(p->nskip, 0);
+            fct_chk_eq_int(p->nskip, 2);
         }
         FCT_TEST_END();
 
@@ -1103,7 +1035,7 @@ FCT_BGN_FN(utest_cdrizzle)
             offset_pixmap(p, offset, offset);
             p->kernel = kernel_turbo;
 
-            for (j = 1; j < n-1; ++j) {
+            for (j = 1; j < n - 1; ++j) {
                 set_pixel(p->data, j, j, value);
             }
 
