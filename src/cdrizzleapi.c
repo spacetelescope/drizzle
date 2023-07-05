@@ -48,6 +48,61 @@ scale_image(PyArrayObject *image, double scale_factor) {
  * Top level function for drizzling, interfaces with python code
  */
 
+int
+shrink_image_section(PyArrayObject *pixmap, int *xmin, int *xmax,
+                     int *ymin, int *ymax) {
+    int i, j, imin, imax, jmin, jmax, i1, i2, j1, j2;
+    double *pv;
+
+    j1 = *ymin;
+    j2 = *ymax;
+    i1 = *xmin;
+    i2 = *xmax;
+
+    imin = i2;
+    jmin = j2;
+
+    for (j = j1; j <= j2; ++j) {
+        for (i = i1; i <= i2; ++i) {
+            pv = (double *) PyArray_GETPTR3(pixmap, j, i, 0);
+            if (!(npy_isnan(pv[0]) || npy_isnan(pv[1]))) {
+                if (i < imin) {
+                    imin = i;
+                }
+                if (j < jmin) {
+                    jmin = j;
+                }
+                break;
+            }
+        }
+    }
+
+    imax = imin;
+    jmax = jmin;
+
+    for (j = j2; j >= j1; --j) {
+        for (i = i2; i >= i1; --i) {
+            pv = (double *) PyArray_GETPTR3(pixmap, j, i, 0);
+            if (!(npy_isnan(pv[0]) || npy_isnan(pv[1]))) {
+                if (i > imax) {
+                    imax = i;
+                }
+                if (j > jmax) {
+                    jmax = j;
+                }
+                break;
+            }
+        }
+    }
+
+    *xmin = imin;
+    *xmax = imax;
+    *ymin = jmin;
+    *ymax = jmax;
+
+    return (imin >= imax || jmin >= jmax);
+}
+
 static PyObject *
 tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
 {
@@ -166,8 +221,14 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   /* Set the area to be processed */
 
   get_dimensions(img, isize);
-  if (xmax == 0) xmax = isize[0];
-  if (ymax == 0) ymax = isize[1];
+  if (xmax == 0 || xmax >= isize[0]) xmax = isize[0] - 1;
+  if (ymax == 0 || ymax >= isize[1]) ymax = isize[1] - 1;
+
+  //if (shrink_image_section(map, &xmin, &xmax, &ymin, &ymax)) {
+    //driz_error_set_message(&error,
+        //"No or too few valid pixels in the pixel map.");
+    //goto _exit;
+  //}
 
   /* Convert strings to enumerations */
 
@@ -440,87 +501,107 @@ test_cdrizzle(PyObject *self, PyObject *args)
 static PyObject *
 invert_pixmap_wrap(PyObject *self, PyObject *args)
 {
-  PyObject *pixmap, *xyout;
-  PyArrayObject *xyout_arr, *pixmap_arr;
-  double *xyin;
-  npy_intp xyin_dim = 2;
+    PyObject *pixmap, *xyout, *bbox;
+    PyArrayObject *xyout_arr, *pixmap_arr, *bbox_arr;
+    struct driz_param_t par;
+    double *xyin;
+    npy_intp *ndim, xyin_dim = 2;
 
-  xyin = (double *) malloc(2 * sizeof(double));
+    xyin = (double *) malloc(2 * sizeof(double));
 
-  if (!PyArg_ParseTuple(args,"OO:invpixmap", &pixmap, &xyout)) {
-    return NULL;
-  }
+    if (!PyArg_ParseTuple(args,"OOO:invpixmap", &pixmap, &xyout, &bbox)) {
+      return NULL;
+    }
 
-  xyout_arr = (PyArrayObject *)PyArray_ContiguousFromAny(xyout, NPY_DOUBLE, 1, 1);
-  if (!xyout_arr) {
-    return PyErr_Format(gl_Error, "Invalid xyout array.");
-  }
+    xyout_arr = (PyArrayObject *)PyArray_ContiguousFromAny(xyout, NPY_DOUBLE, 1, 1);
+    if (!xyout_arr) {
+      return PyErr_Format(gl_Error, "Invalid xyout array.");
+    }
 
-  pixmap_arr = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, NPY_DOUBLE, 3, 3);
-  if (!pixmap_arr) {
-    return PyErr_Format(gl_Error, "Invalid pixmap.");
-  }
+    pixmap_arr = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, NPY_DOUBLE, 3, 3);
+    if (!pixmap_arr) {
+      return PyErr_Format(gl_Error, "Invalid pixmap.");
+    }
 
-  if (invert_pixmap(pixmap_arr, (double *)PyArray_DATA(xyout_arr), xyin)) {
-      return Py_BuildValue("");
-  }
+    par.pixmap = pixmap_arr;
+    ndim = PyArray_DIMS(pixmap_arr);
 
-  PyArrayObject *arr = (PyArrayObject *)PyArray_SimpleNewFromData(
-      1, &xyin_dim,  NPY_DOUBLE, xyin);
+    if (bbox == Py_None) {
+        par.xmin = -0.5;
+        par.xmax = ndim[1] - 0.5;
+        par.ymin = -0.5;
+        par.ymax = ndim[0] - 0.5;
+    } else {
+        bbox_arr = (PyArrayObject *)PyArray_ContiguousFromAny(bbox, NPY_DOUBLE, 2, 2);
+        if (!bbox_arr) {
+          return PyErr_Format(gl_Error, "Invalid input bounding box.");
+        }
+        par.xmin = *(double*) PyArray_GETPTR2(bbox_arr, 0, 0);
+        par.xmax = *(double*) PyArray_GETPTR2(bbox_arr, 0, 1);
+        par.ymin = *(double*) PyArray_GETPTR2(bbox_arr, 1, 0);
+        par.ymax = *(double*) PyArray_GETPTR2(bbox_arr, 1, 1);
+    }
 
-  PyArray_ENABLEFLAGS(arr, NPY_ARRAY_OWNDATA);
+    if (invert_pixmap(&par, (double *)PyArray_DATA(xyout_arr), xyin)) {
+        return Py_BuildValue("");
+    }
 
-  return Py_BuildValue("N", arr);
+    PyArrayObject *arr = (PyArrayObject *)PyArray_SimpleNewFromData(
+        1, &xyin_dim,  NPY_DOUBLE, xyin);
+
+    PyArray_ENABLEFLAGS(arr, NPY_ARRAY_OWNDATA);
+
+    return Py_BuildValue("N", arr);
 }
 
 
 static PyObject *
 intersect_convex_polygons_wrap(PyObject *self, PyObject *args)
 {
-  int k;
-  PyObject *pin, *qin;
-  PyArrayObject *pin_arr, *qin_arr;
-  struct polygon p, q, pq;
-  PyObject *list, *tuple;
+    int k;
+    PyObject *pin, *qin;
+    PyArrayObject *pin_arr, *qin_arr;
+    struct polygon p, q, pq;
+    PyObject *list, *tuple;
 
-  if (!PyArg_ParseTuple(args,"OO:intersect_convex_polygons", &pin, &qin)) {
-    return NULL;
-  }
+    if (!PyArg_ParseTuple(args,"OO:intersect_convex_polygons", &pin, &qin)) {
+      return NULL;
+    }
 
-  pin_arr = (PyArrayObject *)PyArray_ContiguousFromAny(pin, NPY_DOUBLE, 2, 2);
-  if (!pin_arr) {
-    return PyErr_Format(gl_Error, "Invalid P.");
-  }
+    pin_arr = (PyArrayObject *)PyArray_ContiguousFromAny(pin, NPY_DOUBLE, 2, 2);
+    if (!pin_arr) {
+      return PyErr_Format(gl_Error, "Invalid P.");
+    }
 
-  qin_arr = (PyArrayObject *)PyArray_ContiguousFromAny(qin, NPY_DOUBLE, 2, 2);
-  if (!qin_arr) {
-    return PyErr_Format(gl_Error, "Invalid Q.");
-  }
+    qin_arr = (PyArrayObject *)PyArray_ContiguousFromAny(qin, NPY_DOUBLE, 2, 2);
+    if (!qin_arr) {
+      return PyErr_Format(gl_Error, "Invalid Q.");
+    }
 
-  p.npv = PyArray_SHAPE(pin_arr)[0];
-  for (k = 0; k < p.npv; ++k) {
-      p.v[k].x = *((double *) PyArray_GETPTR2(pin_arr, k, 0));
-      p.v[k].y = *((double *) PyArray_GETPTR2(pin_arr, k, 1));
-  }
+    p.npv = PyArray_SHAPE(pin_arr)[0];
+    for (k = 0; k < p.npv; ++k) {
+        p.v[k].x = *((double *) PyArray_GETPTR2(pin_arr, k, 0));
+        p.v[k].y = *((double *) PyArray_GETPTR2(pin_arr, k, 1));
+    }
 
-  q.npv = PyArray_SHAPE(qin_arr)[0];
-  for (k = 0; k < q.npv; ++k) {
-      q.v[k].x = *((double *) PyArray_GETPTR2(qin_arr, k, 0));
-      q.v[k].y = *((double *) PyArray_GETPTR2(qin_arr, k, 1));
-  }
+    q.npv = PyArray_SHAPE(qin_arr)[0];
+    for (k = 0; k < q.npv; ++k) {
+        q.v[k].x = *((double *) PyArray_GETPTR2(qin_arr, k, 0));
+        q.v[k].y = *((double *) PyArray_GETPTR2(qin_arr, k, 1));
+    }
 
-  intersect_convex_polygons(&p, &q, &pq);
+    intersect_convex_polygons(&p, &q, &pq);
 
-  list = PyList_New(pq.npv);
+    list = PyList_New(pq.npv);
 
-  for (k = 0; k < pq.npv; ++k) {
-      tuple = PyTuple_New(2);
-      PyTuple_SetItem(tuple, 0, PyFloat_FromDouble(pq.v[k].x));
-      PyTuple_SetItem(tuple, 1, PyFloat_FromDouble(pq.v[k].y));
-      PyList_SetItem(list, k, tuple);
-  }
+    for (k = 0; k < pq.npv; ++k) {
+        tuple = PyTuple_New(2);
+        PyTuple_SetItem(tuple, 0, PyFloat_FromDouble(pq.v[k].x));
+        PyTuple_SetItem(tuple, 1, PyFloat_FromDouble(pq.v[k].y));
+        PyList_SetItem(list, k, tuple);
+    }
 
-  return Py_BuildValue("N", list);
+    return Py_BuildValue("N", list);
 }
 
 
@@ -535,7 +616,7 @@ static struct PyMethodDef cdrizzle_methods[] = {
     "tblot(image, output, xmin, xmax, ymin, ymax, scale, kscale, interp, ef, misval, sinscl, pixmap)"},
     {"test_cdrizzle", test_cdrizzle, METH_VARARGS,
     "test_cdrizzle(data, weights, pixmap, output_data, output_counts)"},
-    {"invert_pixmap", invert_pixmap_wrap, METH_VARARGS, "invert_pixmap(pixmap, xyout)"},
+    {"invert_pixmap", invert_pixmap_wrap, METH_VARARGS, "invert_pixmap(pixmap, xyout, bbox)"},
     {"intersect_convex_polygons", intersect_convex_polygons_wrap, METH_VARARGS, "intersect_convex_polygons(p, q)"},
     {NULL,        NULL}        /* sentinel */
 };

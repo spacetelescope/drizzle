@@ -260,9 +260,9 @@ setup_parameters() {
 
     p->uuid = 1;
     p->xmin = 0;
-    p->xmax = image_size[0];
+    p->xmax = image_size[0] - 1;
     p->ymin = 0;
-    p->ymax = image_size[1];
+    p->ymax = image_size[1] - 1;
     p->scale = 1.0;
     p->pixel_fraction = 1.0;
     p->exposure_time = 1.0;
@@ -399,7 +399,7 @@ FCT_BGN_FN(utest_cdrizzle)
             xyin[0] = 2.5;
             xyin[1] = 1.5;
 
-            map_point(p->pixmap, xyin, xyout);
+            map_point(p, xyin, xyout);
 
             fct_chk_eq_dbl(xyout[0], 2.5);
             fct_chk_eq_dbl(xyout[1], 1500.0);
@@ -419,7 +419,7 @@ FCT_BGN_FN(utest_cdrizzle)
             xyin[0] = -1.0;
             xyin[1] = 0.5;
 
-            map_point(p->pixmap, xyin, xyout);
+            map_point(p, xyin, xyout);
 
             fct_chk_eq_dbl(xyout[0], -1.0);
             fct_chk_eq_dbl(xyout[1], 500.0);
@@ -440,14 +440,14 @@ FCT_BGN_FN(utest_cdrizzle)
             xyin[0] = 3.25;
             xyin[1] = 5.0;
 
-            status = map_point(p->pixmap, xyin, xyout);
+            status = map_point(p, xyin, xyout);
 
             fct_chk_int_return_status(status, 0);
             fct_chk_eq_dbl(xyout[0], 3.25);
             fct_chk_eq_dbl(xyout[1], 5000.0);
 
             nan_pixel(p, 3, 5);
-            status = map_point(p->pixmap, xyin, xyout);
+            status = map_point(p, xyin, xyout);
 
             fct_chk_int_return_status(status, 1);
             fct_chk_neq_int(xyout[0], xyout[0]);
@@ -470,14 +470,14 @@ FCT_BGN_FN(utest_cdrizzle)
             xyin[0] = 0.25;
             xyin[1] = 5.0;
 
-            status = map_point(p->pixmap, xyin, xyout);
+            status = map_point(p, xyin, xyout);
 
             fct_chk_int_return_status(status, 0);
             fct_chk_eq_dbl(xyout[0], 0.25);
             fct_chk_eq_dbl(xyout[1], 5000.0);
 
             nan_pixel(p, 0, 5);
-            status = map_point(p->pixmap, xyin, xyout);
+            status = map_point(p, xyin, xyout);
 
             fct_chk_int_return_status(status, 1);
             fct_chk_neq_int(xyout[0], xyout[0]);

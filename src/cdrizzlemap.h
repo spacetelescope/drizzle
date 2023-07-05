@@ -42,9 +42,9 @@ struct scanner {
     struct edge right_edges[2 * IMAGE_OUTLINE_NPTS];
     struct edge *left, *right;  // when set to NULL => done scanning
     int nleft, nright;
-    double ymin, ymax;  // bottom and top vertices
-    int width, height;  // image shape (width, height) - used for clipping
-                        // set width = height = -1 to not clip
+    double min_y, max_y;  // bottom and top vertices
+    int xmin, xmax, ymin, ymax;  // min/max x/y of valid pixels in pixmap;
+                                 // the bounding box (rounded to int)
 };
 
 int
@@ -60,7 +60,7 @@ bad_weight(PyArrayObject *weights,
            );
 
 int
-map_point(PyArrayObject * pixmap,
+map_point(struct driz_param_t* par,
           const double xyin[2],
           double xyout[2]
          );
@@ -73,15 +73,15 @@ map_pixel(PyArrayObject *pixmap,
          );
 
 int
-invert_pixmap(PyArrayObject *pixmap, const double xyout[2], double xyin[2]);
+invert_pixmap(struct driz_param_t* par,
+              const double xyout[2], double xyin[2]);
 
 int
 intersect_convex_polygons(const struct polygon *p, const struct polygon *q,
                           struct polygon *pq);
 
 int
-init_scanner(struct polygon *p, struct scanner *s,
-             int image_width, int image_height);
+init_scanner(struct polygon *p, struct scanner *s, struct driz_param_t* par);
 
 int
 get_scanline_limits(struct scanner *s, int y, int *x1, int *x2);

@@ -59,7 +59,7 @@ def test_invert_pixmap():
 
     for xr, yr in test_coords:
         xout_t, yout_t = _coord_mapping(xr, yr)
-        xyin = invert_pixmap(pixmap, [xout_t, yout_t])
+        xyin = invert_pixmap(pixmap, [xout_t, yout_t], [[-0.5, 1199.5], [-0.5, 999.5]])
         assert np.allclose(xyin, [xr, yr], atol=0.05)
 
 
@@ -95,6 +95,29 @@ def test_poly_intersection_shifted(shift):
         q = [(x + sx, y + sy) for x, y in p]
         q = _roll_vertices(q, k)
         pq = intersect_convex_polygons(p, q)
+        assert np.allclose(sorted(pq), pq_ref)
+
+
+@pytest.mark.parametrize(
+    'shift', [(0, 70), (70, 0), (0, -70), (-70, 0)],
+)
+def test_poly_intersection_shifted_large(shift):
+    p = [(-0.5, -0.5), (99.5, -0.5), (99.5, 99.5), (-0.5, 99.5)]
+    sx, sy = shift
+    pq_ref = sorted(
+        [
+            (max(-0.5, -0.5 + sx), max(-0.5, -0.5 + sy)),
+            (min(99.5, 99.5 + sx), max(-0.5, -0.5 + sy)),
+            (min(99.5, 99.5 + sx), min(99.5, 99.5 + sy)),
+            (max(-0.5, -0.5 + sx), min(99.5, 99.5 + sy)),
+        ],
+    )
+
+    for k in range(4):
+        q = [(x + sx, y + sy) for x, y in p]
+        q = _roll_vertices(q, k)
+        pq = intersect_convex_polygons(p, q)
+        assert len(pq) == 4
         assert np.allclose(sorted(pq), pq_ref)
 
 

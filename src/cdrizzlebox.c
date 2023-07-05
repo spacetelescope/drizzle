@@ -257,7 +257,7 @@ do_kernel_point(struct driz_param_t* p) {
 
   if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
 
-  p->nskip = (p->ymax - p->ymin) - (ymax + 1 - ymin);
+  p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
   p->nmiss = p->nskip * (p->xmax - p->xmin);
 
   /* This is the outer loop over all the lines in the input image */
@@ -365,7 +365,7 @@ do_kernel_tophat(struct driz_param_t* p) {
 
   if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
 
-  p->nskip = (p->ymax - p->ymin) - (ymax + 1 - ymin);
+  p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
   p->nmiss = p->nskip * (p->xmax - p->xmin);
 
   /* This is the outer loop over all the lines in the input image */
@@ -510,7 +510,7 @@ do_kernel_gaussian(struct driz_param_t* p) {
 
   if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
 
-  p->nskip = (p->ymax - p->ymin) - (ymax + 1 - ymin);
+  p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
   p->nmiss = p->nskip * (p->xmax - p->xmin);
 
   /* This is the outer loop over all the lines in the input image */
@@ -662,7 +662,7 @@ do_kernel_lanczos(struct driz_param_t* p) {
 
   if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
 
-  p->nskip = (p->ymax - p->ymin) - (ymax + 1 - ymin);
+  p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
   p->nmiss = p->nskip * (p->xmax - p->xmin);
 
   /* This is the outer loop over all the lines in the input image */
@@ -801,7 +801,7 @@ do_kernel_turbo(struct driz_param_t* p) {
 
   if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
 
-  p->nskip = (p->ymax - p->ymin) - (ymax + 1 - ymin);
+  p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
   p->nmiss = p->nskip * (p->xmax - p->xmin);
 
   /* This is the outer loop over all the lines in the input image */
@@ -810,6 +810,7 @@ do_kernel_turbo(struct driz_param_t* p) {
   for (j = ymin; j <= ymax; ++j) {
     /* Check the overlap with the output */
     n = get_scanline_limits(&s, j, &xmin, &xmax);
+
     if (n == 1) {
         // scan ended (y reached the top vertex/edge)
         p->nskip += (ymax + 1 - j);
@@ -945,7 +946,7 @@ do_kernel_square(struct driz_param_t* p) {
      pixel */
   if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
 
-  p->nskip = (p->ymax - p->ymin) - (ymax + 1 - ymin);
+  p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
   p->nmiss = p->nskip * (p->xmax - p->xmin);
 
   /* This is the outer loop over all the lines in the input image */
@@ -986,7 +987,7 @@ do_kernel_square(struct driz_param_t* p) {
       xyin[3][0] = (double) i - dh;
 
       for (ii = 0; ii < 4; ++ii) {
-        if (map_point(p->pixmap, xyin[ii], xyout)) {
+        if (map_point(p, xyin[ii], xyout)) {
             goto _miss;
         }
         xout[ii] = xyout[0];
