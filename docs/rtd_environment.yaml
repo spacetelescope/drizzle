@@ -3,10 +3,6 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - astropy
-  - cython
-  - matplotlib
-  - numpy
   - python=3.11
   - pip
   - graphviz
