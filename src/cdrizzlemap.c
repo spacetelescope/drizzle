@@ -65,6 +65,62 @@ bad_weight(PyArrayObject *weights, int i, int j) {
 }
 
 
+int
+shrink_image_section(PyArrayObject *pixmap, int *xmin, int *xmax,
+                     int *ymin, int *ymax) {
+    int i, j, imin, imax, jmin, jmax, i1, i2, j1, j2;
+    double *pv;
+
+    j1 = *ymin;
+    j2 = *ymax;
+    i1 = *xmin;
+    i2 = *xmax;
+
+    imin = i2;
+    jmin = j2;
+
+    for (j = j1; j <= j2; ++j) {
+        for (i = i1; i <= i2; ++i) {
+            pv = (double *) PyArray_GETPTR3(pixmap, j, i, 0);
+            if (!(npy_isnan(pv[0]) || npy_isnan(pv[1]))) {
+                if (i < imin) {
+                    imin = i;
+                }
+                if (j < jmin) {
+                    jmin = j;
+                }
+                break;
+            }
+        }
+    }
+
+    imax = imin;
+    jmax = jmin;
+
+    for (j = j2; j >= j1; --j) {
+        for (i = i2; i >= i1; --i) {
+            pv = (double *) PyArray_GETPTR3(pixmap, j, i, 0);
+            if (!(npy_isnan(pv[0]) || npy_isnan(pv[1]))) {
+                if (i > imax) {
+                    imax = i;
+                }
+                if (j > jmax) {
+                    jmax = j;
+                }
+                break;
+            }
+        }
+    }
+
+    *xmin = imin;
+    *xmax = imax;
+    *ymin = jmin;
+    *ymax = jmax;
+
+    return (imin >= imax || jmin >= jmax);
+}
+
+
 /** ---------------------------------------------------------------------------
  * Map a point on the input image to the output image using
  * a mapping of the pixel centers between the two by interpolating

@@ -48,61 +48,6 @@ scale_image(PyArrayObject *image, double scale_factor) {
  * Top level function for drizzling, interfaces with python code
  */
 
-int
-shrink_image_section(PyArrayObject *pixmap, int *xmin, int *xmax,
-                     int *ymin, int *ymax) {
-    int i, j, imin, imax, jmin, jmax, i1, i2, j1, j2;
-    double *pv;
-
-    j1 = *ymin;
-    j2 = *ymax;
-    i1 = *xmin;
-    i2 = *xmax;
-
-    imin = i2;
-    jmin = j2;
-
-    for (j = j1; j <= j2; ++j) {
-        for (i = i1; i <= i2; ++i) {
-            pv = (double *) PyArray_GETPTR3(pixmap, j, i, 0);
-            if (!(npy_isnan(pv[0]) || npy_isnan(pv[1]))) {
-                if (i < imin) {
-                    imin = i;
-                }
-                if (j < jmin) {
-                    jmin = j;
-                }
-                break;
-            }
-        }
-    }
-
-    imax = imin;
-    jmax = jmin;
-
-    for (j = j2; j >= j1; --j) {
-        for (i = i2; i >= i1; --i) {
-            pv = (double *) PyArray_GETPTR3(pixmap, j, i, 0);
-            if (!(npy_isnan(pv[0]) || npy_isnan(pv[1]))) {
-                if (i > imax) {
-                    imax = i;
-                }
-                if (j > jmax) {
-                    jmax = j;
-                }
-                break;
-            }
-        }
-    }
-
-    *xmin = imin;
-    *xmax = imax;
-    *ymin = jmin;
-    *ymax = jmax;
-
-    return (imin >= imax || jmin >= jmax);
-}
-
 static PyObject *
 tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
 {
@@ -224,11 +169,11 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   if (xmax == 0 || xmax >= isize[0]) xmax = isize[0] - 1;
   if (ymax == 0 || ymax >= isize[1]) ymax = isize[1] - 1;
 
-  //if (shrink_image_section(map, &xmin, &xmax, &ymin, &ymax)) {
-    //driz_error_set_message(&error,
-        //"No or too few valid pixels in the pixel map.");
-    //goto _exit;
-  //}
+  if (shrink_image_section(map, &xmin, &xmax, &ymin, &ymax)) {
+    driz_error_set_message(&error,
+        "No or too few valid pixels in the pixel map.");
+    goto _exit;
+  }
 
   /* Convert strings to enumerations */
 

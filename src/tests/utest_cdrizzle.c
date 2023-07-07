@@ -326,6 +326,39 @@ FCT_BGN_FN(utest_cdrizzle)
         }
         FCT_TEARDOWN_END();
 
+        FCT_TEST_BGN(utest_shrink_bbox)
+        {
+            int xmin, xmax, ymin, ymax;
+            struct driz_param_t *p;     /* parameter structure */
+
+            p = setup_parameters();
+            nan_pixmap(p);
+
+            get_pixmap(p->pixmap, 16, 50)[0] = 16;
+            get_pixmap(p->pixmap, 16, 50)[1] = 50;
+            get_pixmap(p->pixmap, 85, 51)[0] = 85;
+            get_pixmap(p->pixmap, 85, 51)[1] = 51;
+            get_pixmap(p->pixmap, 57, 18)[0] = 57;
+            get_pixmap(p->pixmap, 57, 18)[1] = 18;
+            get_pixmap(p->pixmap, 47, 68)[0] = 47;
+            get_pixmap(p->pixmap, 47, 68)[1] = 68;
+
+            xmin = 11;
+            xmax = 98;
+            ymin = 7;
+            ymax = 88;
+
+            shrink_image_section(p->pixmap, &xmin, &xmax, &ymin, &ymax);
+
+            fct_chk_eq_int(xmin, 16);
+            fct_chk_eq_int(xmax, 85);
+            fct_chk_eq_int(ymin, 18);
+            fct_chk_eq_int(ymax, 68);
+
+            teardown_parameters(p);
+        }
+        FCT_TEST_END();
+
         FCT_TEST_BGN(utest_map_lookup_01)
         {
             struct driz_param_t *p;

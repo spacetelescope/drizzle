@@ -73,6 +73,10 @@ map_pixel(PyArrayObject *pixmap,
          );
 
 int
+shrink_image_section(PyArrayObject *pixmap, int *xmin, int *xmax,
+                     int *ymin, int *ymax);
+
+int
 invert_pixmap(struct driz_param_t* par,
               const double xyout[2], double xyin[2]);
 
