@@ -45,19 +45,17 @@ struct scanner {
     double min_y, max_y;  // bottom and top vertices
     int xmin, xmax, ymin, ymax;  // min/max x/y of valid pixels in pixmap;
                                  // the bounding box (rounded to int)
+                                 // carried over from driz_param_t.
+    int overlap_valid;  // 1 - if polygon intersection and coord inversion
+                        //     worked;
+                        // 0 - if computation of xmin, xmax, ymin, ymax has
+                        //     failed in which case they are carried over from
+                        //     driz_param_t.
 };
 
 int
-bad_pixel(PyArrayObject *pixmap,
-          int i,
-          int j
-          );
-
-int
-bad_weight(PyArrayObject *weights,
-           int i,
-           int j
-           );
+interpolate_point(struct driz_param_t *par, double xin, double yin,
+                  double *xout, double *yout);
 
 int
 map_point(struct driz_param_t* par,

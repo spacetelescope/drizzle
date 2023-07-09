@@ -20,51 +20,6 @@ static const double APPROX_ZERO = 1.0e3 * DBL_MIN;
 static const double MAX_INV_ERR = 0.03;
 
 
-/** ---------------------------------------------------------------------------
- * Test if a pixmap vaue is bad (NaN)
- *
- * pixmap: the pixel mapping between input and output images
- * i:      the index of a pixel within a line
- * j:      the index of a line within an image
- */
-
-int
-bad_pixel(PyArrayObject *pixmap, int i, int j) {
-  int k;
-  for (k = 0; k < 2; ++k) {
-    oob_pixel(pixmap, i, j);
-    if (npy_isnan(get_pixmap(pixmap, i, j)[k])) {
-      return 1;
-    }
-  }
-
-  return 0;
-}
-
-/** ---------------------------------------------------------------------------
- * Test if weight value is bad (zero)
- *
- * weights the weight to be given each pixel in an image
- * i:      the index of a pixel within a line
- * j:      the index of a line within an image
- */
-
-int
-bad_weight(PyArrayObject *weights, int i, int j) {
-
-  if (weights) {
-    oob_pixel(weights, i, j);
-    if (get_pixel(weights, i, j) == 0.0) {
-      return 1;
-    } else {
-      return 0;
-    }
-  }
-
-  return 0;
-}
-
-
 int
 shrink_image_section(PyArrayObject *pixmap, int *xmin, int *xmax,
                      int *ymin, int *ymax) {
@@ -131,8 +86,9 @@ shrink_image_section(PyArrayObject *pixmap, int *xmin, int *xmax,
  * xyout:  The same (x, y) point on the output image (output)
  */
 
-int interpolate_point(struct driz_param_t *par,
-                      const double xyin[2], double xyout[2]) {
+int
+interpolate_point(struct driz_param_t *par, double xin, double yin,
+                  double *xout, double *yout) {
     int ipix, jpix, npix, idim;
     int i0, j0;
     double x, y, x1, y1, f00, f01, f10, f11, g00, g01, g10, g11;
@@ -144,8 +100,8 @@ int interpolate_point(struct driz_param_t *par,
     /* Bilinear interpolation from
        https://en.wikipedia.org/wiki/Bilinear_interpolation#On_the_unit_square
     */
-    i0 = (int)xyin[0];
-    j0 = (int)xyin[1];
+    i0 = (int)xin;
+    j0 = (int)yin;
 
     // point is outside the interpolation range. adjust limits to extrapolate.
     if (i0 < par->xmin) {
@@ -159,8 +115,8 @@ int interpolate_point(struct driz_param_t *par,
         j0 = par->ymax - 1;
     }
 
-    x = xyin[0] - i0;
-    y = xyin[1] - j0;
+    x = xin - i0;
+    y = yin - j0;
     x1 = 1.0 - x;
     y1 = 1.0 - y;
 
@@ -180,10 +136,10 @@ int interpolate_point(struct driz_param_t *par,
     f11 = p[0];
     g11 = p[1];
 
-    xyout[0] = f00 * x1 * y1 + f10 * x * y1 + f01 * x1 * y + f11 * x * y;
-    xyout[1] = g00 * x1 * y1 + g10 * x * y1 + g01 * x1 * y + g11 * x * y;
+    *xout = f00 * x1 * y1 + f10 * x * y1 + f01 * x1 * y + f11 * x * y;
+    *yout = g00 * x1 * y1 + g10 * x * y1 + g01 * x1 * y + g11 * x * y;
 
-    if (npy_isnan(xyout[0]) || npy_isnan(xyout[1])) return 1;
+    if (npy_isnan(*xout) || npy_isnan(*yout)) return 1;
 
     return 0;
 }
@@ -218,6 +174,16 @@ map_pixel(
   return 0;
 }
 
+
+int
+map_pixel_fwd(PyArrayObject *pixmap, int i, int j, double *x, double *y) {
+    double *pv = pv = (double *) PyArray_GETPTR3(pixmap, j, i, 0);
+    *x = *pv;
+    *y = *(pv + 1);
+    return ((npy_isnan(*x) || npy_isnan(*y)) ? 1 : 0);
+}
+
+
 /** ---------------------------------------------------------------------------
  * Map a point on the input image to the output image either by interpolation
  * or direct array acces if the input position is integral.
@@ -230,11 +196,12 @@ map_pixel(
 int
 map_point(struct driz_param_t *par, const double xyin[2], double xyout[2]) {
     int i, j, status;
+    double xin, yin, xout, yout;
+    xin = xyin[0];
+    yin = xyin[1];
 
     i = xyin[0];
     j = xyin[1];
-
-    npy_intp *ndim = PyArray_DIMS(par->output_data);
 
     if ((double) i == xyin[0] && (double) j == xyin[1]) {
         if (i >= par->xmin && i <= par->xmax &&
@@ -244,27 +211,42 @@ map_point(struct driz_param_t *par, const double xyin[2], double xyout[2]) {
             return 1;
         }
     } else {
-        status = interpolate_point(par, xyin, xyout);
+        status = interpolate_point(par, xin, yin, &xout, &yout);
     }
-    ndim = PyArray_DIMS(par->output_data);
+
+    xyout[0] = xout;
+    xyout[1] = yout;
 
     return status;
+}
+
+
+int
+map_point_new(struct driz_param_t *par, double xin, double yin,
+              double *xout, double *yout) {
+    int i, j, status;
+
+    i = (int) xin;
+    j = (int) yin;
+
+    if ((double) i == xin && (double) j == yin) {
+        return map_pixel_fwd(par->pixmap, i, j, xout, yout);
+    } else {
+        return interpolate_point(par, xin, yin, xout, yout);
+    }
 }
 
 
 static int
 eval_inversion(struct driz_param_t *par, double x, double y,
                double xyref[2], double *dist2) {
-    double xy[2], xyi[2], dx, dy;
+    double xout, yout, dx, dy;
 
-    xy[0] = x;
-    xy[1] = y;
-
-    if (interpolate_point(par, xy, xyi)) {
+    if (interpolate_point(par, x, y, &xout, &yout)) {
         return 1;
     }
-    dx = xyi[0] - xyref[0];
-    dy = xyi[1] - xyref[1];
+    dx = xout - xyref[0];
+    dy = yout - xyref[1];
     *dist2 = dx * dx + dy * dy;  // sqrt would be slower
 
     return 0;
@@ -613,6 +595,7 @@ init_scanner(struct polygon *p, struct scanner *s, struct driz_param_t* par) {
 
     if (p->npv < 3) {
         // not a polygon
+        s->overlap_valid = 0;
         return 1;
     }
 
@@ -821,17 +804,13 @@ get_scanline_limits(struct scanner *s, int y, int *x1, int *x2) {
 static int
 map_to_output_vertex(struct driz_param_t* par, double x, double y,
                      struct vertex *v) {
-    double xyin[2], xyout[2];
     // convert coordinates to the output frame
-    xyin[0] = x;
-    xyin[1] = y;
-    if (map_point(par, xyin, xyout)) {
+    if (map_point_new(par, x, y, &v->x, &v->y)) {
         driz_error_set_message(par->error,
             "error computing input image bounding box");
         return 1;
     }
-    v->x = xyout[0];
-    v->y = xyout[1];
+
     return 0;
 }
 
@@ -872,10 +851,25 @@ init_image_scanner(struct driz_param_t* par, struct scanner *s,
 
     // convert coordinates to the output frame and define a polygon
     // bounding the input image in the output frame:
-    if (map_to_output_vertex(par, par->xmin - 0.5, par->ymin - 0.5, p.v)) return 1;
-    if (map_to_output_vertex(par, par->xmax + 0.5, par->ymin - 0.5, p.v + 1)) return 1;
-    if (map_to_output_vertex(par, par->xmax + 0.5, par->ymax + 0.5, p.v + 2)) return 1;
-    if (map_to_output_vertex(par, par->xmin - 0.5, par->ymax + 0.5, p.v + 3)) return 1;
+    // inpq will be updated/overwritten later if coordinate mapping, inversion,
+    // and polygon intersection is successful.
+    inpq.npv = 4;
+    inpq.v[0].x = par->xmin - 0.5;
+    inpq.v[0].y = par->ymin - 0.5;
+    inpq.v[1].x = par->xmax + 0.5;
+    inpq.v[1].y = inpq.v[0].y;
+    inpq.v[2].x = inpq.v[1].x;
+    inpq.v[2].y = par->ymax + 0.5;
+    inpq.v[3].x = inpq.v[0].x;
+    inpq.v[3].y = inpq.v[2].y;
+
+    if (map_to_output_vertex(par, inpq.v[0].x, inpq.v[0].y, p.v) ||
+        map_to_output_vertex(par, inpq.v[1].x, inpq.v[1].y, p.v + 1) ||
+        map_to_output_vertex(par, inpq.v[2].x, inpq.v[2].y, p.v + 2) ||
+        map_to_output_vertex(par, inpq.v[3].x, inpq.v[3].y, p.v + 3)) {
+        s->overlap_valid = 0;
+        goto _setup_scanner;
+    }
     p.npv = 4;
 
     // define a polygon bounding output image:
@@ -892,21 +886,25 @@ init_image_scanner(struct driz_param_t* par, struct scanner *s,
 
     // compute intersection of P and Q (in output frame):
     if (intersect_convex_polygons(&p, &q, &pq)) {
-        driz_error_set_message(par->error,
-            "failed to compute polygon intersection");
-        return 1;
+        s->overlap_valid = 0;
+        goto _setup_scanner;
     }
 
     // convert coordinates of vertices of the intersection polygon
     // back to input image coordinate system:
     for (k = 0; k < pq.npv; k++) {
         if (map_to_input_vertex(par, pq.v[k].x, pq.v[k].y, &inpq.v[k])) {
-            return 1;
+            s->overlap_valid = 0;
+            goto _setup_scanner;
         }
     }
     inpq.npv = pq.npv;
+    s->overlap_valid = 1;
+
+_setup_scanner:
 
     // initialize polygon scanner:
+    driz_error_unset(par->error);
     n = init_scanner(&inpq, s, par);
     *ymin = MAX(0, (int)(s->min_y + 0.5 + 2.0 * MAX_INV_ERR));
     *ymax = MIN(s->ymax, (int)(s->max_y + 2.0 * MAX_INV_ERR));
