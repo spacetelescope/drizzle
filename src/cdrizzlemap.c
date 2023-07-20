@@ -177,7 +177,7 @@ map_pixel(
 
 int
 map_pixel_fwd(PyArrayObject *pixmap, int i, int j, double *x, double *y) {
-    double *pv = pv = (double *) PyArray_GETPTR3(pixmap, j, i, 0);
+    double *pv = (double *) PyArray_GETPTR3(pixmap, j, i, 0);
     *x = *pv;
     *y = *(pv + 1);
     return ((npy_isnan(*x) || npy_isnan(*y)) ? 1 : 0);
