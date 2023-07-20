@@ -391,7 +391,7 @@ append_vertex(struct polygon *p, struct vertex v) {
     if ((p->npv > 0) && equal_vertices(p->v[0], v, VERTEX_ATOL)) {
         return 1;
     }
-    if (p->npv >= 2 * IMAGE_OUTLINE_NPTS - 1) {
+    if (p->npv >= 2 * IMAGE_OUTLINE_NPTS) {
         return 1;
     }
     p->v[p->npv++] = v;
