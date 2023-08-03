@@ -90,7 +90,8 @@ int
 interpolate_point(struct driz_param_t *par, double xin, double yin,
                   double *xout, double *yout) {
     int ipix, jpix, npix, idim;
-    int i0, j0;
+    int i0, j0, nx2, ny2;
+    npy_intp *ndim;
     double x, y, x1, y1, f00, f01, f10, f11, g00, g01, g10, g11;
     double *p;
     PyArrayObject *pixmap;
@@ -103,16 +104,20 @@ interpolate_point(struct driz_param_t *par, double xin, double yin,
     i0 = (int)xin;
     j0 = (int)yin;
 
+    ndim = PyArray_DIMS(pixmap);
+    nx2 = (int)ndim[1] - 2;
+    ny2 = (int)ndim[0] - 2;
+
     // point is outside the interpolation range. adjust limits to extrapolate.
-    if (i0 < par->xmin) {
-        i0 = par->xmin;
-    } else if (i0 >= par->xmax) {
-        i0 = par->xmax - 1;
+    if (i0 < 0) {
+        i0 = 0;
+    } else if (i0 > nx2) {
+        i0 = nx2;
     }
-    if (j0 < par->ymin) {
-        j0 = par->ymin;
-    } else if (j0 >= par->ymax) {
-        j0 = par->ymax - 1;
+    if (j0 < 0) {
+        j0 = 0;
+    } else if (j0 > ny2) {
+        j0 = ny2;
     }
 
     x = xin - i0;
