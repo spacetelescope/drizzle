@@ -10,7 +10,7 @@
 
 #include <assert.h>
 #include <errno.h>
-#define _USE_MATH_DEFINES       /* needed for MS Windows to define M_PI */ 
+#define _USE_MATH_DEFINES       /* needed for MS Windows to define M_PI */
 #include <math.h>
 #if __STDC_VERSION__ >= 199901L
 #include <stdint.h>
@@ -139,18 +139,18 @@ struct driz_param_t {
 
   /* Blotting-specific parameters */
   enum e_interp_t interpolation; /* was INTERP */
-  float ef; 
+  float ef;
   float misval;
   float sinscl;
   float kscale;
 
   /* Input images */
-  PyArrayObject *data; 
+  PyArrayObject *data;
   PyArrayObject *weights;
   PyArrayObject *pixmap;
 
   /* Output images */
-  PyArrayObject *output_data; 
+  PyArrayObject *output_data;
   PyArrayObject *output_counts;  /* was: COU */
   PyArrayObject *output_context; /* was: CONTIM */
 
@@ -184,10 +184,32 @@ extern FILE *driz_log_handle;
 
 static inline_macro FILE*
 driz_log_init(FILE *handle) {
-    handle = fopen("/tmp/drizzle.log", "a");
+    const char* dirs[] = {"TMPDIR", "TMP", "TEMP", "TEMPDIR"};
+    int i;
+    char *p;
+    char buf[1024];
+#ifdef _WIN32
+    const char dirsep = '\\';
+#else
+    const char dirsep = '/';
+#endif
+
+    for (i = 0; i < 4; ++i) {
+        p = getenv(dirs[i]);
+        if (p) {
+            sprintf(buf, "%s%cdrizzle.log", p, dirsep);
+            break;
+        }
+    }
+    if (!p) {
+        sprintf(buf, "%ctmp%cdrizzle.log", dirsep, dirsep);
+    }
+
+    handle = fopen(buf, "a");
     setbuf(handle, 0);
     return handle;
 }
+
 
 static inline_macro int
 driz_log_close(FILE *handle) {
@@ -224,8 +246,8 @@ static inline_macro void
 get_dimensions(PyArrayObject *image, integer_t size[2]) {
 
   npy_intp *ndim = PyArray_DIMS(image);
-  
-  /* Put dimensions in xy order */  
+
+  /* Put dimensions in xy order */
   size[0] = ndim[1];
   size[1] = ndim[0];
 
@@ -253,7 +275,7 @@ oob_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
             xpix, ypix, (int) ndim[1], (int) ndim[0]);
     driz_log_message(buffer);
   }
-  
+
   return flag;
 }
 
@@ -274,7 +296,7 @@ get_pixel_at_pos(PyArrayObject *image, integer_t pos) {
 }
 
 static inline_macro void
-set_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix, double value) {  
+set_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix, double value) {
   *(float*) PyArray_GETPTR2(image, ypix, xpix) = value;
   return;
 }
@@ -287,7 +309,7 @@ get_bit(PyArrayObject *image, integer_t xpix, integer_t ypix, integer_t bitval) 
 }
 
 static inline_macro void
-set_bit(PyArrayObject *image, integer_t xpix, integer_t ypix, integer_t bitval) {  
+set_bit(PyArrayObject *image, integer_t xpix, integer_t ypix, integer_t bitval) {
   *(integer_t*) PyArray_GETPTR2(image, ypix, xpix) |= bitval;
   return;
 }
