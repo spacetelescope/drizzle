@@ -26,17 +26,21 @@
 # be accessible, and the documentation will not build correctly.
 
 import datetime
-import os
+from os import path
 import sys
 
-# Get configuration information from setup.cfg
-from configparser import ConfigParser
+
+# Get configuration information from pyproject.toml
+try:
+    import tomllib
+except ImportError:
+    import toml as tomllib
 
 sys.path.insert(1, '..')
 
-conf = ConfigParser()
-conf.read([os.path.join(os.path.dirname(__file__), '..', 'setup.cfg')])
-setup_cfg = dict(conf.items('metadata'))
+setup_cfg = tomllib.load(
+    path.join(path.dirname(__file__), '..', 'pyproject.toml')
+)['project']
 
 extensions = [
     'sphinx_automodapi.automodapi',
@@ -69,9 +73,13 @@ rst_epilog = """
 
 # This does not *have* to match the package name, but typically does
 project = setup_cfg['name']
-author = setup_cfg['author']
+
+author = ', '.join(v['name'] for v in setup_cfg['authors'][:3])
+if len(setup_cfg['authors']) > 3:
+    author = author + ", et al."
+
 copyright = '{0}, {1}'.format(
-    datetime.datetime.now().year, setup_cfg['author'])
+    datetime.datetime.now().year, author)
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -138,19 +146,3 @@ latex_documents = [('index', project + '.tex', project + u' Documentation',
 # (source start file, name, description, authors, manual section).
 man_pages = [('index', project.lower(), project + u' Documentation',
               [author], 1)]
-
-
-## -- Options for the edit_on_github extension ----------------------------------------
-
-#if eval(setup_cfg.get('edit_on_github')):
-#    extensions += ['astropy_helpers.sphinx.ext.edit_on_github']
-#
-#    versionmod = __import__(setup_cfg['package_name'] + '.version')
-#    edit_on_github_project = setup_cfg['github_project']
-#    if versionmod.version.release:
-#        edit_on_github_branch = "v" + versionmod.version.version
-#    else:
-#        edit_on_github_branch = "master"
-#
-#    edit_on_github_source_root = ""
-#    edit_on_github_doc_root = "docs"
