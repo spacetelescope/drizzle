@@ -3,8 +3,8 @@ STScI Python compatable blot module
 """
 import numpy as np
 
-from . import calc_pixmap
-from . import cdrizzle
+from drizzle import calc_pixmap
+from drizzle import cdrizzle
 
 
 def doblot(source, source_wcs, blot_wcs, exptime, coeffs=True,
