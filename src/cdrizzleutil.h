@@ -182,6 +182,7 @@ driz_param_dump(struct driz_param_t* p);
 #ifdef LOGGING
 extern FILE *driz_log_handle;
 
+
 static inline_macro FILE*
 driz_log_init(FILE *handle) {
     const char* dirs[] = {"TMPDIR", "TMP", "TEMP", "TEMPDIR"};
