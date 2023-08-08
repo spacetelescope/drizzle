@@ -442,6 +442,42 @@ simplify_polygon(struct polygon *p) {
 }
 
 
+static void
+orient_ccw(struct polygon *p) {
+    int k, m;
+    struct vertex v1, v2, cm;
+
+    if (p->npv < 3) return;
+
+    // center of mass:
+    for (k = 0; k < p->npv; ++k) {
+        cm.x += p->v[k].x;
+        cm.y += p->v[k].y;
+    }
+    cm.x /= p->npv;
+    cm.y /= p->npv;
+
+    // pick first two polygon vertices and subtract center:
+    v1 = p->v[0];
+    v2 = p->v[1];
+    v1.x -= cm.x;
+    v1.y -= cm.y;
+    v2.x -= cm.x;
+    v2.y -= cm.y;
+
+    if (area(v1, v2) >= 0.0) {
+        return;
+    } else {
+        for (k = 0; k < (p->npv / 2); ++k) {
+            v1 = p->v[k];
+            m = p->npv - 1 - k;
+            p->v[k] = p->v[m];
+            p->v[m] = v1;
+        }
+    }
+}
+
+
 int
 intersect_convex_polygons(const struct polygon *p, const struct polygon *q,
                           struct polygon *pq) {
@@ -455,6 +491,9 @@ intersect_convex_polygons(const struct polygon *p, const struct polygon *q,
     if ((p->npv < 3) || (q->npv < 3)) {
         return 1;
     }
+
+    orient_ccw(p);
+    orient_ccw(q);
 
     if (is_poly_contained(p, q)) {
         *pq = *p;
@@ -905,6 +944,7 @@ init_image_scanner(struct driz_param_t* par, struct scanner *s,
     }
     inpq.npv = pq.npv;
     s->overlap_valid = 1;
+    orient_ccw(&inpq);
 
 _setup_scanner:
 
