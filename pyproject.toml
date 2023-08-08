@@ -34,6 +34,7 @@ test = [
     "coverage",
 ]
 docs = [
+    "toml; python_version<'3.11'",
     "matplotlib",
     "sphinx",
     "sphinx-automodapi",
