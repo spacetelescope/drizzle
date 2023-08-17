@@ -449,7 +449,7 @@ invert_pixmap_wrap(PyObject *self, PyObject *args)
     PyObject *pixmap, *xyout, *bbox;
     PyArrayObject *xyout_arr, *pixmap_arr, *bbox_arr;
     struct driz_param_t par;
-    double *xyin;
+    double *xy, *xyin;
     npy_intp *ndim, xyin_dim = 2;
 
     xyin = (double *) malloc(2 * sizeof(double));
@@ -487,7 +487,9 @@ invert_pixmap_wrap(PyObject *self, PyObject *args)
         par.ymax = *(double*) PyArray_GETPTR2(bbox_arr, 1, 1);
     }
 
-    if (invert_pixmap(&par, (double *)PyArray_DATA(xyout_arr), xyin)) {
+    xy = (double *)PyArray_DATA(xyout_arr);
+
+    if (invert_pixmap(&par, xy[0], xy[1], &xyin[0], &xyin[1])) {
         return Py_BuildValue("");
     }
 

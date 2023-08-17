@@ -423,19 +423,19 @@ FCT_BGN_FN(utest_cdrizzle)
 
         FCT_TEST_BGN(utest_map_point_01)
         {
-            double xyin[2], xyout[2];
+            double ix, iy, ox, oy;
             struct driz_param_t *p;
 
             p = setup_parameters();
             stretch_pixmap(p, 1000.0);
 
-            xyin[0] = 2.5;
-            xyin[1] = 1.5;
+            ix = 2.5;
+            iy = 1.5;
 
-            map_point(p, xyin, xyout);
+            map_point(p, ix, iy, &ox, &oy);
 
-            fct_chk_eq_dbl(xyout[0], 2.5);
-            fct_chk_eq_dbl(xyout[1], 1500.0);
+            fct_chk_eq_dbl(ox, 2.5);
+            fct_chk_eq_dbl(oy, 1500.0);
 
             teardown_parameters(p);
         }
@@ -443,19 +443,19 @@ FCT_BGN_FN(utest_cdrizzle)
 
         FCT_TEST_BGN(utest_map_point_02)
         {
-            double xyin[2], xyout[2];
+            double ix, iy, ox, oy;
             struct driz_param_t *p;
 
             p = setup_parameters();
             stretch_pixmap(p, 1000.0);
 
-            xyin[0] = -1.0;
-            xyin[1] = 0.5;
+            ix = -1.0;
+            iy = 0.5;
 
-            map_point(p, xyin, xyout);
+            map_point(p, ix, iy, &ox, &oy);
 
-            fct_chk_eq_dbl(xyout[0], -1.0);
-            fct_chk_eq_dbl(xyout[1], 500.0);
+            fct_chk_eq_dbl(ox, -1.0);
+            fct_chk_eq_dbl(oy, 500.0);
 
             teardown_parameters(p);
         }
@@ -463,28 +463,28 @@ FCT_BGN_FN(utest_cdrizzle)
 
         FCT_TEST_BGN(utest_map_point_03)
         {
-            double xyin[2], xyout[2];
+            double ix, iy, ox, oy;
             int status;
             struct driz_param_t *p;
 
             p = setup_parameters();
             stretch_pixmap(p, 1000.0);
 
-            xyin[0] = 3.25;
-            xyin[1] = 5.0;
+            ix = 3.25;
+            iy = 5.0;
 
-            status = map_point(p, xyin, xyout);
+            status = map_point(p, ix, iy, &ox, &oy);
 
             fct_chk_int_return_status(status, 0);
-            fct_chk_eq_dbl(xyout[0], 3.25);
-            fct_chk_eq_dbl(xyout[1], 5000.0);
+            fct_chk_eq_dbl(ox, 3.25);
+            fct_chk_eq_dbl(oy, 5000.0);
 
             nan_pixel(p, 3, 5);
-            status = map_point(p, xyin, xyout);
+            status = map_point(p, ix, iy, &ox, &oy);
 
             fct_chk_int_return_status(status, 1);
-            fct_chk_neq_int(xyout[0], xyout[0]);
-            fct_chk_neq_int(xyout[1], xyout[1]);
+            fct_chk_neq_int(ox, ox);
+            fct_chk_neq_int(oy, oy);
 
             teardown_parameters(p);
         }
@@ -492,7 +492,7 @@ FCT_BGN_FN(utest_cdrizzle)
 
         FCT_TEST_BGN(utest_map_point_04)
         {
-            double xyin[2], xyout[2];
+            double ix, iy, ox, oy;
             int status;
             struct driz_param_t *p;
 
@@ -500,21 +500,21 @@ FCT_BGN_FN(utest_cdrizzle)
 
             stretch_pixmap(p, 1000.0);
 
-            xyin[0] = 0.25;
-            xyin[1] = 5.0;
+            ix = 0.25;
+            iy = 5.0;
 
-            status = map_point(p, xyin, xyout);
+            status = map_point(p, ix, iy, &ox, &oy);
 
             fct_chk_int_return_status(status, 0);
-            fct_chk_eq_dbl(xyout[0], 0.25);
-            fct_chk_eq_dbl(xyout[1], 5000.0);
+            fct_chk_eq_dbl(ox, 0.25);
+            fct_chk_eq_dbl(oy, 5000.0);
 
             nan_pixel(p, 0, 5);
-            status = map_point(p, xyin, xyout);
+            status = map_point(p, ix, iy, &ox, &oy);
 
             fct_chk_int_return_status(status, 1);
-            fct_chk_neq_int(xyout[0], xyout[0]);
-            fct_chk_neq_int(xyout[1], xyout[1]);
+            fct_chk_neq_int(ox, ox);
+            fct_chk_neq_int(oy, oy);
 
             teardown_parameters(p);
         }

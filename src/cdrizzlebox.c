@@ -286,14 +286,14 @@ do_kernel_point(struct driz_param_t* p) {
         }
 
         for (i = xmin; i <= xmax; ++i) {
-            double xyout[2];
+            double ox, oy;
 
-            if (map_pixel(p->pixmap, i, j, xyout)) {
+            if (map_pixel(p->pixmap, i, j, &ox, &oy)) {
               ++ p->nmiss;
 
             } else {
-                ii = fortran_round(xyout[0]);
-                jj = fortran_round(xyout[1]);
+                ii = fortran_round(ox);
+                jj = fortran_round(oy);
 
                 /* Check it is on the output image */
                 if (ii < 0 || ii >= osize[0] || jj < 0 || jj >= osize[1]) {
@@ -378,17 +378,17 @@ do_kernel_tophat(struct driz_param_t* p) {
         }
 
         for (i = xmin; i <= xmax; ++i) {
-            double xyout[2];
+            double ox, oy;
 
-            if (map_pixel(p->pixmap, i, j, xyout)) {
+            if (map_pixel(p->pixmap, i, j, &ox, &oy)) {
                 nhit = 0;
 
             } else {
                 /* Offset within the subset */
-                xxi = xyout[0] - pfo;
-                xxa = xyout[0] + pfo;
-                yyi = xyout[1] - pfo;
-                yya = xyout[1] + pfo;
+                xxi = ox - pfo;
+                xxa = ox + pfo;
+                yyi = oy - pfo;
+                yya = oy + pfo;
 
                 nxi = MAX(fortran_round(xxi), 0);
                 nxa = MIN(fortran_round(xxa), osize[0]-1);
@@ -410,11 +410,11 @@ do_kernel_tophat(struct driz_param_t* p) {
 
                 /* Loop over output pixels which could be affected */
                 for (jj = nyi; jj <= nya; ++jj) {
-                    ddy = xyout[1]- (double)jj;
+                    ddy = oy - (double)jj;
 
                     /* Check it is on the output image */
                     for (ii = nxi; ii <= nxa; ++ii) {
-                        ddx = xyout[0] - (double)ii;
+                        ddx = ox - (double)ii;
 
                         /* Radial distance */
                         r2 = ddx*ddx + ddy*ddy;
@@ -507,17 +507,17 @@ do_kernel_gaussian(struct driz_param_t* p) {
         }
 
         for (i = xmin; i <= xmax; ++i) {
-            double xyout[2];
+            double ox, oy;
 
-            if (map_pixel(p->pixmap, i, j, xyout)) {
+            if (map_pixel(p->pixmap, i, j, &ox, &oy)) {
                 nhit = 0;
 
             } else {
                 /* Offset within the subset */
-                xxi = xyout[0] - pfo;
-                xxa = xyout[0] + pfo;
-                yyi = xyout[1] - pfo;
-                yya = xyout[1] + pfo;
+                xxi = ox - pfo;
+                xxa = ox + pfo;
+                yyi = oy - pfo;
+                yya = oy + pfo;
 
                 nxi = MAX(fortran_round(xxi), 0);
                 nxa = MIN(fortran_round(xxa), osize[0]-1);
@@ -539,9 +539,9 @@ do_kernel_gaussian(struct driz_param_t* p) {
 
                 /* Loop over output pixels which could be affected */
                 for (jj = nyi; jj <= nya; ++jj) {
-                    ddy = xyout[1]- (double)jj;
+                    ddy = oy - (double)jj;
                     for (ii = nxi; ii <= nxa; ++ii) {
-                        ddx = xyout[0] - (double)ii;
+                        ddx = ox - (double)ii;
                         /* Radial distance */
                         r2 = ddx*ddx + ddy*ddy;
 
@@ -642,15 +642,10 @@ do_kernel_lanczos(struct driz_param_t* p) {
         }
 
         for (i = xmin; i <= xmax; ++i) {
-            double xyout[2];
-
-            if (map_pixel(p->pixmap, i, j, xyout)) {
+            if (map_pixel(p->pixmap, i, j, &xx, &yy)) {
                 nhit = 0;
 
             } else {
-                xx = xyout[0];
-                yy = xyout[1];
-
                 xxi = xx - dx - pfo;
                 xxa = xx - dx + pfo;
                 yyi = yy - dy - pfo;
@@ -766,17 +761,17 @@ do_kernel_turbo(struct driz_param_t* p) {
         }
 
         for (i = xmin; i <= xmax; ++i) {
-            double xyout[2];
+            double ox, oy;
 
-            if (map_pixel(p->pixmap, i, j, xyout)) {
+            if (map_pixel(p->pixmap, i, j, &ox, &oy)) {
                 nhit = 0;
 
             } else {
                 /* Offset within the subset */
-                xxi = xyout[0] - pfo;
-                xxa = xyout[0] + pfo;
-                yyi = xyout[1] - pfo;
-                yya = xyout[1] + pfo;
+                xxi = ox - pfo;
+                xxa = ox + pfo;
+                yyi = oy - pfo;
+                yya = oy + pfo;
 
                 nxi = fortran_round(xxi);
                 nxa = fortran_round(xxa);

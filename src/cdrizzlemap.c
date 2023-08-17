@@ -85,7 +85,6 @@ shrink_image_section(PyArrayObject *pixmap, int *xmin, int *xmax,
  * xyin:   An (x,y) point on the input image
  * xyout:  The same (x, y) point on the output image (output)
  */
-
 int
 interpolate_point(struct driz_param_t *par, double xin, double yin,
                   double *xout, double *yout) {
@@ -154,34 +153,14 @@ interpolate_point(struct driz_param_t *par, double xin, double yin,
  * Fall back on interpolation if the value at the point is undefined
  *
  * pixmap: The mapping of the pixel centers from input to output image
- * i        The index of the x coordinate
- * j        The index of the y coordinate
- * xyout:  The (x, y) point on the output image (output)
+ * i - The index of the x coordinate
+ * j - The index of the y coordinate
+ * x - X-coordinate of the point on the output image (output)
+ * y - Y-coordinate of the point on the output image (output)
  */
 
 int
-map_pixel(
-  PyArrayObject *pixmap,
-  int           i,
-  int           j,
-  double        xyout[2]
-  ) {
-
-  int k;
-
-  oob_pixel(pixmap, i, j);
-  for (k = 0; k < 2; ++k) {
-    xyout[k] = get_pixmap(pixmap, i, j)[k];
-
-    if (npy_isnan(xyout[k])) return 1;
-  }
-
-  return 0;
-}
-
-
-int
-map_pixel_fwd(PyArrayObject *pixmap, int i, int j, double *x, double *y) {
+map_pixel(PyArrayObject *pixmap, int i, int j, double *x, double *y) {
     double *pv = (double *) PyArray_GETPTR3(pixmap, j, i, 0);
     *x = *pv;
     *y = *(pv + 1);
@@ -194,40 +173,14 @@ map_pixel_fwd(PyArrayObject *pixmap, int i, int j, double *x, double *y) {
  * or direct array acces if the input position is integral.
  *
  * pixmap: The mapping of the pixel centers from input to output image
- * xyin:   An (x,y) point on the input image
- * xyout:  The same (x, y) point on the output image (output)
+ * xin:   X-coordinate of a point on the input image
+ * yin:   Y-coordinate of a point on the input image
+ * xout:  X-coordinate of the same point on the output image (output)
+ * yout:  Y-coordinate of the same point on the output image (output)
+ *
  */
-
 int
-map_point(struct driz_param_t *par, const double xyin[2], double xyout[2]) {
-    int i, j, status;
-    double xin, yin, xout, yout;
-    xin = xyin[0];
-    yin = xyin[1];
-
-    i = xyin[0];
-    j = xyin[1];
-
-    if ((double) i == xyin[0] && (double) j == xyin[1]) {
-        if (i >= par->xmin && i <= par->xmax &&
-            j >= par->ymin && j <= par->ymax) {
-            status = map_pixel(par->pixmap, i, j, xyout);
-        } else {
-            return 1;
-        }
-    } else {
-        status = interpolate_point(par, xin, yin, &xout, &yout);
-    }
-
-    xyout[0] = xout;
-    xyout[1] = yout;
-
-    return status;
-}
-
-
-int
-map_point_new(struct driz_param_t *par, double xin, double yin,
+map_point(struct driz_param_t *par, double xin, double yin,
               double *xout, double *yout) {
     int i, j, status;
 
@@ -235,33 +188,72 @@ map_point_new(struct driz_param_t *par, double xin, double yin,
     j = (int) yin;
 
     if ((double) i == xin && (double) j == yin) {
-        return map_pixel_fwd(par->pixmap, i, j, xout, yout);
+        if (i >= par->xmin && i <= par->xmax &&
+            j >= par->ymin && j <= par->ymax) {
+            status = map_pixel(par->pixmap, i, j, xout, yout);
+        } else {
+            return 1;
+        }
     } else {
         return interpolate_point(par, xin, yin, xout, yout);
     }
 }
 
 
+/** ---------------------------------------------------------------------------
+ * Evaluate quality of coordinate inversion.
+ *
+ * Given a pair of coordinates (x, y) in the input frame obtained from
+ * a pair of coordinates (xref, yref) in the output frame, this function uses
+ * par->pixmap to perform forward transformation (input to output frame) of
+ * (x, y) back to the output frame (x', y') and then compares interpolated
+ * values with (xref, yref) pair.
+ *
+ * @param[in] struct driz_param_t - drizzle parameters.
+ * @param[in] double x - x-coordinate of the inverted point in the input frame.
+ * @param[in] double y - y-coordinate of the inverted point in the input frame.
+ * @param[in] double xref - x-coordinate of the initial point in the output frame.
+ * @param[in] double yref - y-coordinate of the initial point in the output frame.
+ * @param[out] double *dist2 - |(x', y') - (xref, yref)|**2.
+ * @return 0 if successul and 1 if the forward interpolation fails.
+ *
+ */
 static int
 eval_inversion(struct driz_param_t *par, double x, double y,
-               double xyref[2], double *dist2) {
+               double xref, double yref, double *dist2) {
     double xout, yout, dx, dy;
 
     if (interpolate_point(par, x, y, &xout, &yout)) {
         return 1;
     }
-    dx = xout - xyref[0];
-    dy = yout - xyref[1];
+    dx = xout - xref;
+    dy = yout - yref;
     *dist2 = dx * dx + dy * dy;  // sqrt would be slower
 
     return 0;
 }
 
 
+/** ---------------------------------------------------------------------------
+ * Inverse mappting of coordinates from the output frame to input frame.
+ *
+ * Inverts input (xout, yout) (output image frame) coordinates iteratively
+ * to the input image image frame (xin, yin) - the output of this function.
+ * Ths function uses the method of Golden-section search - see
+ * https://en.wikipedia.org/wiki/Golden-section_search for the 1D case -
+ * generalized to support planar data.
+ *
+ * @param[in] struct driz_param_t - drizzle parameters.
+ * @param[in] double xout - x-coordinate of a point in the output frame.
+ * @param[in] double yout - y-coordinate of a point in the output frame.
+ * @param[out] double *xin - x-coordinate of the point in the input frame.
+ * @param[out] double *yin - y-coordinate of the point in the input frame.
+ * @return 0 if successul and 1 iterative process fails.
+ *
+ */
 int
-invert_pixmap(struct driz_param_t *par, const double xyout[2], double xyin[2]) {
-    // invert input 'xyout' (output image) coordinates iteratively to the input
-    // image coordinates 'xyin' - output of this function.
+invert_pixmap(struct driz_param_t *par, double xout, double yout,
+              double *xin, double *yin) {
 
     const double gr = 0.6180339887498948482;  // Golden Ratio: (sqrt(5)-1)/2
     const int nmax_iter = 50;
@@ -286,10 +278,10 @@ invert_pixmap(struct driz_param_t *par, const double xyout[2], double xyin[2]) {
         y1 = ymax - gr * dy;
         y2 = ymin + gr * dy;
 
-        if (eval_inversion(par, x1, y1, xyout, &d11)) return 1;
-        if (eval_inversion(par, x1, y2, xyout, &d12)) return 1;
-        if (eval_inversion(par, x2, y1, xyout, &d21)) return 1;
-        if (eval_inversion(par, x2, y2, xyout, &d22)) return 1;
+        if (eval_inversion(par, x1, y1, xout, yout, &d11)) return 1;
+        if (eval_inversion(par, x1, y2, xout, yout, &d12)) return 1;
+        if (eval_inversion(par, x2, y1, xout, yout, &d21)) return 1;
+        if (eval_inversion(par, x2, y2, xout, yout, &d22)) return 1;
 
         if (d11 < d12 && d11 < d21 && d11 < d22) {
             xmax = x2;
@@ -309,8 +301,8 @@ invert_pixmap(struct driz_param_t *par, const double xyout[2], double xyin[2]) {
         dy = ymax - ymin;
     }
 
-    xyin[0] = 0.5 * (xmin + xmax);
-    xyin[1] = 0.5 * (ymin + ymax);
+    *xin = 0.5 * (xmin + xmax);
+    *yin = 0.5 * (ymin + ymax);
 
     if (niter == nmax_iter) return 1;
 
@@ -385,9 +377,16 @@ is_poly_contained(const struct polygon *p, const struct polygon *q) {
 }
 
 
-// Append a vertex to the polygon's list of vertices and increment
-// vertex count.
-// return 1 if storage capacity is exceeded or 0 on success
+/**
+ * Append a vertex to a polygon.
+ *
+ * Append a vertex to the polygon's list of vertices and increment
+ * vertex count.
+ *
+ * @param[in,out] p struct polygon* to which the vertex is to be added.
+ * @param[in] v struct vertex to be added to polygon p.
+ * @return 0 on success and 1 if no more storage for vertices is available.
+ */
 static int
 append_vertex(struct polygon *p, struct vertex v) {
     if ((p->npv > 0) && equal_vertices(p->v[p->npv - 1], v, VERTEX_ATOL)) {
@@ -403,9 +402,15 @@ append_vertex(struct polygon *p, struct vertex v) {
     return 0;
 }
 
-
-// remove midpoints (if any) - vertices that lie on a line connecting
-// other two vertices
+/**
+ * Simplify polygon.
+ *
+ * Removes midpoints (if any), i.e., vertices that lie on a line connecting
+ * two adjacent vertices (on each side of the mid-vertex).
+ *
+ * @param[in,out] struct polygon type whose vertices may be re-arranged upon
+ *                return.
+ */
 static void
 simplify_polygon(struct polygon *p) {
     struct polygon pqhull;
@@ -441,9 +446,19 @@ simplify_polygon(struct polygon *p) {
     }
 }
 
-
+/**
+ * Orient a polygon counter-clockwise.
+ *
+ * Reverse the order of the polygon p's vertices in such a way that
+ * polygon p is oriented counter-clockwise.
+ *
+ * @param[in,out] struct polygon type whose vertices may be re-arranged upon
+ *                return.
+ */
 static void
 orient_ccw(struct polygon *p) {
+    // re-arrange (reverse the order of the) polygon p (input and output)
+    // vertices in such a way that polygon p is oriented counter-clockwise.
     int k, m;
     struct vertex v1, v2, cm;
 
@@ -478,6 +493,26 @@ orient_ccw(struct polygon *p) {
 }
 
 
+/**
+ * Compute intersections of two convex polygons.
+ *
+ * This function implements intersection of convex polygons based on my
+ * understanding of the following paper:
+ * https://doi.org/10.1016/0146-664X(82)90023-5
+ * with a PDF accessible from:
+ * https://www.cs.jhu.edu/~misha/Spring16/ORourke82.pdf
+ *
+ * The code is also modified to include some differences to the algorithm
+ * present in C code published here
+ * https://www.science.smith.edu/~jorourke/books/ftp.html and also other
+ * changes to make it work for special cases.
+ *
+ * @param[in] struct polygon p - first polygon (last vertex != first)
+ * @param[in] struct polygon q - second polygon (last vertex != first)
+ * @param[out] struct polygon *pq - intersection polygon
+ *
+ * @returns 0 on success, 1 on failure (input polygons have less than 3 vertices)
+ */
 int
 intersect_convex_polygons(const struct polygon *p, const struct polygon *q,
                           struct polygon *pq) {
@@ -615,6 +650,24 @@ intersect_convex_polygons(const struct polygon *p, const struct polygon *q,
 }
 
 
+/**
+ * Initializes an edge structure from two end vertices.
+ *
+ * Initialization includes edge vertices and computing the slope and
+ * the intersect of the line connecting the vertices. Alternative intersect
+ * "c" is computed in such a way that pixels in their entirety fit either
+ * to the left of the right edges or to the right of left edges.
+ *
+ * NOTE: Left edges are the ones to the left (small X) of the line that
+ *       connects top and bottom polygon's vertices and the right edges are
+ *       to the right of this lighn (high X).
+ *
+ * @param[in] struct edge *e - pointer to the edge structure to be initialized
+ * @param[in] struct vertex v1 - first vertex of the edge
+ * @param[in] struct vertex v2 - second vertex of the edge
+ * @param[in] position: +1 for right edge of the polygon, -1 for left edge
+ *
+ */
 static void
 init_edge(struct edge *e, struct vertex v1, struct vertex v2, int position) {
     e->v1 = v1;
@@ -625,9 +678,23 @@ init_edge(struct edge *e, struct vertex v1, struct vertex v2, int position) {
     e->c = e->b - copysign(0.5 + 0.5 * fabs(e->m), (double) position);
 };
 
-
+/**
+ * Set-up scanner structure for a polygon.
+ *
+ * This function finds minimum and maximum y-coordinates of the polygon
+ * vertices and splits all edges int left and right edges based on their
+ * horizontal position relative to the line connecting the top and bottom
+ * vertices of the polygon. It also copies the bounding box parameters
+ * xmin, xmax, ymin, ymax from the driz_param_t structure.
+ *
+ * @param[in] struct polygon *p.
+ * @param[in] struct driz_param_t - drizzle parameters (bounding box is used).
+ * @param[out] struct scanner *s - scanner structure to be initialized.
+ * @return 0 if successful and 1 if input polygon has only 2 vertices or less.
+ *
+*/
 int
-init_scanner(struct polygon *p, struct scanner *s, struct driz_param_t* par) {
+init_scanner(struct polygon *p, struct driz_param_t* par, struct scanner *s) {
     int k, i1, i2;
     int min_right, min_left, max_right, max_left;
     double min_y, max_y;
@@ -725,20 +792,29 @@ init_scanner(struct polygon *p, struct scanner *s, struct driz_param_t* par) {
     return 0;
 }
 
-/*
-get_scanline_limits returns x-limits for an image row that fits between edges
-(of a polygon) specified by the scanner structure.
-
-This function is intended to be called successively with input 'y' *increasing*
-from s->min_y to s->max_y.
-
-Return code:
-    0 - no errors;
-    1 - scan ended (y reached the top vertex/edge);
-    2 - pixel centered on y is outside of scanner's limits or image
-        [0, height - 1];
-    3 - limits (x1, x2) are equal (line with is 0).
-
+/**
+ * Get x-range of pixels in a row that are within the bounds of a polygon.
+ *
+ * get_scanline_limits returns x-limits (integer pixel locations) for an image
+ * row that fit between the edges (of a polygon) specified by the scanner
+ * structure. The limits are computed in such a way that the edge pixels are
+ * entirely inside the polygon.
+ *
+ * This function is intended to be called successively with input
+ * 'y' *increasing* from s->min_y to s->max_y.
+ *
+ * @param[in] struct scanner *s - scanner structure
+ * @param[in] y - integer position of the row along the vertical direction
+ * @param[out] int *x1 - horizontal position of the leftmost pixel within
+ *             the bounding polygon
+ * @param[out] int *x2 - horizontal position of the rightmost pixel within
+ *             the bounding polygon
+ * @return 0 no errors;
+ *         1 scan ended (y reached the top vertex/edge);
+ *         2 pixel centered on y is outside of scanner's limits or image
+ *           [0, height - 1];
+ *         3 limits (x1, x2) are equal (line with is 0).
+ *
 */
 int
 get_scanline_limits(struct scanner *s, int y, int *x1, int *x2) {
@@ -845,44 +921,73 @@ get_scanline_limits(struct scanner *s, int y, int *x1, int *x2) {
 }
 
 
+/**
+ * Map a vertex' coordinates from input frame to the output frame.
+ *
+ * @param[in] struct driz_param_t - drizzle parameters (bounding box is used)
+ * @param[in] struct vertex vin - vertex' coordinates in the input frame
+ * @param[out] struct vertex *vout - vertex' coordinates in the output frame
+ * @return 0 no errors and 1 on errors.
+ *
+*/
 static int
-map_to_output_vertex(struct driz_param_t* par, double x, double y,
-                     struct vertex *v) {
+map_vertex_to_output(struct driz_param_t* par, struct vertex vin,
+                     struct vertex *vout) {
     // convert coordinates to the output frame
-    if (map_point_new(par, x, y, &v->x, &v->y)) {
-        driz_error_set_message(par->error,
-            "error computing input image bounding box");
-        return 1;
-    }
-
-    return 0;
+    return map_point(par, vin.x, vin.y, &vout->x, &vout->y);
 }
 
 
+/**
+ * Map a vertex' coordinates from input frame to the output frame.
+ *
+ * @param[in] struct driz_param_t - drizzle parameters (bounding box is used)
+ * @param[in] struct vertex vout - vertex' coordinates in the output frame
+ * @param[out] struct vertex *vout - vertex' coordinates in the input frame
+ * @return 0 no errors and 1 on errors.
+ *
+*/
 static int
-map_to_input_vertex(struct driz_param_t* par, double x, double y,
-                    struct vertex *v) {
-    double xyin[2], xyout[2];
+map_vertex_to_input(struct driz_param_t* par, struct vertex vout,
+                    struct vertex *vin) {
+    double xin, yin;
     char buf[MAX_DRIZ_ERROR_LEN];
     int n;
     // convert coordinates to the input frame
-    xyout[0] = x;
-    xyout[1] = y;
-    if (invert_pixmap(par, xyout, xyin)) {
+    if (invert_pixmap(par, vout.x, vout.y, &xin, &yin)) {
         n = sprintf(buf,
-            "failed to invert pixel map at position (%.2f, %.2f)", x, y);
+            "failed to invert pixel map at position (%.2f, %.2f)",
+            vout.x, vout.y);
         if (n < 0) {
             strcpy(buf, "failed to invert pixel map");
         }
         driz_error_set_message(par->error, buf);
         return 1;
     }
-    v->x = xyin[0];
-    v->y = xyin[1];
+    vin->x = xin;
+    vin->y = yin;
     return 0;
 }
 
 
+/**
+ * Set-up image scanner.
+ *
+ * This is a the main part of the computation of the bounding polygon in the
+ * input frame. This function computes the bounding box of the input image,
+ * maps it the ouput frame, intersects mapped input bounding box with the
+ * bounding box of the output image. It then maps this intersection polygon
+ * back to the input frame and then sets up the scanner structure to be used
+ * by the resampling kernel functions to determine the horizontal scan limits
+ * for a given input image row.
+ *
+ * @param[in] struct driz_param_t - drizzle parameters (bounding box is used).
+ * @param[out] struct scanner *s - computed from the intersection of polygons.
+ * @param[out] int *ymin - minimum y of a row in input image with pixels inside the intersection polygon
+ * @param[out] int *ymax - maximum y of a row in input image with pixels inside the intersection polygon
+ * @return see init_scanner for return values.
+ *
+*/
 int
 init_image_scanner(struct driz_param_t* par, struct scanner *s,
                    int *ymin, int *ymax) {
@@ -893,10 +998,7 @@ init_image_scanner(struct driz_param_t* par, struct scanner *s,
     int k, n;
     npy_intp *ndim;
 
-    // convert coordinates to the output frame and define a polygon
-    // bounding the input image in the output frame:
-    // inpq will be updated/overwritten later if coordinate mapping, inversion,
-    // and polygon intersection is successful.
+    // define a polygon bounding the input image:
     inpq.npv = 4;
     inpq.v[0].x = par->xmin - 0.5;
     inpq.v[0].y = par->ymin - 0.5;
@@ -907,11 +1009,19 @@ init_image_scanner(struct driz_param_t* par, struct scanner *s,
     inpq.v[3].x = inpq.v[0].x;
     inpq.v[3].y = inpq.v[2].y;
 
-    if (map_to_output_vertex(par, inpq.v[0].x, inpq.v[0].y, p.v) ||
-        map_to_output_vertex(par, inpq.v[1].x, inpq.v[1].y, p.v + 1) ||
-        map_to_output_vertex(par, inpq.v[2].x, inpq.v[2].y, p.v + 2) ||
-        map_to_output_vertex(par, inpq.v[3].x, inpq.v[3].y, p.v + 3)) {
+    // convert coordinates of the above polygon to the output frame and
+    // define a polygon bounding the input image in the output frame:
+    // inpq will be updated/overwritten later if coordinate mapping, inversion,
+    // and polygon intersection is successful.
+    if (map_vertex_to_output(par, inpq.v[0], p.v) ||
+        map_vertex_to_output(par, inpq.v[1], p.v + 1) ||
+        map_vertex_to_output(par, inpq.v[2], p.v + 2) ||
+        map_vertex_to_output(par, inpq.v[3], p.v + 3)) {
         s->overlap_valid = 0;
+        driz_error_set_message(
+            par->error,
+            "error computing input image bounding box"
+        );
         goto _setup_scanner;
     }
     p.npv = 4;
@@ -937,7 +1047,7 @@ init_image_scanner(struct driz_param_t* par, struct scanner *s,
     // convert coordinates of vertices of the intersection polygon
     // back to input image coordinate system:
     for (k = 0; k < pq.npv; k++) {
-        if (map_to_input_vertex(par, pq.v[k].x, pq.v[k].y, &inpq.v[k])) {
+        if (map_vertex_to_input(par, pq.v[k], &inpq.v[k])) {
             s->overlap_valid = 0;
             goto _setup_scanner;
         }
@@ -950,7 +1060,7 @@ _setup_scanner:
 
     // initialize polygon scanner:
     driz_error_unset(par->error);
-    n = init_scanner(&inpq, s, par);
+    n = init_scanner(&inpq, par, s);
     *ymin = MAX(0, (int)(s->min_y + 0.5 + 2.0 * MAX_INV_ERR));
     *ymax = MIN(s->ymax, (int)(s->max_y + 2.0 * MAX_INV_ERR));
     return n;
