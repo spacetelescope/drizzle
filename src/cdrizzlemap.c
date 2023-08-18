@@ -19,7 +19,24 @@ static const double VERTEX_ATOL = 1.0e-12;
 static const double APPROX_ZERO = 1.0e3 * DBL_MIN;
 static const double MAX_INV_ERR = 0.03;
 
-
+/** ---------------------------------------------------------------------------
+ * Find the tighest bounding box around valid (finite) pixmap values.
+ *
+ * This function takes as input a pixel map array and four values indicating
+ * some given bounding box defined by: xmin, xmax, ymin, ymax. Starting with
+ * these values, this function checks values of pixel map on the border and
+ * if there are no valid values along one or more edges, it will adjust the
+ * values of xmin, xmax, ymin, ymax to find the tightest box that has
+ * at least one valid pixel on every edge of the bounding box.
+ *
+ * @param[in] PyArrayObject *pixmap - pixel map of shape (N, M, 2).
+ * @param[in,out] int xmin - position of the left edge of the bounding box.
+ * @param[in,out] int xmax - position of the right edge of the bounding box.
+ * @param[in,out] int ymin - position of the bottom edge of the bounding box.
+ * @param[in,out] int ymax - position of the top edge of the bounding box.
+ * @return 0 if successul and 1 if there is only one or no valid pixel map values.
+ *
+ */
 int
 shrink_image_section(PyArrayObject *pixmap, int *xmin, int *xmax,
                      int *ymin, int *ymax) {
@@ -170,7 +187,7 @@ map_pixel(PyArrayObject *pixmap, int i, int j, double *x, double *y) {
 
 /** ---------------------------------------------------------------------------
  * Map a point on the input image to the output image either by interpolation
- * or direct array acces if the input position is integral.
+ * or direct array access if the input position is integral.
  *
  * pixmap: The mapping of the pixel centers from input to output image
  * xin:   X-coordinate of a point on the input image
@@ -235,7 +252,7 @@ eval_inversion(struct driz_param_t *par, double x, double y,
 
 
 /** ---------------------------------------------------------------------------
- * Inverse mappting of coordinates from the output frame to input frame.
+ * Inverse mapping of coordinates from the output frame to input frame.
  *
  * Inverts input (xout, yout) (output image frame) coordinates iteratively
  * to the input image image frame (xin, yin) - the output of this function.
@@ -572,7 +589,7 @@ intersect_convex_polygons(const struct polygon *p, const struct polygon *q,
         if ((0.0 <= t) && (t <= d) && (0.0 <= u) && (u <= d) &&
             (d > APPROX_ZERO)) {
             t = t / d;
-            u = u / d;
+            // u = u / d;
             vi.x = pv_->x + (pv->x - pv_->x) * t;
             vi.y = pv_->y + (pv->y - pv_->y) * t;
 
@@ -756,27 +773,27 @@ init_scanner(struct polygon *p, struct driz_param_t* par, struct scanner *s) {
         max_left = max_right;
     }
 
-    // Left: start with minimum and move counter-clockwise:
+    // Left: start with minimum and move clockwise:
     if (max_left > min_left) {
         min_left += p->npv;
     }
     s->nleft = min_left - max_left;
 
     for (k = 0; k < s->nleft; k++) {
-        i1 = mod(min_left - k, p->npv);
-        i2 = mod(i1 - 1, p->npv);
+        i1 = mod(min_left - k, p->npv);  // -k for CW traverse direction
+        i2 = mod(i1 - 1, p->npv);  // -1 for CW traverse direction
         init_edge(s->left_edges + k, p->v[i1], p->v[i2], -1);
     }
 
-    // Right: start with minimum and move clockwise:
+    // Right: start with minimum and move counter-clockwise:
     if (max_right < min_right) {
         max_right += p->npv;
     }
     s->nright = max_right - min_right;
 
     for (k = 0; k < s->nright; k++) {
-        i1 = mod(min_right + k, p->npv);
-        i2 = mod(i1 + 1, p->npv);
+        i1 = mod(min_right + k, p->npv);  // +k for CW traverse direction
+        i2 = mod(i1 + 1, p->npv);  // +1 for CW traverse direction
         init_edge(s->right_edges + k, p->v[i1], p->v[i2], 1);
     }
 
@@ -922,7 +939,7 @@ get_scanline_limits(struct scanner *s, int y, int *x1, int *x2) {
 
 
 /**
- * Map a vertex' coordinates from input frame to the output frame.
+ * Map a vertex' coordinates from the input frame to the output frame.
  *
  * @param[in] struct driz_param_t - drizzle parameters (bounding box is used)
  * @param[in] struct vertex vin - vertex' coordinates in the input frame
@@ -939,7 +956,7 @@ map_vertex_to_output(struct driz_param_t* par, struct vertex vin,
 
 
 /**
- * Map a vertex' coordinates from input frame to the output frame.
+ * Map a vertex' coordinates from the output frame to the input frame.
  *
  * @param[in] struct driz_param_t - drizzle parameters (bounding box is used)
  * @param[in] struct vertex vout - vertex' coordinates in the output frame

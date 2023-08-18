@@ -313,7 +313,7 @@ do_kernel_point(struct driz_param_t* p) {
                         dow = 1.0;
                     }
 
-                    /* If we are creating of modifying the context image,
+                    /* If we are creating or modifying the context image,
                        we do so here. */
                     if (p->output_context && dow > 0.0) {
                         set_bit(p->output_context, ii, jj, bv);
@@ -951,8 +951,8 @@ do_kernel_square(struct driz_param_t* p) {
                         /* Count the hits */
                         ++nhit;
 
-                        /* If we are creating or modifying the context image we do
-                           so here */
+                        /* If we are creating or modifying the context image we
+                           do so here */
                         if (p->output_context && dow > 0.0) {
                             set_bit(p->output_context, ii, jj, bv);
                         }

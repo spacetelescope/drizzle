@@ -19,8 +19,6 @@ def test_cdrizzle():
     output_counts = np.zeros((size,size), dtype='float32')
     output_context = np.zeros((size,size), dtype='int32')
 
-    print(f"test_cdrizzle: output_data.shape={output_data.shape}")
-
     cdrizzle.test_cdrizzle(data, weights, pixmap,
                            output_data, output_counts,
                            output_context)
