@@ -13,246 +13,87 @@
 #include "cdrizzlemap.h"
 #include "cdrizzleutil.h"
 
-/** --------------------------------------------------------------------------------------------------
- * Initialize a segment structure to contain the two points (x1, y1) and (x2, y2)
- * the invalid flag is initially set to 0 (valid)
- */
+#include <float.h>
 
-void
-initialize_segment(struct segment *self, integer_t x1, integer_t y1, integer_t x2, integer_t y2) {
-  self->point[0][0] = x1;
-  self->point[0][1] = y1;
-  self->point[1][0] = x2;
-  self->point[1][1] = y2;
-  self->invalid = 0;
+static const double VERTEX_ATOL = 1.0e-12;
+static const double APPROX_ZERO = 1.0e3 * DBL_MIN;
+static const double MAX_INV_ERR = 0.03;
 
-  return;
-}
-
-/** --------------------------------------------------------------------------------------------------
- * Generate a string representation of a segment for debugging
+/** ---------------------------------------------------------------------------
+ * Find the tighest bounding box around valid (finite) pixmap values.
  *
- * self: the segment
- * str:  the string representation, at least 64 chars (output)
- */
-
-void
-show_segment(struct segment *self, char *str) {
-  sprintf(str, "(%10f,%10f) - (%10f,%10f) [%2d]",
-          self->point[0][0], self->point[0][1],
-          self->point[1][0], self->point[1][1],
-          self->invalid);
-
-  return;
-}
-
-/** --------------------------------------------------------------------------------------------------
- * Test if a pixmap vaue is bad (NaN)
+ * This function takes as input a pixel map array and four values indicating
+ * some given bounding box defined by: xmin, xmax, ymin, ymax. Starting with
+ * these values, this function checks values of pixel map on the border and
+ * if there are no valid values along one or more edges, it will adjust the
+ * values of xmin, xmax, ymin, ymax to find the tightest box that has
+ * at least one valid pixel on every edge of the bounding box.
  *
- * pixmap: the pixel mapping between input and output images
- * i:      the index of a pixel within a line
- * j:      the index of a line within an image
+ * @param[in] PyArrayObject *pixmap - pixel map of shape (N, M, 2).
+ * @param[in,out] int xmin - position of the left edge of the bounding box.
+ * @param[in,out] int xmax - position of the right edge of the bounding box.
+ * @param[in,out] int ymin - position of the bottom edge of the bounding box.
+ * @param[in,out] int ymax - position of the top edge of the bounding box.
+ * @return 0 if successul and 1 if there is only one or no valid pixel map values.
+ *
  */
-
 int
-bad_pixel(PyArrayObject *pixmap, int i, int j) {
-  int k;
-  for (k = 0; k < 2; ++k) {
-    oob_pixel(pixmap, i, j);
-    if (npy_isnan(get_pixmap(pixmap, i, j)[k])) {
-      return 1;
-    }
-  }
+shrink_image_section(PyArrayObject *pixmap, int *xmin, int *xmax,
+                     int *ymin, int *ymax) {
+    int i, j, imin, imax, jmin, jmax, i1, i2, j1, j2;
+    double *pv;
 
-  return 0;
-}
+    j1 = *ymin;
+    j2 = *ymax;
+    i1 = *xmin;
+    i2 = *xmax;
 
-/** --------------------------------------------------------------------------------------------------
- * Test if weight value is bad (zero)
- *
- * weights the weight to be given each pixel in an image
- * i:      the index of a pixel within a line
- * j:      the index of a line within an image
- */
+    imin = i2;
+    jmin = j2;
 
-int
-bad_weight(PyArrayObject *weights, int i, int j) {
-
-  if (weights) {
-    oob_pixel(weights, i, j);
-    if (get_pixel(weights, i, j) == 0.0) {
-      return 1;
-    } else {
-      return 0;
-    }
-  }
-
-  return 0;
-}
-
-/** --------------------------------------------------------------------------------------------------
- * Set the bounds of a segment to the range containing valid data
- *
- * self:    the segment
- * p:       the stucture containing the image pointers
- * pixmap:  array mapping input pixel coordinates to output pixel coordinates
- * weights: array of weights to apply when summing pixels
- */
-
-void
-shrink_segment(struct segment *self,
-               PyArrayObject *array,
-               int (*is_bad_value)(PyArrayObject *, int, int)) {
-
-  int i, j, imin, imax, jmin, jmax, i1, i2, j1, j2;
-
-  imin = self->point[1][0];
-  jmin = self->point[1][1];
-
-  j1 = (int) ceil(self->point[1][1]);
-  j2 = (int) self->point[0][1];
-  i1 = (int) ceil(self->point[1][0]);
-  i2 = (int) self->point[0][0];
-
-  for (j = j2; j < j1; ++j) {
-    for (i = i2; i < i1; ++i) {
-      if (! is_bad_value(array, i, j)) {
-        if (i < imin) {
-          imin = i;
+    for (j = j1; j <= j2; ++j) {
+        for (i = i1; i <= i2; ++i) {
+            pv = (double *) PyArray_GETPTR3(pixmap, j, i, 0);
+            if (!(npy_isnan(pv[0]) || npy_isnan(pv[1]))) {
+                if (i < imin) {
+                    imin = i;
+                }
+                if (j < jmin) {
+                    jmin = j;
+                }
+                break;
+            }
         }
-        if (j < jmin) {
-          jmin = j;
+    }
+
+    imax = imin;
+    jmax = jmin;
+
+    for (j = j2; j >= j1; --j) {
+        for (i = i2; i >= i1; --i) {
+            pv = (double *) PyArray_GETPTR3(pixmap, j, i, 0);
+            if (!(npy_isnan(pv[0]) || npy_isnan(pv[1]))) {
+                if (i > imax) {
+                    imax = i;
+                }
+                if (j > jmax) {
+                    jmax = j;
+                }
+                break;
+            }
         }
-        break;
-      }
     }
-  }
 
-  imax = self->point[0][0];
-  jmax = self->point[0][1];
-  for (j = j1; j > j2; --j) {
-    for (i = i1; i > i2; --i) {
-      if (! is_bad_value(array, i-1, j-1)) {
-        if (i > imax) {
-          imax = i;
-        }
-        if (j > jmax) {
-          jmax = j;
-        }
-        break;
-      }
-    }
-  }
-  initialize_segment(self, imin, jmin, imax, jmax);
-  self->invalid = imin >= imax || jmin >= jmax;
-  return;
+    *xmin = imin;
+    *xmax = imax;
+    *ymin = jmin;
+    *ymax = jmax;
+
+    return (imin >= imax || jmin >= jmax);
 }
 
-/** --------------------------------------------------------------------------------------------------
- * Sort points in increasing order on jdim coordinate
- *
- * self: the segment
- * jdim: the dimension to sort on, x (0) or y (1)
- */
 
-void
-sort_segment(struct segment *self, int jdim) {
-  int idim;
-
-  if (self->invalid == 0) {
-    if (self->point[0][jdim] > self->point[1][jdim]) {
-      double t;
-
-      for (idim = 0; idim < 2; ++idim) {
-        t = self->point[0][idim];
-        self->point[0][idim] = self->point[1][idim];
-        self->point[1][idim] = t;
-      }
-    }
-  }
-
-  return;
-}
-
-/** --------------------------------------------------------------------------------------------------
- * Take the the union of several line segments along a dimension.
- * That is, the result is the combined range of all the segments along a dimension
- *
- * npoint:   number of line segments to combine
- * jdim:     dimension to take union along, x (0) or y (1)
- * sybounds: the array of line segments
- * bounds:   union of the segment range (output)
- */
-
-void
-union_of_segments(int npoint, int jdim, struct segment xybounds[], integer_t bounds[2]) {
-  int ipoint;
-  int none = 1;
-
-  for (ipoint = 0; ipoint < npoint; ++ipoint) {
-    sort_segment(&xybounds[ipoint], jdim);
-
-    if (xybounds[ipoint].invalid == 0) {
-      integer_t lo = floor(xybounds[ipoint].point[0][jdim]);
-      integer_t hi = ceil(xybounds[ipoint].point[1][jdim]);
-
-      if (none == 0) {
-        if (lo < bounds[0]) bounds[0] = lo;
-        if (hi > bounds[1]) bounds[1] = hi;
-
-      } else {
-        none = 0;
-        bounds[0] = lo;
-        bounds[1] = hi;
-      }
-    }
-  }
-
-  if (none) {
-    bounds[0] = 0;
-    bounds[1] = 0;
-  }
-
-  return;
-}
-
-/** --------------------------------------------------------------------------------------------------
- * Find the points that bound the linear interpolation
- *
- * pixmap:   The mapping of the pixel centers from input to output image
- * xyin:     An (x,y) point on the input image
- * idim:     The dimension to search across
- * xybounds: The bounds for the linear interpolation (output)
- */
-
-int interpolation_starting_point(
-  PyArrayObject *pixmap,
-  const double  xyin[2],
-  int           *xypix
-  ) {
-
-  int kdim;
-  int xydim[2];
-
-  get_dimensions(pixmap, xydim);
-
-  /* Make sure starting point is inside image */
-  for (kdim = 0; kdim < 2; ++kdim) {
-    /* Starting point rounds down input pixel position
-       to integer value
-    */
-    xypix[kdim] = (int)xyin[kdim];
-
-    if (xypix[kdim] < 0) {
-      xypix[kdim] = 0;
-    } else if (xypix[kdim] > xydim[kdim] - 2) {
-      xypix[kdim] = xydim[kdim] - 2;
-    }
-  }
-  return 0;
-}
-
-/** --------------------------------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Map a point on the input image to the output image using
  * a mapping of the pixel centers between the two by interpolating
  * between the centers in the mapping
@@ -261,332 +102,983 @@ int interpolation_starting_point(
  * xyin:   An (x,y) point on the input image
  * xyout:  The same (x, y) point on the output image (output)
  */
+int
+interpolate_point(struct driz_param_t *par, double xin, double yin,
+                  double *xout, double *yout) {
+    int ipix, jpix, npix, idim;
+    int i0, j0, nx2, ny2;
+    npy_intp *ndim;
+    double x, y, x1, y1, f00, f01, f10, f11, g00, g01, g10, g11;
+    double *p;
+    PyArrayObject *pixmap;
 
-int interpolate_point(PyArrayObject *pixmap, const double xyin[2], double xyout[2]) {
-  int xypix[2];
-  int ipix, jpix, npix, idim;
-  int i0, j0;
-  double x, y, x1, y1, f00, f01, f10, f11, g00, g01, g10, g11;
-  double *p;
+    pixmap = par->pixmap;
 
-  interpolation_starting_point(pixmap, xyin, (int *)xypix);
+    /* Bilinear interpolation from
+       https://en.wikipedia.org/wiki/Bilinear_interpolation#On_the_unit_square
+    */
+    i0 = (int)xin;
+    j0 = (int)yin;
 
-  /* Bilinear interpolation from
-     https://en.wikipedia.org/wiki/Bilinear_interpolation#On_the_unit_square
-  */
-  i0 = xypix[0];
-  j0 = xypix[1];
-  x = xyin[0] - i0;
-  y = xyin[1] - j0;
-  x1 = 1.0 - x;
-  y1 = 1.0 - y;
+    ndim = PyArray_DIMS(pixmap);
+    nx2 = (int)ndim[1] - 2;
+    ny2 = (int)ndim[0] - 2;
 
-  p = get_pixmap(pixmap, i0, j0);
-  f00 = p[0];
-  g00 = p[1];
+    // point is outside the interpolation range. adjust limits to extrapolate.
+    if (i0 < 0) {
+        i0 = 0;
+    } else if (i0 > nx2) {
+        i0 = nx2;
+    }
+    if (j0 < 0) {
+        j0 = 0;
+    } else if (j0 > ny2) {
+        j0 = ny2;
+    }
 
-  p = get_pixmap(pixmap, i0 + 1, j0);
-  f10 = p[0];
-  g10 = p[1];
+    x = xin - i0;
+    y = yin - j0;
+    x1 = 1.0 - x;
+    y1 = 1.0 - y;
 
-  p = get_pixmap(pixmap, i0, j0 + 1);
-  f01 = p[0];
-  g01 = p[1];
+    p = get_pixmap(pixmap, i0, j0);
+    f00 = p[0];
+    g00 = p[1];
 
-  p = get_pixmap(pixmap, i0 + 1, j0 + 1);
-  f11 = p[0];
-  g11 = p[1];
+    p = get_pixmap(pixmap, i0 + 1, j0);
+    f10 = p[0];
+    g10 = p[1];
 
-  xyout[0] = f00 * x1 * y1 + f10 * x * y1 + f01 * x1 * y + f11 * x * y;
-  xyout[1] = g00 * x1 * y1 + g10 * x * y1 + g01 * x1 * y + g11 * x * y;
+    p = get_pixmap(pixmap, i0, j0 + 1);
+    f01 = p[0];
+    g01 = p[1];
 
-  if (npy_isnan(xyout[0]) || npy_isnan(xyout[1])) return 1;
+    p = get_pixmap(pixmap, i0 + 1, j0 + 1);
+    f11 = p[0];
+    g11 = p[1];
 
-  return 0;
+    *xout = f00 * x1 * y1 + f10 * x * y1 + f01 * x1 * y + f11 * x * y;
+    *yout = g00 * x1 * y1 + g10 * x * y1 + g01 * x1 * y + g11 * x * y;
+
+    if (npy_isnan(*xout) || npy_isnan(*yout)) return 1;
+
+    return 0;
 }
 
-/** --------------------------------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Map an integer pixel position from the input to the output image.
  * Fall back on interpolation if the value at the point is undefined
  *
  * pixmap: The mapping of the pixel centers from input to output image
- * i        The index of the x coordinate
- * j        The index of the y coordinate
- * xyout:  The (x, y) point on the output image (output)
+ * i - The index of the x coordinate
+ * j - The index of the y coordinate
+ * x - X-coordinate of the point on the output image (output)
+ * y - Y-coordinate of the point on the output image (output)
  */
 
 int
-map_pixel(
-  PyArrayObject *pixmap,
-  int           i,
-  int           j,
-  double        xyout[2]
-  ) {
-
-  int k;
-
-  oob_pixel(pixmap, i, j);
-  for (k = 0; k < 2; ++k) {
-    xyout[k] = get_pixmap(pixmap, i, j)[k];
-
-    if (npy_isnan(xyout[k])) return 1;
-  }
-
-  return 0;
+map_pixel(PyArrayObject *pixmap, int i, int j, double *x, double *y) {
+    double *pv = (double *) PyArray_GETPTR3(pixmap, j, i, 0);
+    *x = *pv;
+    *y = *(pv + 1);
+    return ((npy_isnan(*x) || npy_isnan(*y)) ? 1 : 0);
 }
 
-/** --------------------------------------------------------------------------------------------------
+
+/** ---------------------------------------------------------------------------
  * Map a point on the input image to the output image either by interpolation
- * or direct array acces if the input position is integral.
+ * or direct array access if the input position is integral.
  *
  * pixmap: The mapping of the pixel centers from input to output image
- * xyin:   An (x,y) point on the input image
- * xyout:  The same (x, y) point on the output image (output)
- */
-
-int
-map_point(
-  PyArrayObject *pixmap,
-  const double  xyin[2],
-  double        xyout[2]
-  ) {
-
-  int i, j, status, mapsize[2];
-
-  i = xyin[0];
-  j = xyin[1];
-  get_dimensions(pixmap, mapsize);
-
-  if ((double) i == xyin[0] && i >= 0 && i < mapsize[0] &&
-      (double) j == xyin[1] && j >= 0 && j < mapsize[1]) {
-    status = map_pixel(pixmap, i, j, xyout);
-
-  } else {
-    status = interpolate_point(pixmap, xyin, xyout);
-  }
-
-  return status;
-}
-
-/** --------------------------------------------------------------------------------------------------
- * Clip a line segment from an input image to the limits of an output image along one dimension
- *
- * pixmap:   the mapping between input and output images
- * outlimit:  the limits  of the output image
- * xybounds: the clipped line segment (output)
+ * xin:   X-coordinate of a point on the input image
+ * yin:   Y-coordinate of a point on the input image
+ * xout:  X-coordinate of the same point on the output image (output)
+ * yout:  Y-coordinate of the same point on the output image (output)
  *
  */
-
 int
-clip_bounds(PyArrayObject *pixmap, struct segment *outlimit,
-            struct segment *xybounds) {
-  int ipoint, idim, jdim;
+map_point(struct driz_param_t *par, double xin, double yin,
+              double *xout, double *yout) {
+    int i, j, status;
 
-  if (xybounds->invalid) {
-    return 0;
-  }
+    i = (int) xin;
+    j = (int) yin;
 
-  for (idim = 0; idim < 2; ++idim) {
-    for (ipoint = 0; ipoint < 2; ++ipoint) {
-      int m = 21;         /* maximum iterations */
-      int side = 0;       /* flag indicating which side moved last */
-
-      double xyin[2], xyout[2];
-      double a, b, c, fa, fb, fc;
-
-      /* starting values at endpoints of interval */
-
-      for (jdim = 0; jdim < 2; ++jdim) {
-        xyin[jdim] = xybounds->point[0][jdim];
-      }
-
-      if (map_point(pixmap, xyin, xyout)) {
-        /* Cannot find bound */
-        return 0;
-      }
-
-      a = xybounds->point[0][idim];
-      fa = xyout[idim] - outlimit->point[ipoint][idim];
-
-      for (jdim = 0; jdim < 2; ++jdim) {
-        xyin[jdim] = xybounds->point[1][jdim];
-      }
-
-      if (map_point(pixmap, xyin, xyout)) {
-        /* Cannot find bound */
-        return 0;
-      }
-
-      c = xybounds->point[1][idim];
-      fc = xyout[idim] - outlimit->point[ipoint][idim];
-
-      /* Solution via the method of false position (regula falsi) */
-
-      if (fa * fc < 0.0) {
-        int n; /* for loop limit is just for safety's sake */
-
-        xybounds->invalid = 0;
-        for (n = 0; n < m; n++) {
-          b = (fa * c - fc * a) / (fa - fc);
-
-          /* Solution is exact if within a pixel because linear interpolation */
-          if (floor(a) == floor(c)) break;
-
-          xyin[idim] = b;
-          if (map_point(pixmap, xyin, xyout)) {
-            /*  cannot map point, so end interpolation */
-            break;
-          }
-          fb = xyout[idim] - outlimit->point[ipoint][idim];
-
-          /* Maintain the bound by copying b to the variable
-           * with the same sign as b
-           */
-
-          if (fb * fc > 0.0) {
-            c = b;
-            fc = fb;
-            if (side == -1) {
-                fa *= 0.5;
-            }
-            side = -1;
-
-          } else if (fa * fb > 0.0) {
-            a = b;
-            fa = fb;
-            if (side == +1) {
-                fc *= 0.5;
-            }
-            side = +1;
-
-          } else {
-            /* if the product is zero, we have converged */
-            break;
-          }
+    if ((double) i == xin && (double) j == yin) {
+        if (i >= par->xmin && i <= par->xmax &&
+            j >= par->ymin && j <= par->ymax) {
+            status = map_pixel(par->pixmap, i, j, xout, yout);
+        } else {
+            return 1;
         }
-
-        if (n > m) {
-          return 1;
-        }
-
-        xybounds->point[ipoint][idim] = b;
-
-      } else {
-        /* No bracket, so track which side the bound lies on */
-        if (xybounds->invalid == 0) {
-            xybounds->invalid = 1;
-        }
-        xybounds->invalid *= fa > 0.0 ? +1 : -1;
-      }
-    }
-
-    if (xybounds->invalid > 0) {
-      /* Positive means both bounds are outside the image */
-      xybounds->point[1][idim] = xybounds->point[0][idim];
-      break;
-
     } else {
-      /* Negative means both bounds are inside, which is not a problem */
-      xybounds->invalid = 0;
+        return interpolate_point(par, xin, yin, xout, yout);
     }
-  }
-
-  return 0;
 }
 
-/** --------------------------------------------------------------------------------------------------
- * Determine the range of pixels in a specified line of an input image
- * which are inside the output image. Range is one-sided, that is, the second
- * value returned is one greater than the last pixel that is on the image.
+
+/** ---------------------------------------------------------------------------
+ * Evaluate quality of coordinate inversion.
  *
- * p:       the stucture containing the image pointers
- * margin:  a margin in pixels added to the limits
- * j:       the index of the line in the input image whose range is computed
- * xbounds: the input pixels bounding the overlap (output)
- */
-
-int
-check_line_overlap(struct driz_param_t* p, int margin, integer_t j, integer_t *xbounds) {
-  struct segment outlimit, xybounds;
-  integer_t isize[2], osize[2];
-
-  get_dimensions(p->output_data, osize);
-  initialize_segment(&outlimit, - margin, - margin,
-                     osize[0] + margin, osize[1] + margin);
-
-  initialize_segment(&xybounds, p->xmin, j, p->xmax, j+1);
-  shrink_segment(&xybounds, p->pixmap, &bad_pixel);
-
-  if (clip_bounds(p->pixmap, &outlimit, &xybounds)) {
-    driz_error_set_message(p->error, "cannot compute xbounds");
-    return 1;
-  }
-
-  sort_segment(&xybounds, 0);
-  shrink_segment(&xybounds, p->weights, &bad_weight);
-
-  xbounds[0] = floor(xybounds.point[0][0]);
-  xbounds[1] = ceil(xybounds.point[1][0]);
-
-  get_dimensions(p->data, isize);
-  if (driz_error_check(p->error, "xbounds must be inside input image",
-                       xbounds[0] >= 0 && xbounds[1] <= isize[0])) {
-    return 1;
-
-  } else {
-    return 0;
-  }
-}
-
-/** --------------------------------------------------------------------------------------------------
- * Determine the range of lines in the input image that overlap the output image
- * Range is one-sided, that is, the second value returned is one greater than the
- * last line that is on the image.
+ * Given a pair of coordinates (x, y) in the input frame obtained from
+ * a pair of coordinates (xref, yref) in the output frame, this function uses
+ * par->pixmap to perform forward transformation (input to output frame) of
+ * (x, y) back to the output frame (x', y') and then compares interpolated
+ * values with (xref, yref) pair.
  *
- * p:       the stucture containing the image pointers
- * margin:  a margin in pixels added to the limits
- * ybounds: the input lines bounding the overlap (output)
+ * @param[in] struct driz_param_t - drizzle parameters.
+ * @param[in] double x - x-coordinate of the inverted point in the input frame.
+ * @param[in] double y - y-coordinate of the inverted point in the input frame.
+ * @param[in] double xref - x-coordinate of the initial point in the output frame.
+ * @param[in] double yref - y-coordinate of the initial point in the output frame.
+ * @param[out] double *dist2 - |(x', y') - (xref, yref)|**2.
+ * @return 0 if successul and 1 if the forward interpolation fails.
+ *
  */
+static int
+eval_inversion(struct driz_param_t *par, double x, double y,
+               double xref, double yref, double *dist2) {
+    double xout, yout, dx, dy;
 
-int
-check_image_overlap(struct driz_param_t* p, const int margin, integer_t *ybounds) {
-
-  struct segment inlimit, outlimit, xybounds[2];
-  integer_t isize[2], osize[2];
-  int ipoint;
-
-  get_dimensions(p->output_data, osize);
-  initialize_segment(&outlimit, - margin, - margin,
-                     osize[0] + margin, osize[1] + margin);
-
-  initialize_segment(&inlimit, p->xmin, p->ymin, p->xmax, p->ymax);
-  shrink_segment(&inlimit, p->pixmap, &bad_pixel);
-
-  if (inlimit.invalid == 1) {
-      driz_error_set_message(p->error, "no valid pixels on input image");
-      return 1;
+    if (interpolate_point(par, x, y, &xout, &yout)) {
+        return 1;
     }
+    dx = xout - xref;
+    dy = yout - yref;
+    *dist2 = dx * dx + dy * dy;  // sqrt would be slower
 
-  for (ipoint = 0; ipoint < 2; ++ipoint) {
-    initialize_segment(&xybounds[ipoint],
-                       inlimit.point[ipoint][0], inlimit.point[0][1],
-                       inlimit.point[ipoint][0], inlimit.point[1][1]);
-
-    if (clip_bounds(p->pixmap, &outlimit, &xybounds[ipoint])) {
-      driz_error_set_message(p->error, "cannot compute ybounds");
-      return 1;
-    }
-  }
-
-  union_of_segments(2, 1, xybounds, ybounds);
-
-  get_dimensions(p->pixmap, isize);
-  if (driz_error_check(p->error, "ybounds must be inside input image",
-                       ybounds[0] >= 0 && ybounds[1] <= isize[1])) {
-    return 1;
-
-  } else {
     return 0;
-  }
 }
 
+
+/** ---------------------------------------------------------------------------
+ * Inverse mapping of coordinates from the output frame to input frame.
+ *
+ * Inverts input (xout, yout) (output image frame) coordinates iteratively
+ * to the input image image frame (xin, yin) - the output of this function.
+ * Ths function uses the method of Golden-section search - see
+ * https://en.wikipedia.org/wiki/Golden-section_search for the 1D case -
+ * generalized to support planar data.
+ *
+ * @param[in] struct driz_param_t - drizzle parameters.
+ * @param[in] double xout - x-coordinate of a point in the output frame.
+ * @param[in] double yout - y-coordinate of a point in the output frame.
+ * @param[out] double *xin - x-coordinate of the point in the input frame.
+ * @param[out] double *yin - y-coordinate of the point in the input frame.
+ * @return 0 if successul and 1 iterative process fails.
+ *
+ */
+int
+invert_pixmap(struct driz_param_t *par, double xout, double yout,
+              double *xin, double *yin) {
+
+    const double gr = 0.6180339887498948482;  // Golden Ratio: (sqrt(5)-1)/2
+    const int nmax_iter = 50;
+    int niter;
+    double xmin, xmax, ymin, ymax, dx, dy, x1, x2, y1, y2;
+    double d11, d12, d21, d22;
+
+    xmin = ((double) par->xmin) - 0.5;
+    xmax = ((double) par->xmax) + 0.5;
+    ymin = ((double) par->ymin) - 0.5;
+    ymax = ((double) par->ymax) + 0.5;
+    dx = xmax;
+    dy = ymax;
+
+    niter = 0;
+
+    while ((dx > MAX_INV_ERR || dy > MAX_INV_ERR) && niter < nmax_iter) {
+        niter+=1;
+
+        x1 = xmax - gr * dx;
+        x2 = xmin + gr * dx;
+        y1 = ymax - gr * dy;
+        y2 = ymin + gr * dy;
+
+        if (eval_inversion(par, x1, y1, xout, yout, &d11)) return 1;
+        if (eval_inversion(par, x1, y2, xout, yout, &d12)) return 1;
+        if (eval_inversion(par, x2, y1, xout, yout, &d21)) return 1;
+        if (eval_inversion(par, x2, y2, xout, yout, &d22)) return 1;
+
+        if (d11 < d12 && d11 < d21 && d11 < d22) {
+            xmax = x2;
+            ymax = y2;
+        } else if (d12 < d11 && d12 < d21 && d12 < d22) {
+            xmax = x2;
+            ymin = y1;
+        } else if (d21 < d11 && d21 < d12 && d21 < d22) {
+            xmin = x1;
+            ymax = y2;
+        } else {
+            xmin = x1;
+            ymin = y1;
+        }
+
+        dx = xmax - xmin;
+        dy = ymax - ymin;
+    }
+
+    *xin = 0.5 * (xmin + xmax);
+    *yin = 0.5 * (ymin + ymax);
+
+    if (niter == nmax_iter) return 1;
+
+    return 0;
+}
+
+
+// computes modulus of a % b  (with b > 0) similar to Python. A more robust
+// approach would be to do this: (((a % b) + b) % b). However the polygon
+// intersection code will never have a < -1 and so a simplified and faster
+// version was implemented that works for a >= -b.
+inline int
+mod(int a, int b) {
+    return ((a + b) % b);
+    // return (((a % b) + b) % b);
+}
+
+// test whether two vertices (points) are equal to within a specified
+// absolute tolerance
+static inline int
+equal_vertices(struct vertex a, struct vertex b, double atol) {
+    return (fabs(a.x - b.x) < atol && fabs(a.y - b.y) < atol);
+}
+
+// Z-axis/k-component of the cross product a x b
+static inline double
+area(struct vertex a, struct vertex b) {
+    return (a.x * b.y - a.y * b.x);
+}
+
+
+// tests whether a point is in a half-plane of the vector going from
+// vertex v_ to vertex v (including the case of the point lying on the
+// vector (v_, v)). Specifically, it tests (v - v_) x (pt - v_) >= 0:
+static inline int
+is_point_in_hp(struct vertex pt, struct vertex v_, struct vertex v) {
+    // (v - v_) x (pt - v_) = v x pt - v x v_ - v_ x pt + v_ x v_ =
+    // = v x pt - v x v_ - v_ x pt
+    return ((area(v, pt) - area(v_, pt) - area(v, v_)) >= -APPROX_ZERO);
+}
+
+
+// same as is_point_in_hp but tests strict inequality (point not on the vector)
+static inline int
+is_point_strictly_in_hp(const struct vertex pt, const struct vertex v_,
+                        const struct vertex v) {
+    return ( (area(v, pt) - area(v_, pt) - area(v, v_)) > APPROX_ZERO );
+}
+
+
+// returns 1 if all vertices from polygon p are inside polygon q or 0 if
+// at least one vertex of p is outside of q.
+static inline int
+is_poly_contained(const struct polygon *p, const struct polygon *q) {
+    int i, j;
+    struct vertex *v_, *v;
+
+    v_ = q->v + (q->npv - 1);
+    v = q->v;
+
+    for (i = 0; i < q->npv; i++) {
+        for (j = 0; j < p->npv; j++) {
+            if (!is_point_in_hp(p->v[j], *v_, *v)) {
+                return 0;
+            }
+        }
+        v_ = v;
+        v++;
+    }
+
+    return 1;
+}
+
+
+/**
+ * Append a vertex to a polygon.
+ *
+ * Append a vertex to the polygon's list of vertices and increment
+ * vertex count.
+ *
+ * @param[in,out] p struct polygon* to which the vertex is to be added.
+ * @param[in] v struct vertex to be added to polygon p.
+ * @return 0 on success and 1 if no more storage for vertices is available.
+ */
+static int
+append_vertex(struct polygon *p, struct vertex v) {
+    if ((p->npv > 0) && equal_vertices(p->v[p->npv - 1], v, VERTEX_ATOL)) {
+        return 0;
+    }
+    if ((p->npv > 0) && equal_vertices(p->v[0], v, VERTEX_ATOL)) {
+        return 1;
+    }
+    if (p->npv >= 2 * IMAGE_OUTLINE_NPTS) {
+        return 1;
+    }
+    p->v[p->npv++] = v;
+    return 0;
+}
+
+/**
+ * Simplify polygon.
+ *
+ * Removes midpoints (if any), i.e., vertices that lie on a line connecting
+ * two adjacent vertices (on each side of the mid-vertex).
+ *
+ * @param[in,out] struct polygon type whose vertices may be re-arranged upon
+ *                return.
+ */
+static void
+simplify_polygon(struct polygon *p) {
+    struct polygon pqhull;
+    struct vertex dp, dq, *pv, *pv_, *pvnxt;
+    int k;
+
+    if (p->npv < 3) return;
+
+    pqhull.npv = 0;
+
+    pv_ = (struct vertex *)(p->v) + (p->npv - 1);
+    pv = (struct vertex *)p->v;
+    pvnxt = ((struct vertex *)p->v) + 1;
+
+    for (k = 0; k < p->npv; k++) {
+        dp.x = pvnxt->x - pv_->x;
+        dp.y = pvnxt->y - pv_->y;
+        dq.x = pv->x - pv_->x;
+        dq.y = pv->y - pv_->y;
+
+        if (fabs(area(dp, dq)) > APPROX_ZERO &&
+            sqrt(dp.x * dp.x + dp.y * dp.y) > VERTEX_ATOL) {
+            pqhull.v[pqhull.npv++] = *pv;
+        }
+        pv_ = pv;
+        pv = pvnxt;
+        pvnxt = ((struct vertex *)p->v) + (mod(2 + k, p->npv));
+    }
+
+    p->npv = pqhull.npv;
+    for (k = 0; k < p->npv; k++) {
+        p->v[k] = pqhull.v[k];
+    }
+}
+
+/**
+ * Orient a polygon counter-clockwise.
+ *
+ * Reverse the order of the polygon p's vertices in such a way that
+ * polygon p is oriented counter-clockwise.
+ *
+ * @param[in,out] struct polygon type whose vertices may be re-arranged upon
+ *                return.
+ */
+static void
+orient_ccw(struct polygon *p) {
+    // re-arrange (reverse the order of the) polygon p (input and output)
+    // vertices in such a way that polygon p is oriented counter-clockwise.
+    int k, m;
+    struct vertex v1, v2, cm;
+
+    if (p->npv < 3) return;
+
+    // center of mass:
+    for (k = 0; k < p->npv; ++k) {
+        cm.x += p->v[k].x;
+        cm.y += p->v[k].y;
+    }
+    cm.x /= p->npv;
+    cm.y /= p->npv;
+
+    // pick first two polygon vertices and subtract center:
+    v1 = p->v[0];
+    v2 = p->v[1];
+    v1.x -= cm.x;
+    v1.y -= cm.y;
+    v2.x -= cm.x;
+    v2.y -= cm.y;
+
+    if (area(v1, v2) >= 0.0) {
+        return;
+    } else {
+        for (k = 0; k < (p->npv / 2); ++k) {
+            v1 = p->v[k];
+            m = p->npv - 1 - k;
+            p->v[k] = p->v[m];
+            p->v[m] = v1;
+        }
+    }
+}
+
+
+/**
+ * Compute intersections of two convex polygons.
+ *
+ * This function implements intersection of convex polygons based on my
+ * understanding of the following paper:
+ * https://doi.org/10.1016/0146-664X(82)90023-5
+ * with a PDF accessible from:
+ * https://www.cs.jhu.edu/~misha/Spring16/ORourke82.pdf
+ *
+ * The code is also modified to include some differences to the algorithm
+ * present in C code published here
+ * https://www.science.smith.edu/~jorourke/books/ftp.html and also other
+ * changes to make it work for special cases.
+ *
+ * @param[in] struct polygon p - first polygon (last vertex != first)
+ * @param[in] struct polygon q - second polygon (last vertex != first)
+ * @param[out] struct polygon *pq - intersection polygon
+ *
+ * @returns 0 on success, 1 on failure (input polygons have less than 3 vertices)
+ */
+int
+intersect_convex_polygons(const struct polygon *p, const struct polygon *q,
+                          struct polygon *pq) {
+
+    int ip=0, iq=0, first_k, k;
+    int inside=0;  // 0 - not set, 1 - "P", -1 - "Q"
+    int pv_in_hpdq, qv_in_hpdp;
+    struct vertex *pv, *pv_, *qv, *qv_, dp, dq, vi, first_intersect;
+    double t, u, d, dot, signed_area;
+
+    if ((p->npv < 3) || (q->npv < 3)) {
+        return 1;
+    }
+
+    orient_ccw(p);
+    orient_ccw(q);
+
+    if (is_poly_contained(p, q)) {
+        *pq = *p;
+        simplify_polygon(pq);
+        return 0;
+    } else if (is_poly_contained(q, p)) {
+        *pq = *q;
+        simplify_polygon(pq);
+        return 0;
+    }
+
+    pv_ = (struct vertex *)(p->v + (p->npv - 1));
+    pv = (struct vertex *)p->v;
+    qv_ = (struct vertex *)(q->v + (q->npv - 1));
+    qv = (struct vertex *)q->v;
+
+    first_k = -2;
+    pq->npv = 0;
+
+    for (k = 0; k <= 2 * (p->npv + q->npv); k++) {
+        dp.x = pv->x - pv_->x;
+        dp.y = pv->y - pv_->y;
+        dq.x = qv->x - qv_->x;
+        dq.y = qv->y - qv_->y;
+
+        // https://en.wikipedia.org/wiki/Line–line_intersection
+        t = (pv_->y - qv_->y) * dq.x - (pv_->x - qv_->x) * dq.y;
+        u = (pv_->y - qv_->y) * dp.x - (pv_->x - qv_->x) * dp.y;
+        signed_area = area(dp, dq);
+        if (signed_area >= 0.0) {
+            d = signed_area;
+        } else {
+            t = -t;
+            u = -u;
+            d = -signed_area;
+        }
+
+        pv_in_hpdq = is_point_strictly_in_hp(*qv_, *qv, *pv);
+        qv_in_hpdp = is_point_strictly_in_hp(*pv_, *pv, *qv);
+
+        if ((0.0 <= t) && (t <= d) && (0.0 <= u) && (u <= d) &&
+            (d > APPROX_ZERO)) {
+            t = t / d;
+            // u = u / d;
+            vi.x = pv_->x + (pv->x - pv_->x) * t;
+            vi.y = pv_->y + (pv->y - pv_->y) * t;
+
+            if (first_k < 0) {
+                first_intersect = vi;
+                first_k = k;
+                if (append_vertex(pq, vi)) break;
+            } else if (equal_vertices(first_intersect, vi, VERTEX_ATOL)) {
+                if (k > (first_k + 1)) {
+                    break;
+                }
+                first_k = k;
+            } else {
+                if (append_vertex(pq, vi)) break;
+            }
+
+            if (pv_in_hpdq) {
+                inside = 1;
+            } else if (qv_in_hpdp) {
+                inside = -1;
+            }
+        }
+
+        // advance:
+        if (d < 1.0e-12 && !pv_in_hpdq && !qv_in_hpdp) {
+            if (inside == 1) {
+                iq += 1;
+                qv_ = qv;
+                qv = q->v + mod(iq, q->npv);
+            } else {
+                ip += 1;
+                pv_ = pv;
+                pv = p->v + mod(ip, p->npv);
+            }
+
+        } else if (signed_area >= 0.0) {
+            if (qv_in_hpdp) {
+                if (inside == 1) {
+                    if (append_vertex(pq, *pv)) break;
+                }
+                ip += 1;
+                pv_ = pv;
+                pv = p->v + mod(ip, p->npv);
+            } else {
+                if (inside == -1) {
+                    if (append_vertex(pq, *qv)) break;
+                }
+                iq += 1;
+                qv_ = qv;
+                qv = q->v + mod(iq, q->npv);
+            }
+
+        } else {
+            if (pv_in_hpdq) {
+                if (inside == -1) {
+                    if (append_vertex(pq, *qv)) break;
+                }
+                iq += 1;
+                qv_ = qv;
+                qv = q->v + mod(iq, q->npv);
+            } else {
+                if (inside == 1) {
+                    if (append_vertex(pq, *pv)) break;
+                }
+                ip += 1;
+                pv_ = pv;
+                pv = p->v + mod(ip, q->npv);
+            }
+        }
+    }
+
+    simplify_polygon(pq);
+
+    return 0;
+}
+
+
+/**
+ * Initializes an edge structure from two end vertices.
+ *
+ * Initialization includes edge vertices and computing the slope and
+ * the intersect of the line connecting the vertices. Alternative intersect
+ * "c" is computed in such a way that pixels in their entirety fit either
+ * to the left of the right edges or to the right of left edges.
+ *
+ * NOTE: Left edges are the ones to the left (small X) of the line that
+ *       connects top and bottom polygon's vertices and the right edges are
+ *       to the right of this lighn (high X).
+ *
+ * @param[in] struct edge *e - pointer to the edge structure to be initialized
+ * @param[in] struct vertex v1 - first vertex of the edge
+ * @param[in] struct vertex v2 - second vertex of the edge
+ * @param[in] position: +1 for right edge of the polygon, -1 for left edge
+ *
+ */
+static void
+init_edge(struct edge *e, struct vertex v1, struct vertex v2, int position) {
+    e->v1 = v1;
+    e->v2 = v2;
+    e->p = position;  // -1 for left-side edge and +1 for right-side edge
+    e->m = (v2.x - v1.x) / (v2.y - v1.y);
+    e->b = (v1.x * v2.y - v1.y * v2.x) / (v2.y - v1.y);
+    e->c = e->b - copysign(0.5 + 0.5 * fabs(e->m), (double) position);
+};
+
+/**
+ * Set-up scanner structure for a polygon.
+ *
+ * This function finds minimum and maximum y-coordinates of the polygon
+ * vertices and splits all edges int left and right edges based on their
+ * horizontal position relative to the line connecting the top and bottom
+ * vertices of the polygon. It also copies the bounding box parameters
+ * xmin, xmax, ymin, ymax from the driz_param_t structure.
+ *
+ * @param[in] struct polygon *p.
+ * @param[in] struct driz_param_t - drizzle parameters (bounding box is used).
+ * @param[out] struct scanner *s - scanner structure to be initialized.
+ * @return 0 if successful and 1 if input polygon has only 2 vertices or less.
+ *
+*/
+int
+init_scanner(struct polygon *p, struct driz_param_t* par, struct scanner *s) {
+    int k, i1, i2;
+    int min_right, min_left, max_right, max_left;
+    double min_y, max_y;
+
+    s->left = NULL;
+    s->right = NULL;
+    s->nleft = 0;
+    s->nright = 0;
+
+    if (p->npv < 3) {
+        // not a polygon
+        s->overlap_valid = 0;
+        return 1;
+    }
+
+    // find minimum/minima:
+    min_y = p->v[0].y;
+    min_left = 0;
+    for (k = 1; k < p->npv; k++) {
+        if (p->v[k].y < min_y) {
+            min_left = k;
+            min_y = p->v[k].y;
+        }
+    }
+
+    i1 = mod(min_left - 1, p->npv);
+    i2 = mod(min_left + 1, p->npv);
+    min_right = ( p->v[i1].y < p->v[i2].y ) ? i1 : i2;
+    if (p->v[min_right].y <= min_y * (1.0 + copysign(VERTEX_ATOL, min_y))) {
+        if (p->v[min_left].x > p->v[min_right].x) {
+            k = min_left;
+            min_left = min_right;
+            min_right = k;
+        }
+    } else {
+        min_right = min_left;
+    }
+
+    // find maximum/maxima:
+    max_y = p->v[0].y;
+    max_right = 0;
+    for (k = 1; k < p->npv; k++) {
+        if (p->v[k].y > max_y) {
+            max_right = k;
+            max_y = p->v[k].y;
+        }
+    }
+
+    i1 = mod(max_right - 1, p->npv);
+    i2 = mod(max_right + 1, p->npv);
+    max_left = ( p->v[i1].y > p->v[i2].y ) ? i1 : i2;
+    if (p->v[max_left].y >= max_y * (1.0 - copysign(VERTEX_ATOL, max_y))) {
+        if (p->v[max_left].x > p->v[max_right].x) {
+            k = max_left;
+            max_left = max_right;
+            max_right = k;
+        }
+    } else {
+        max_left = max_right;
+    }
+
+    // Left: start with minimum and move clockwise:
+    if (max_left > min_left) {
+        min_left += p->npv;
+    }
+    s->nleft = min_left - max_left;
+
+    for (k = 0; k < s->nleft; k++) {
+        i1 = mod(min_left - k, p->npv);  // -k for CW traverse direction
+        i2 = mod(i1 - 1, p->npv);  // -1 for CW traverse direction
+        init_edge(s->left_edges + k, p->v[i1], p->v[i2], -1);
+    }
+
+    // Right: start with minimum and move counter-clockwise:
+    if (max_right < min_right) {
+        max_right += p->npv;
+    }
+    s->nright = max_right - min_right;
+
+    for (k = 0; k < s->nright; k++) {
+        i1 = mod(min_right + k, p->npv);  // +k for CW traverse direction
+        i2 = mod(i1 + 1, p->npv);  // +1 for CW traverse direction
+        init_edge(s->right_edges + k, p->v[i1], p->v[i2], 1);
+    }
+
+    s->left = (struct edge *) s->left_edges;
+    s->right = (struct edge *) s->right_edges;
+    s->min_y = min_y;
+    s->max_y = max_y;
+    s->xmin = par->xmin;
+    s->xmax = par->xmax;
+    s->ymin = par->ymin;
+    s->ymax = par->ymax;
+
+    return 0;
+}
+
+/**
+ * Get x-range of pixels in a row that are within the bounds of a polygon.
+ *
+ * get_scanline_limits returns x-limits (integer pixel locations) for an image
+ * row that fit between the edges (of a polygon) specified by the scanner
+ * structure. The limits are computed in such a way that the edge pixels are
+ * entirely inside the polygon.
+ *
+ * This function is intended to be called successively with input
+ * 'y' *increasing* from s->min_y to s->max_y.
+ *
+ * @param[in] struct scanner *s - scanner structure
+ * @param[in] y - integer position of the row along the vertical direction
+ * @param[out] int *x1 - horizontal position of the leftmost pixel within
+ *             the bounding polygon
+ * @param[out] int *x2 - horizontal position of the rightmost pixel within
+ *             the bounding polygon
+ * @return 0 no errors;
+ *         1 scan ended (y reached the top vertex/edge);
+ *         2 pixel centered on y is outside of scanner's limits or image
+ *           [0, height - 1];
+ *         3 limits (x1, x2) are equal (line with is 0).
+ *
+*/
+int
+get_scanline_limits(struct scanner *s, int y, int *x1, int *x2) {
+    double pyb, pyt;  // pixel top and bottom limits
+    double xlb, xlt, xrb, xrt, edge_ymax, xmin, xmax;
+    struct edge *el_max, *er_max;
+
+    el_max = ((struct edge *) s->left_edges) + (s->nleft - 1);
+    er_max = ((struct edge *) s->right_edges) + (s->nright - 1);
+
+    if (s->ymax >= s->ymin && (y < 0 || y > s->ymax)) {
+        return 2;
+    }
+
+    pyb = (double)y - 0.5;
+    pyt = (double)y + 0.5;
+
+    if (pyt <= s->min_y || pyb >= s->max_y + 1) {
+        return 2;
+    }
+
+    if (s->left == NULL || s->right == NULL) {
+        return 1;
+    }
+
+    while (pyb > s->left->v2.y) {
+        if (s->left == el_max) {
+            s->left = NULL;
+            s->right = NULL;
+            return 1;
+        }
+        ++s->left;
+    };
+
+    while (pyb > s->right->v2.y) {
+        if (s->right == er_max) {
+            s->left = NULL;
+            s->right = NULL;
+            return 1;
+        }
+        ++s->right;
+    };
+
+    xlb = s->left->m * y + s->left->c - MAX_INV_ERR;
+    xrb = s->right->m * y + s->right->c + MAX_INV_ERR;
+
+    edge_ymax = s->left->v2.y + 0.5 + MAX_INV_ERR;
+    while (pyt > edge_ymax) {
+        if (s->left == el_max) {
+            s->left = NULL;
+            s->right = NULL;
+            return 1;
+        }
+        ++s->left;
+        edge_ymax = s->left->v2.y + 0.5 + MAX_INV_ERR;
+    };
+
+    edge_ymax = s->right->v2.y + 0.5 + MAX_INV_ERR;
+    while (pyt > edge_ymax) {
+        if (s->right == er_max) {
+            s->left = NULL;
+            s->right = NULL;
+            return 1;
+        }
+        ++s->right;
+        edge_ymax = s->right->v2.y + 0.5 + MAX_INV_ERR;
+    };
+
+    xlt = s->left->m * y + s->left->c - MAX_INV_ERR;
+    xrt = s->right->m * y + s->right->c + MAX_INV_ERR;
+
+    xmin = s->xmin;// - 0.5;
+    xmax = s->xmax;// + 0.5;
+    if (s->xmax >= s->xmin) {
+        if (xlb < xmin) {
+            xlb = xmin;
+        }
+        if (xlt < xmin) {
+            xlt = xmin;
+        }
+        if (xrb > xmax) {
+            xrb = xmax;
+        }
+        if (xrt > xmax) {
+            xrt = xmax;
+        }
+    }
+
+    if (xlt >= xrt) {
+        *x1 = (int)round(xlb);
+        *x2 = (int)round(xrb);
+        if (xlb >= xrb) {
+            return 3;
+        }
+    } else if (xlb >= xrb) {
+        *x1 = (int)round(xlt);
+        *x2 = (int)round(xrt);
+    } else {
+        *x1 = (int)round((xlb > xlt) ? xlb : xlt);
+        *x2 = (int)round((xrb < xrt) ? xrb : xrt);
+    }
+
+    return 0;
+}
+
+
+/**
+ * Map a vertex' coordinates from the input frame to the output frame.
+ *
+ * @param[in] struct driz_param_t - drizzle parameters (bounding box is used)
+ * @param[in] struct vertex vin - vertex' coordinates in the input frame
+ * @param[out] struct vertex *vout - vertex' coordinates in the output frame
+ * @return 0 no errors and 1 on errors.
+ *
+*/
+static int
+map_vertex_to_output(struct driz_param_t* par, struct vertex vin,
+                     struct vertex *vout) {
+    // convert coordinates to the output frame
+    return map_point(par, vin.x, vin.y, &vout->x, &vout->y);
+}
+
+
+/**
+ * Map a vertex' coordinates from the output frame to the input frame.
+ *
+ * @param[in] struct driz_param_t - drizzle parameters (bounding box is used)
+ * @param[in] struct vertex vout - vertex' coordinates in the output frame
+ * @param[out] struct vertex *vout - vertex' coordinates in the input frame
+ * @return 0 no errors and 1 on errors.
+ *
+*/
+static int
+map_vertex_to_input(struct driz_param_t* par, struct vertex vout,
+                    struct vertex *vin) {
+    double xin, yin;
+    char buf[MAX_DRIZ_ERROR_LEN];
+    int n;
+    // convert coordinates to the input frame
+    if (invert_pixmap(par, vout.x, vout.y, &xin, &yin)) {
+        n = sprintf(buf,
+            "failed to invert pixel map at position (%.2f, %.2f)",
+            vout.x, vout.y);
+        if (n < 0) {
+            strcpy(buf, "failed to invert pixel map");
+        }
+        driz_error_set_message(par->error, buf);
+        return 1;
+    }
+    vin->x = xin;
+    vin->y = yin;
+    return 0;
+}
+
+
+/**
+ * Set-up image scanner.
+ *
+ * This is a the main part of the computation of the bounding polygon in the
+ * input frame. This function computes the bounding box of the input image,
+ * maps it the ouput frame, intersects mapped input bounding box with the
+ * bounding box of the output image. It then maps this intersection polygon
+ * back to the input frame and then sets up the scanner structure to be used
+ * by the resampling kernel functions to determine the horizontal scan limits
+ * for a given input image row.
+ *
+ * @param[in] struct driz_param_t - drizzle parameters (bounding box is used).
+ * @param[out] struct scanner *s - computed from the intersection of polygons.
+ * @param[out] int *ymin - minimum y of a row in input image with pixels inside the intersection polygon
+ * @param[out] int *ymax - maximum y of a row in input image with pixels inside the intersection polygon
+ * @return see init_scanner for return values.
+ *
+*/
+int
+init_image_scanner(struct driz_param_t* par, struct scanner *s,
+                   int *ymin, int *ymax) {
+    struct polygon p, q, pq, inpq;
+    double  xyin[2], xyout[2];
+    integer_t isize[2], osize[2];
+    int ipoint;
+    int k, n;
+    npy_intp *ndim;
+
+    // define a polygon bounding the input image:
+    inpq.npv = 4;
+    inpq.v[0].x = par->xmin - 0.5;
+    inpq.v[0].y = par->ymin - 0.5;
+    inpq.v[1].x = par->xmax + 0.5;
+    inpq.v[1].y = inpq.v[0].y;
+    inpq.v[2].x = inpq.v[1].x;
+    inpq.v[2].y = par->ymax + 0.5;
+    inpq.v[3].x = inpq.v[0].x;
+    inpq.v[3].y = inpq.v[2].y;
+
+    // convert coordinates of the above polygon to the output frame and
+    // define a polygon bounding the input image in the output frame:
+    // inpq will be updated/overwritten later if coordinate mapping, inversion,
+    // and polygon intersection is successful.
+    if (map_vertex_to_output(par, inpq.v[0], p.v) ||
+        map_vertex_to_output(par, inpq.v[1], p.v + 1) ||
+        map_vertex_to_output(par, inpq.v[2], p.v + 2) ||
+        map_vertex_to_output(par, inpq.v[3], p.v + 3)) {
+        s->overlap_valid = 0;
+        driz_error_set_message(
+            par->error,
+            "error computing input image bounding box"
+        );
+        goto _setup_scanner;
+    }
+    p.npv = 4;
+
+    // define a polygon bounding output image:
+    ndim = PyArray_DIMS(par->output_data);
+    q.npv = 4;
+    q.v[0].x = -0.5;
+    q.v[0].y = -0.5;
+    q.v[1].x = (double)ndim[1] - 0.5;
+    q.v[1].y = -0.5;
+    q.v[2].x = (double)ndim[1] - 0.5;
+    q.v[2].y = (double)ndim[0] - 0.5;
+    q.v[3].x = -0.5;
+    q.v[3].y = (double)ndim[0] - 0.5;
+
+    // compute intersection of P and Q (in output frame):
+    if (intersect_convex_polygons(&p, &q, &pq)) {
+        s->overlap_valid = 0;
+        goto _setup_scanner;
+    }
+
+    // convert coordinates of vertices of the intersection polygon
+    // back to input image coordinate system:
+    for (k = 0; k < pq.npv; k++) {
+        if (map_vertex_to_input(par, pq.v[k], &inpq.v[k])) {
+            s->overlap_valid = 0;
+            goto _setup_scanner;
+        }
+    }
+    inpq.npv = pq.npv;
+    s->overlap_valid = 1;
+    orient_ccw(&inpq);
+
+_setup_scanner:
+
+    // initialize polygon scanner:
+    driz_error_unset(par->error);
+    n = init_scanner(&inpq, par, s);
+    *ymin = MAX(0, (int)(s->min_y + 0.5 + 2.0 * MAX_INV_ERR));
+    *ymax = MIN(s->ymax, (int)(s->max_y + 2.0 * MAX_INV_ERR));
+    return n;
+}

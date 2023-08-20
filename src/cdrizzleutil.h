@@ -177,10 +177,11 @@ driz_param_dump(struct driz_param_t* p);
 /****************************************************************************/
 /* LOGGING */
 
-#define LOGGING 0
+#define LOGGING
 
-#if LOGGING
+#ifdef LOGGING
 extern FILE *driz_log_handle;
+
 
 static inline_macro FILE*
 driz_log_init(FILE *handle) {
@@ -235,6 +236,7 @@ driz_log_idem(void *ptr) {
 #define driz_log_init(handle) driz_log_idem(handle)
 #define driz_log_close(handle) driz_log_idem(handle)
 #define driz_log_message(message) driz_log_idem(message)
+
 #endif
 
 /****************************************************************************/
@@ -259,28 +261,26 @@ get_pixmap(PyArrayObject *pixmap, integer_t xpix, integer_t ypix) {
   return (double*) PyArray_GETPTR3(pixmap, ypix, xpix, 0);
 }
 
-#if LOGGING
+#if defined(LOGGING) && defined(CHECK_OOB)
 
 static inline_macro int
 oob_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
-  char buffer[64];
-  int flag = 0;
+    char buffer[64];
+    npy_intp *ndim = PyArray_DIMS(image);
+    if ((xpix < 0 || xpix >= ndim[1]) || (ypix < 0 || ypix >= ndim[0])) {
+        sprintf(buffer, "Point [%d,%d] is outside of [%d, %d]",
+                xpix, ypix, (int) ndim[1], (int) ndim[0]);
+        driz_log_message(buffer);
+        return 1;
+    }
 
-  npy_intp *ndim = PyArray_DIMS(image);
-  if (xpix < 0 || xpix >= ndim[1]) flag = 1;
-  if (ypix < 0 || ypix >= ndim[0]) flag = 1;
-
-  if (flag) {
-    sprintf(buffer, "Point [%d,%d] is outside of [%d, %d]",
-            xpix, ypix, (int) ndim[1], (int) ndim[0]);
-    driz_log_message(buffer);
-  }
-
-  return flag;
+    return 0;
 }
 
 #else
-#define oob_pixel(image, xpix, ypix)   0
+
+#define oob_pixel(image, xpix, ypix) 0
+
 #endif
 
 static inline_macro float
