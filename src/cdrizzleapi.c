@@ -503,7 +503,7 @@ invert_pixmap_wrap(PyObject *self, PyObject *args)
 
 
 static PyObject *
-intersect_convex_polygons_wrap(PyObject *self, PyObject *args)
+clip_polygon_wrap(PyObject *self, PyObject *args)
 {
     int k;
     PyObject *pin, *qin;
@@ -511,7 +511,7 @@ intersect_convex_polygons_wrap(PyObject *self, PyObject *args)
     struct polygon p, q, pq;
     PyObject *list, *tuple;
 
-    if (!PyArg_ParseTuple(args,"OO:intersect_convex_polygons", &pin, &qin)) {
+    if (!PyArg_ParseTuple(args,"OO:clip_polygon", &pin, &qin)) {
       return NULL;
     }
 
@@ -537,7 +537,7 @@ intersect_convex_polygons_wrap(PyObject *self, PyObject *args)
         q.v[k].y = *((double *) PyArray_GETPTR2(qin_arr, k, 1));
     }
 
-    intersect_convex_polygons(&p, &q, &pq);
+    clip_polygon_to_window(&p, &q, &pq);
 
     list = PyList_New(pq.npv);
 
@@ -564,7 +564,7 @@ static struct PyMethodDef cdrizzle_methods[] = {
     {"test_cdrizzle", test_cdrizzle, METH_VARARGS,
     "test_cdrizzle(data, weights, pixmap, output_data, output_counts)"},
     {"invert_pixmap", invert_pixmap_wrap, METH_VARARGS, "invert_pixmap(pixmap, xyout, bbox)"},
-    {"intersect_convex_polygons", intersect_convex_polygons_wrap, METH_VARARGS, "intersect_convex_polygons(p, q)"},
+    {"clip_polygon", clip_polygon_wrap, METH_VARARGS, "clip_polygon(p, q)"},
     {NULL,        NULL}        /* sentinel */
 };
 

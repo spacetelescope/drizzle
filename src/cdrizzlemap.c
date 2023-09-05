@@ -351,48 +351,12 @@ area(struct vertex a, struct vertex b) {
 }
 
 
-// tests whether a point is in a half-plane of the vector going from
-// vertex v_ to vertex v (including the case of the point lying on the
-// vector (v_, v)). Specifically, it tests (v - v_) x (pt - v_) >= 0:
-static inline int
-is_point_in_hp(struct vertex pt, struct vertex v_, struct vertex v) {
-    // (v - v_) x (pt - v_) = v x pt - v x v_ - v_ x pt + v_ x v_ =
-    // = v x pt - v x v_ - v_ x pt
-    return ((area(v, pt) - area(v_, pt) - area(v, v_)) >= -APPROX_ZERO);
-}
-
-
 // same as is_point_in_hp but tests strict inequality (point not on the vector)
 static inline int
 is_point_strictly_in_hp(const struct vertex pt, const struct vertex v_,
                         const struct vertex v) {
-    return ( (area(v, pt) - area(v_, pt) - area(v, v_)) > APPROX_ZERO );
+   return ( (area(v, pt) - area(v_, pt) - area(v, v_)) > 0.0 );
 }
-
-
-// returns 1 if all vertices from polygon p are inside polygon q or 0 if
-// at least one vertex of p is outside of q.
-static inline int
-is_poly_contained(const struct polygon *p, const struct polygon *q) {
-    int i, j;
-    struct vertex *v_, *v;
-
-    v_ = q->v + (q->npv - 1);
-    v = q->v;
-
-    for (i = 0; i < q->npv; i++) {
-        for (j = 0; j < p->npv; j++) {
-            if (!is_point_in_hp(p->v[j], *v_, *v)) {
-                return 0;
-            }
-        }
-        v_ = v;
-        v++;
-    }
-
-    return 1;
-}
-
 
 /**
  * Append a vertex to a polygon.
@@ -410,7 +374,7 @@ append_vertex(struct polygon *p, struct vertex v) {
         return 0;
     }
     if ((p->npv > 0) && equal_vertices(p->v[0], v, VERTEX_ATOL)) {
-        return 1;
+        return 0;
     }
     if (p->npv >= 2 * IMAGE_OUTLINE_NPTS) {
         return 1;
@@ -511,161 +475,108 @@ orient_ccw(struct polygon *p) {
 
 
 /**
- * Compute intersections of two convex polygons.
+ * Clip a polygon to a window.
  *
- * This function implements intersection of convex polygons based on my
- * understanding of the following paper:
- * https://doi.org/10.1016/0146-664X(82)90023-5
- * with a PDF accessible from:
- * https://www.cs.jhu.edu/~misha/Spring16/ORourke82.pdf
+ * This function implements the Sutherland-Hodgman polygon-clipping algorithm
+ * as described in
+ * https://www.cs.drexel.edu/~david/Classes/CS430/Lectures/L-05_Polygons.6.pdf
  *
- * The code is also modified to include some differences to the algorithm
- * present in C code published here
- * https://www.science.smith.edu/~jorourke/books/ftp.html and also other
- * changes to make it work for special cases.
+ * @param[in] struct polygon p - polygon (last vertex != first)
+ * @param[in] struct polygon wnd - clipping window - must be a a convex polygon
+ *                                 (last vertex != first)
+ * @param[out] struct polygon *cp - intersection polygon
  *
- * @param[in] struct polygon p - first polygon (last vertex != first)
- * @param[in] struct polygon q - second polygon (last vertex != first)
- * @param[out] struct polygon *pq - intersection polygon
- *
- * @returns 0 on success, 1 on failure (input polygons have less than 3 vertices)
+ * @returns 0 - success, 1 - failure (input polygons have less than 3 vertices)
  */
 int
-intersect_convex_polygons(const struct polygon *p, const struct polygon *q,
-                          struct polygon *pq) {
+clip_polygon_to_window(const struct polygon *p, const struct polygon *wnd,
+                       struct polygon *cp) {
 
-    int ip=0, iq=0, first_k, k;
-    int inside=0;  // 0 - not set, 1 - "P", -1 - "Q"
-    int pv_in_hpdq, qv_in_hpdp;
-    struct vertex *pv, *pv_, *qv, *qv_, dp, dq, vi, first_intersect;
-    double t, u, d, dot, signed_area;
+    int k, j;
+    int v1_inside, v2_inside;
+    struct polygon p1, p2, *ppin, *ppout, *tpp;
+    struct vertex *pv, *pv_, *wv, *wv_, dp, dw, vi;
+    double t, u, d, signed_area;
 
-    if ((p->npv < 3) || (q->npv < 3)) {
+    if ((p->npv < 3) || (wnd->npv < 3)) {
         return 1;
     }
 
     orient_ccw(p);
-    orient_ccw(q);
+    orient_ccw(wnd);
 
-    if (is_poly_contained(p, q)) {
-        *pq = *p;
-        simplify_polygon(pq);
-        return 0;
-    } else if (is_poly_contained(q, p)) {
-        *pq = *q;
-        simplify_polygon(pq);
-        return 0;
+    p1 = *p;
+
+    ppin = &p2;
+    ppout = &p1;
+
+    wv_ = (struct vertex *)(wnd->v + (wnd->npv - 1));
+    wv = (struct vertex *)wnd->v;
+
+    for (k = 0; k < wnd->npv; k++) {
+        dw.x = wv->x - wv_->x;
+        dw.y = wv->y - wv_->y;
+
+        // use output from previous iteration as input for the current
+        tpp = ppin;
+        ppin = ppout;
+        ppout = tpp;
+        ppout->npv = 0;
+
+        pv_ = (struct vertex *)(ppin->v + (ppin->npv - 1));
+        pv = (struct vertex *)ppin->v;
+
+        for (j = 0; j < ppin->npv; j++) {
+            dp.x = pv->x - pv_->x;
+            dp.y = pv->y - pv_->y;
+
+            v1_inside = is_point_strictly_in_hp(*wv_, *wv, *pv_);
+            v2_inside = is_point_strictly_in_hp(*wv_, *wv, *pv);
+
+            if (v2_inside != v1_inside) {
+                // compute intersection point:
+                // https://en.wikipedia.org/wiki/Line–line_intersection
+                t = (pv_->y - wv_->y) * dw.x - (pv_->x - wv_->x) * dw.y;
+                // u = (pv_->y - wv_->y) * dp.x - (pv_->x - wv_->x) * dp.y;
+                d = area(dp, dw);  // d != 0 because (v2_inside != v1_inside)
+
+                t = t / d;
+                // u = u / d;
+
+                vi.x = pv_->x + (pv->x - pv_->x) * t;
+                vi.y = pv_->y + (pv->y - pv_->y) * t;
+                // vi.x = 0.5 * (pv_->x + wv_->x + (pv->x - pv_->x) * t +
+                //               (wv->x - wv_->x) * u);
+                // vi.y = 0.5 * (pv_->y + wv_->y + (pv->y - pv_->y) * t +
+                //               (wv->y - wv_->y) * u);
+
+                append_vertex(ppout, vi);
+                if (v2_inside) {
+                    // outside to inside:
+                    append_vertex(ppout, *pv);
+                }
+            } else if (v1_inside) {
+                // both edge vertices are inside
+                append_vertex(ppout, *pv);
+            }
+            // nothing to do when both edge vertices are outside
+
+            // advance polygon edge:
+            pv_ = pv;
+            pv = pv + 1;
+        }
+
+        // advance window edge:
+        wv_ = wv;
+        wv = wv + 1;
     }
 
-    pv_ = (struct vertex *)(p->v + (p->npv - 1));
-    pv = (struct vertex *)p->v;
-    qv_ = (struct vertex *)(q->v + (q->npv - 1));
-    qv = (struct vertex *)q->v;
-
-    first_k = -2;
-    pq->npv = 0;
-
-    for (k = 0; k <= 2 * (p->npv + q->npv); k++) {
-        dp.x = pv->x - pv_->x;
-        dp.y = pv->y - pv_->y;
-        dq.x = qv->x - qv_->x;
-        dq.y = qv->y - qv_->y;
-
-        // https://en.wikipedia.org/wiki/Line–line_intersection
-        t = (pv_->y - qv_->y) * dq.x - (pv_->x - qv_->x) * dq.y;
-        u = (pv_->y - qv_->y) * dp.x - (pv_->x - qv_->x) * dp.y;
-        signed_area = area(dp, dq);
-        if (signed_area >= 0.0) {
-            d = signed_area;
-        } else {
-            t = -t;
-            u = -u;
-            d = -signed_area;
-        }
-
-        pv_in_hpdq = is_point_strictly_in_hp(*qv_, *qv, *pv);
-        qv_in_hpdp = is_point_strictly_in_hp(*pv_, *pv, *qv);
-
-        if ((0.0 <= t) && (t <= d) && (0.0 <= u) && (u <= d) &&
-            (d > APPROX_ZERO)) {
-            t = t / d;
-            // u = u / d;
-            vi.x = pv_->x + (pv->x - pv_->x) * t;
-            vi.y = pv_->y + (pv->y - pv_->y) * t;
-
-            if (first_k < 0) {
-                first_intersect = vi;
-                first_k = k;
-                if (append_vertex(pq, vi)) break;
-            } else if (equal_vertices(first_intersect, vi, VERTEX_ATOL)) {
-                if (k > (first_k + 1)) {
-                    break;
-                }
-                first_k = k;
-            } else {
-                if (append_vertex(pq, vi)) break;
-            }
-
-            if (pv_in_hpdq) {
-                inside = 1;
-            } else if (qv_in_hpdp) {
-                inside = -1;
-            }
-        }
-
-        // advance:
-        if (d < 1.0e-12 && !pv_in_hpdq && !qv_in_hpdp) {
-            if (inside == 1) {
-                iq += 1;
-                qv_ = qv;
-                qv = q->v + mod(iq, q->npv);
-            } else {
-                ip += 1;
-                pv_ = pv;
-                pv = p->v + mod(ip, p->npv);
-            }
-
-        } else if (signed_area >= 0.0) {
-            if (qv_in_hpdp) {
-                if (inside == 1) {
-                    if (append_vertex(pq, *pv)) break;
-                }
-                ip += 1;
-                pv_ = pv;
-                pv = p->v + mod(ip, p->npv);
-            } else {
-                if (inside == -1) {
-                    if (append_vertex(pq, *qv)) break;
-                }
-                iq += 1;
-                qv_ = qv;
-                qv = q->v + mod(iq, q->npv);
-            }
-
-        } else {
-            if (pv_in_hpdq) {
-                if (inside == -1) {
-                    if (append_vertex(pq, *qv)) break;
-                }
-                iq += 1;
-                qv_ = qv;
-                qv = q->v + mod(iq, q->npv);
-            } else {
-                if (inside == 1) {
-                    if (append_vertex(pq, *pv)) break;
-                }
-                ip += 1;
-                pv_ = pv;
-                pv = p->v + mod(ip, q->npv);
-            }
-        }
-    }
-
-    simplify_polygon(pq);
+    orient_ccw(ppout);
+    simplify_polygon(ppout);
+    *cp = *ppout;
 
     return 0;
 }
-
 
 /**
  * Initializes an edge structure from two end vertices.
@@ -903,8 +814,8 @@ get_scanline_limits(struct scanner *s, int y, int *x1, int *x2) {
     xlt = s->left->m * y + s->left->c - MAX_INV_ERR;
     xrt = s->right->m * y + s->right->c + MAX_INV_ERR;
 
-    xmin = s->xmin;// - 0.5;
-    xmax = s->xmax;// + 0.5;
+    xmin = s->xmin;
+    xmax = s->xmax;
     if (s->xmax >= s->xmin) {
         if (xlb < xmin) {
             xlb = xmin;
@@ -960,7 +871,7 @@ map_vertex_to_output(struct driz_param_t* par, struct vertex vin,
  *
  * @param[in] struct driz_param_t - drizzle parameters (bounding box is used)
  * @param[in] struct vertex vout - vertex' coordinates in the output frame
- * @param[out] struct vertex *vout - vertex' coordinates in the input frame
+ * @param[out] struct vertex *vin - vertex' coordinates in the input frame
  * @return 0 no errors and 1 on errors.
  *
 */
@@ -1030,20 +941,19 @@ init_image_scanner(struct driz_param_t* par, struct scanner *s,
     // define a polygon bounding the input image in the output frame:
     // inpq will be updated/overwritten later if coordinate mapping, inversion,
     // and polygon intersection is successful.
-    if (map_vertex_to_output(par, inpq.v[0], p.v) ||
-        map_vertex_to_output(par, inpq.v[1], p.v + 1) ||
-        map_vertex_to_output(par, inpq.v[2], p.v + 2) ||
-        map_vertex_to_output(par, inpq.v[3], p.v + 3)) {
-        s->overlap_valid = 0;
-        driz_error_set_message(
-            par->error,
-            "error computing input image bounding box"
-        );
-        goto _setup_scanner;
+    for (k = 0; k < inpq.npv; ++k) {
+        if (map_vertex_to_output(par, inpq.v[k], p.v + k)) {
+            s->overlap_valid = 0;
+            driz_error_set_message(
+                par->error,
+                "error computing input image bounding box"
+            );
+            goto _setup_scanner;
+        }
     }
-    p.npv = 4;
+    p.npv = inpq.npv;
 
-    // define a polygon bounding output image:
+    // define a polygon bounding the output image:
     ndim = PyArray_DIMS(par->output_data);
     q.npv = 4;
     q.v[0].x = -0.5;
@@ -1055,8 +965,8 @@ init_image_scanner(struct driz_param_t* par, struct scanner *s,
     q.v[3].x = -0.5;
     q.v[3].y = (double)ndim[0] - 0.5;
 
-    // compute intersection of P and Q (in output frame):
-    if (intersect_convex_polygons(&p, &q, &pq)) {
+    // compute intersection of P and Q (in the output frame):
+    if (clip_polygon_to_window(&p, &q, &pq)) {
         s->overlap_valid = 0;
         goto _setup_scanner;
     }
@@ -1070,6 +980,7 @@ init_image_scanner(struct driz_param_t* par, struct scanner *s,
         }
     }
     inpq.npv = pq.npv;
+
     s->overlap_valid = 1;
     orient_ccw(&inpq);
 

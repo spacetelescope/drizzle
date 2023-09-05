@@ -106,8 +106,8 @@ invert_pixmap(struct driz_param_t* par, double xout, double yout,
               double *xin, double *yin);
 
 int
-intersect_convex_polygons(const struct polygon *p, const struct polygon *q,
-                          struct polygon *pq);
+clip_polygon_to_window(const struct polygon *p, const struct polygon *wnd,
+                       struct polygon *cp);
 
 int
 init_scanner(struct polygon *p, struct driz_param_t* par, struct scanner *s);

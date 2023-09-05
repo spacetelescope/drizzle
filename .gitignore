@@ -26,6 +26,7 @@ _build
 
 # VSCode
 .vscode
+*.code-workspace
 
 # Packages/installer info
 *.egg
