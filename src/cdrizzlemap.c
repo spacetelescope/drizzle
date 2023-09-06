@@ -441,7 +441,7 @@ orient_ccw(struct polygon *p) {
     // re-arrange (reverse the order of the) polygon p (input and output)
     // vertices in such a way that polygon p is oriented counter-clockwise.
     int k, m;
-    struct vertex v1, v2, cm;
+    struct vertex v1, v2, cm = {0, 0};
 
     if (p->npv < 3) return;
 
