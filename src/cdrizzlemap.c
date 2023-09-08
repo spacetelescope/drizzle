@@ -347,7 +347,9 @@ area(struct vertex a, struct vertex b) {
     return (a.x * b.y - a.y * b.x);
 }
 
-// same as is_point_in_hp but tests strict inequality (point not on the vector)
+// tests whether a point is in a half-plane of the vector going from
+// vertex v_ to vertex v (including the case of the point lying on the
+// vector (v_, v)). Specifically, it tests (v - v_) x (pt - v_) > 0:
 static inline int
 is_point_strictly_in_hp(const struct vertex pt, const struct vertex v_,
                         const struct vertex v) {
@@ -490,7 +492,7 @@ clip_polygon_to_window(const struct polygon *p, const struct polygon *wnd,
     int v1_inside, v2_inside;
     struct polygon p1, p2, *ppin, *ppout, *tpp;
     struct vertex *pv, *pv_, *wv, *wv_, dp, dw, vi;
-    double t, u, d, signed_area;
+    double t, u, d, signed_area, app_, aww_;
 
     if ((p->npv < 3) || (wnd->npv < 3)) {
         return 1;
@@ -530,19 +532,11 @@ clip_polygon_to_window(const struct polygon *p, const struct polygon *wnd,
             if (v2_inside != v1_inside) {
                 // compute intersection point:
                 // https://en.wikipedia.org/wiki/Line–line_intersection
-                t = (pv_->y - wv_->y) * dw.x - (pv_->x - wv_->x) * dw.y;
-                // u = (pv_->y - wv_->y) * dp.x - (pv_->x - wv_->x) * dp.y;
                 d = area(dp, dw);  // d != 0 because (v2_inside != v1_inside)
-
-                t = t / d;
-                // u = u / d;
-
-                vi.x = pv_->x + (pv->x - pv_->x) * t;
-                vi.y = pv_->y + (pv->y - pv_->y) * t;
-                // vi.x = 0.5 * (pv_->x + wv_->x + (pv->x - pv_->x) * t +
-                //               (wv->x - wv_->x) * u);
-                // vi.y = 0.5 * (pv_->y + wv_->y + (pv->y - pv_->y) * t +
-                //               (wv->y - wv_->y) * u);
+                app_ = area(*pv, *pv_);
+                aww_ = area(*wv, *wv_);
+                vi.x = (app_ * dw.x - aww_ * dp.x) / d;
+                vi.y = (app_ * dw.y - aww_ * dp.y) / d;
 
                 append_vertex(ppout, vi);
                 if (v2_inside) {
