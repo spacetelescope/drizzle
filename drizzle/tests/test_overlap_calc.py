@@ -4,12 +4,24 @@ from math import sqrt
 
 import numpy as np
 
-from drizzle.cdrizzle import intersect_convex_polygons, invert_pixmap
+from drizzle.cdrizzle import clip_polygon, invert_pixmap
 
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
 SQ2 = 1.0 / sqrt(2.0)
+
+
+def _is_poly_eq(p1, p2, rtol=0, atol=1e-12):
+    if len(p1) != len(p2):
+        return False
+
+    p1 = p1[:]
+    for _ in p1:
+        p1.append(p1.pop(0))
+        if np.allclose(p1, p2, rtol=rtol, atol=atol):
+            return True
+    return False
 
 
 def _coord_mapping(xin, yin):
@@ -45,7 +57,6 @@ def test_invert_pixmap():
     yout = yout.reshape((1000, 1200))
     pixmap = np.dstack([xout, yout])
 
-
     test_coords = [
         (300, 600),
         (0, 0),
@@ -69,11 +80,8 @@ def test_poly_intersection_with_self():
     for k in range(4):
         q = _roll_vertices(p, k)
 
-        pq = intersect_convex_polygons(p, q)
-        assert pq == p
-
-        pq = intersect_convex_polygons(q, p)
-        assert pq == q
+        pq = clip_polygon(q, p)
+        assert _is_poly_eq(pq, q)
 
 
 @pytest.mark.parametrize(
@@ -94,7 +102,7 @@ def test_poly_intersection_shifted(shift):
     for k in range(4):
         q = [(x + sx, y + sy) for x, y in p]
         q = _roll_vertices(q, k)
-        pq = intersect_convex_polygons(p, q)
+        pq = clip_polygon(q, p)
         assert np.allclose(sorted(pq), pq_ref)
 
 
@@ -116,7 +124,7 @@ def test_poly_intersection_shifted_large(shift):
     for k in range(4):
         q = [(x + sx, y + sy) for x, y in p]
         q = _roll_vertices(q, k)
-        pq = intersect_convex_polygons(p, q)
+        pq = clip_polygon(p, q)
         assert len(pq) == 4
         assert np.allclose(sorted(pq), pq_ref)
 
@@ -128,7 +136,7 @@ def test_poly_intersection_rotated45():
 
     for k in range(4):
         q = _roll_vertices(q, k)
-        pq = intersect_convex_polygons(p, q)
+        pq = clip_polygon(p, q)
         assert np.allclose(sorted(pq), pq_ref)
 
 
@@ -145,9 +153,9 @@ def test_poly_intersection_flipped_axis(axis):
 
     for k in range(4):
         q = _roll_vertices(q, k)
-        pq = intersect_convex_polygons(p, q)
-        assert len(pq) <= 2
-        assert (0, 0) in pq or (1, 0) in pq or (0, 1) in pq
+        pq = clip_polygon(p, q)
+        assert len(pq) == 0
+
 
 def test_poly_intersection_reflect_origin():
     p = [(0, 0), (1, 0), (1, 1), (0, 1)]
@@ -156,8 +164,8 @@ def test_poly_intersection_reflect_origin():
 
     for k in range(4):
         q = _roll_vertices(q, k)
-        pq = intersect_convex_polygons(p, q)
-        assert pq ==[(0, 0)]
+        pq = clip_polygon(p, q)
+        assert not pq
 
 
 @pytest.mark.parametrize(
@@ -169,19 +177,13 @@ def test_poly_intersection_reflect_origin():
     ],
 )
 def test_poly_includes_the_other(q, small):
-    p = [(0, 0), (1, 0), (1, 1), (0, 1)]
+    wnd = [(0, 0), (1, 0), (1, 1), (0, 1)]
 
     for k in range(4):
         q = _roll_vertices(q, k)
-        pq = intersect_convex_polygons(p, q)
-        qp = intersect_convex_polygons(q, p)
+        qp = clip_polygon(q, wnd)
 
-        if small:
-            assert pq == q
-            assert qp == q
-        else:
-            assert pq == p
-            assert qp == p
+        assert _is_poly_eq(qp, q if small else wnd)
 
 
 @pytest.mark.parametrize(
@@ -197,7 +199,7 @@ def test_poly_triangle_common_side(q):
 
     for k in range(3):
         q = _roll_vertices(q, k)
-        pq = intersect_convex_polygons(p, q)
+        pq = clip_polygon(p, q)
         assert np.allclose(sq, sorted(pq))
 
 
@@ -208,7 +210,7 @@ def test_poly_triangle_common_side_lg():
 
     for k in range(3):
         q = _roll_vertices(q, k)
-        pq = intersect_convex_polygons(p, q)
+        pq = clip_polygon(p, q)
         assert np.allclose(ref_pq, sorted(pq))
 
 
@@ -221,8 +223,32 @@ def test_poly_intersection_with_self_extra_vertices():
     for k in range(4):
         q = _roll_vertices(q, k)
 
-        pq = intersect_convex_polygons(p, q)
+        pq = clip_polygon(p, q)
         assert sorted(pq) == p_ref
 
-        pq = intersect_convex_polygons(q, p)
+        pq = clip_polygon(q, p)
         assert sorted(pq) == p_ref
+
+
+def test_intersection_case01():
+    # a real case of failure of the code from PR #104
+    p = [
+        (4517.377385, 8863.424319),
+        (5986.279535, 12966.888023),
+        (1917.908619, 14391.538506),
+        (453.893145, 10397.019260),
+    ]
+
+    wnd = [(-0.5, -0.5), (5224.5, -0.5), (5224.5, 15999.5), (-0.5, 15999.5)]
+
+    cp_ref = [
+        (4517.377385, 8863.424319),
+        (5224.5, 10838.812526396974),
+        (5224.5, 13233.64580022457),
+        (1917.908619, 14391.538506),
+        (453.893145, 10397.01926),
+    ]
+
+    cp = clip_polygon(p, wnd)
+
+    assert _is_poly_eq(cp, cp_ref)

@@ -17,6 +17,9 @@ Release Notes
   missing in the resampled data when output image size was set by the
   caller to be smaller than size needed to hold *all* image data. [#104]
 
+- Replace buggy polygon intersection algorithm with the Sutherland-Hodgman
+  polygon-clipping algorithm. [#110]
+
 
 1.13.7 (2023-02-09)
 ===================
