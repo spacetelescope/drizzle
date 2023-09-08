@@ -103,20 +103,9 @@ rst_epilog = """
 # -- Project information ------------------------------------------------------
 
 # This does not *have* to match the package name, but typically does
-# <<<<<<< HEAD
-# project = setup_cfg['name']
-#
-# author = ', '.join(v['name'] for v in setup_cfg['authors'][:3])
-# if len(setup_cfg['authors']) > 3:
-#     author = author + ", et al."
-#
-# copyright = '{0}, {1}'.format(
-#     datetime.datetime.now().year, author)
-# =======
 project = metadata['name']
 author = metadata['authors'][0]['name']
-copyright = '{datetime.datetime.now().year}, {author }'
-#>>>>>>> 2a12fc2... fix `conf.py` to use `pyproject.toml`
+copyright = f'{datetime.datetime.now().year}, {author }'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -163,7 +152,7 @@ release = package.__version__
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = '{project} v{release}'
+html_title = f'{project} v{release}'
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = project + 'doc'
