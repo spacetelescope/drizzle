@@ -7,7 +7,7 @@ authors = [
 ]
 dependencies = [
     "numpy",
-    "astropy>=5.0.4",
+    "astropy",
 ]
 dynamic = [
     "version",
@@ -34,10 +34,11 @@ test = [
     "coverage",
 ]
 docs = [
-    "toml; python_version<'3.11'",
-    "matplotlib",
+    "tomli; python_version<'3.11'",
     "sphinx",
     "sphinx-automodapi",
+    "sphinx-rtd-theme",
+    "matplotlib",
 ]
 
 [build-system]
@@ -45,7 +46,7 @@ requires = [
     "setuptools>=61.2",
     "setuptools_scm[toml]>=3.4",
     "wheel",
-    "oldest-supported-numpy",
+    "numpy",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -55,15 +56,6 @@ include-package-data = false
 
 [tool.setuptools.packages.find]
 namespaces = false
-
-[tool.build_docs]
-source_dir = "docs"
-build_dir = "docs/_build"
-all_files = "1"
-
-[tool.distutils.upload_docs]
-upload_dir = "docs/_build/html"
-show_response = 1
 
 [tool.pytest.ini_options]
 minversion = "4.6"

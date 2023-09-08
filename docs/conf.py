@@ -26,21 +26,52 @@
 # be accessible, and the documentation will not build correctly.
 
 import datetime
-from os import path
+import os
 import sys
+from pathlib import Path
 
 
 # Get configuration information from pyproject.toml
-try:
+# try:
+#     import tomllib
+# except ImportError:
+#     import toml as tomllib
+#
+# sys.path.insert(1, '..')
+#
+# setup_cfg = tomllib.load(
+#     path.join(path.dirname(__file__), '..', 'pyproject.toml')
+# )['project']
+
+if sys.version_info < (3, 11):
+    import tomli as tomllib
+else:
     import tomllib
-except ImportError:
-    import toml as tomllib
 
-sys.path.insert(1, '..')
+#sys.path.insert(0, os.path.abspath('../'))
 
-setup_cfg = tomllib.load(
-    path.join(path.dirname(__file__), '..', 'pyproject.toml')
-)['project']
+
+def find_mod_objs_patched(*args, **kwargs):
+    from sphinx_automodapi.utils import find_mod_objs
+
+    return find_mod_objs(args[0], onlylocals=True)
+
+
+def patch_automodapi(app):
+    """Monkey-patch the automodapi extension to exclude imported members"""
+    from sphinx_automodapi import automodsumm
+
+    automodsumm.find_mod_objs = find_mod_objs_patched
+
+
+def setup(app):
+    app.connect("builder-inited", patch_automodapi)
+
+
+with open(Path(__file__).parent.parent / "pyproject.toml", "rb") as configuration_file:
+    conf = tomllib.load(configuration_file)
+metadata = conf["project"]
+
 
 extensions = [
     'sphinx_automodapi.automodapi',
@@ -72,21 +103,16 @@ rst_epilog = """
 # -- Project information ------------------------------------------------------
 
 # This does not *have* to match the package name, but typically does
-project = setup_cfg['name']
-
-author = ', '.join(v['name'] for v in setup_cfg['authors'][:3])
-if len(setup_cfg['authors']) > 3:
-    author = author + ", et al."
-
-copyright = '{0}, {1}'.format(
-    datetime.datetime.now().year, author)
+project = metadata['name']
+author = metadata['authors'][0]['name']
+copyright = f'{datetime.datetime.now().year}, {author }'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 
-__import__(setup_cfg['name'])
-package = sys.modules[setup_cfg['name']]
+__import__(project)
+package = sys.modules[project]
 
 # The short X.Y version.
 version = package.__version__.split('-', 1)[0]
@@ -126,7 +152,7 @@ release = package.__version__
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = '{0} v{1}'.format(project, release)
+html_title = f'{project} v{release}'
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = project + 'doc'
