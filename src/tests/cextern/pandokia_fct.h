@@ -166,10 +166,10 @@ pandokia_skip (fct_logger_i * li, fct_logger_evt_t const *e)
 
 /*
  * pandokia_logger_object serves two purposes:
- * 
+ *
  * - a flag that indicates we are running in pandokia
  * - a shortcut to the actual pandokia data
- * 
+ *
  * Otherwise, you would have to walk some fairly complicated data
  * structures inside fctx to get to this single instance.
  */
@@ -182,7 +182,7 @@ struct _pandokia_logger *pandokia_logger_object = NULL;
 fct_logger_i *
 pandokia_logger (void)
 {
-	struct _pandokia_logger *l = 
+	struct _pandokia_logger *l =
 		(struct _pandokia_logger *) calloc (1, sizeof ( struct _pandokia_logger));
 	if (l == NULL)
 		return NULL;
@@ -223,7 +223,7 @@ pandokia_logger (void)
 	l->pdk_basename = strdup(l->pdk_file);	/* leaked */
 	assert( l->pdk_basename );
 	{ char *s = strrchr(l->pdk_basename,'.'); if (s) *s=0; }
-	
+
 	return (fct_logger_i *) l;
 }
 
@@ -380,7 +380,7 @@ void pandokia_okfile_real( fctkern_t *fctkern_ptr__, char *filename)
 
 		/* */
 		free( okfile_name );
-		
+
 		}
 
 	/*
