@@ -13,7 +13,7 @@
 
 static char buf[1024];
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Update the flux and counts in the output image using a weighted average
  *
  * p:   structure containing options, input, and output
@@ -26,7 +26,8 @@ static char buf[1024];
 
 inline_macro static int
 update_data(struct driz_param_t *p, const integer_t ii, const integer_t jj,
-            const float d, const float vc, const float dow) {
+            const float d, const float vc, const float dow)
+{
     double vc_plus_dow;
 
     if (dow == 0.0f) return 0;
@@ -35,19 +36,21 @@ update_data(struct driz_param_t *p, const integer_t ii, const integer_t jj,
 
     if (vc == 0.0f) {
         if (oob_pixel(p->output_data, ii, jj)) {
-            driz_error_format_message(p->error, "OOB in output_data[%d,%d]", ii,
-                                      jj);
+            driz_error_format_message(p->error, "OOB in output_data[%d,%d]",
+                                      ii, jj);
             return 1;
-        } else {
+        }
+        else {
             set_pixel(p->output_data, ii, jj, d);
         }
-
-    } else {
+    }
+    else {
         if (oob_pixel(p->output_data, ii, jj)) {
-            driz_error_format_message(p->error, "OOB in output_data[%d,%d]", ii,
-                                      jj);
+            driz_error_format_message(p->error, "OOB in output_data[%d,%d]",
+                                      ii, jj);
             return 1;
-        } else {
+        }
+        else {
             double value;
             value = (get_pixel(p->output_data, ii, jj) * vc + dow * d) /
                     (vc_plus_dow);
@@ -59,21 +62,23 @@ update_data(struct driz_param_t *p, const integer_t ii, const integer_t jj,
         driz_error_format_message(p->error, "OOB in output_counts[%d,%d]", ii,
                                   jj);
         return 1;
-    } else {
+    }
+    else {
         set_pixel(p->output_counts, ii, jj, vc_plus_dow);
     }
 
     return 0;
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * The bit value, trimmed to the appropriate range
  *
  * uuid: the id of the input image
  */
 
 integer_t
-compute_bit_value(integer_t uuid) {
+compute_bit_value(integer_t uuid)
+{
     integer_t bv;
     int np, bit_no;
 
@@ -84,7 +89,7 @@ compute_bit_value(integer_t uuid) {
     return bv;
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Compute area of box overlap. Calculate the area common to input clockwise
  * polygon x(n), y(n) with square (is, js) to (is+1, js+1). This version is for
  * a quadrilateral. Used by do_square_kernel.
@@ -97,7 +102,8 @@ compute_bit_value(integer_t uuid) {
  */
 
 double
-compute_area(double is, double js, const double x[4], const double y[4]) {
+compute_area(double is, double js, const double x[4], const double y[4])
+{
     int ipoint, jpoint, idim, jdim, iside, outside, count;
     int positive[2];
     double area, width;
@@ -107,8 +113,8 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
     /* The area for a qadrilateral clipped to a square of unit length whose
      * sides are aligned with the axes. The area is computed by computing the
      * area under each line segment clipped to the boundary of three sides of
-     * the sqaure. Since the computed width is positive for two of the sides and
-     * negative for the other two, we subtract the area outside the
+     * the sqaure. Since the computed width is positive for two of the sides
+     * and negative for the other two, we subtract the area outside the
      * quadrilateral without any extra code.
      */
     area = 0.0;
@@ -152,25 +158,26 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
                              */
                             width = segment[1][0] - segment[0][0];
                             area += width;
-                        } else {
+                        }
+                        else {
                             goto _nextsegment;
                         }
-
-                    } else {
+                    }
+                    else {
                         /* Segment entirely within the boundary */
                         if (count == 0) {
                             /* Use the trapezoid formula to compute the area
                              * under the segment. Delta is the distance to the
-                             * top of the square and is negative or zero for the
-                             * segment inside the square
+                             * top of the square and is negative or zero for
+                             * the segment inside the square
                              */
                             width = segment[1][0] - segment[0][0];
                             area += 0.5 * width *
                                     ((1.0 + delta[0]) + (1.0 + delta[1]));
                         }
                     }
-
-                } else {
+                }
+                else {
                     /* If ends of the line segment are on opposite sides of the
                      * boundary, calculate midpoint, the point of intersection
                      */
@@ -195,7 +202,8 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
                             /* Delta[0] is at the crossing point and thus zero
                              */
                             area += 0.5 * width * (1.0 + (1.0 + delta[1]));
-                        } else {
+                        }
+                        else {
                             width = segment[1][0] - midpoint[0];
                             area += width;
                             width = midpoint[0] - segment[0][0];
@@ -203,9 +211,10 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
                              */
                             area += 0.5 * width * ((1.0 + delta[0]) + 1.0);
                         }
-
-                    } else {
-                        /* Clip segment against each boundary except the last */
+                    }
+                    else {
+                        /* Clip segment against each boundary except the last
+                         */
                         segment[outside][0] = midpoint[0];
                         segment[outside][1] = midpoint[1];
                     }
@@ -220,10 +229,10 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
     return fabs(area);
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Calculate overlap between an arbitrary rectangle, aligned with the axes, and
- * a pixel. This is a simplified version of the compute_area, only valid if axes
- * are nearly aligned. Used by do_kernel_turbo.
+ * a pixel. This is a simplified version of the compute_area, only valid if
+ * axes are nearly aligned. Used by do_kernel_turbo.
  *
  * i:    the x coordinate of a pixel on the output image
  * j:    the y coordinate of a pixel on the output image
@@ -235,8 +244,9 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
  */
 
 static inline_macro double
-over(const integer_t i, const integer_t j, const double xmin, const double xmax,
-     const double ymin, const double ymax) {
+over(const integer_t i, const integer_t j, const double xmin,
+     const double xmax, const double ymin, const double ymax)
+{
     double dx, dy;
 
     assert(xmin <= xmax);
@@ -250,14 +260,15 @@ over(const integer_t i, const integer_t j, const double xmin, const double xmax,
     return 0.0;
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * The kernel assumes all the flux in an input pixel is at the center
  *
  * p: structure containing options, input, and output
  */
 
 static int
-do_kernel_point(struct driz_param_t *p) {
+do_kernel_point(struct driz_param_t *p)
+{
     struct scanner s;
     integer_t i, j, ii, jj;
     integer_t ybounds[2], osize[2];
@@ -283,13 +294,15 @@ do_kernel_point(struct driz_param_t *p) {
             p->nskip += (ymax + 1 - j);
             p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
             break;
-        } else if (n == 2 || n == 3) {
+        }
+        else if (n == 2 || n == 3) {
             // pixel centered on y is outside of scanner's limits or image [0,
             // height - 1] OR: limits (x1, x2) are equal (line width is 0)
             p->nmiss += (p->xmax - p->xmin);
             ++p->nskip;
             continue;
-        } else {
+        }
+        else {
             // limits (x1, x2) are equal (line width is 0)
             p->nmiss += (p->xmax - p->xmin) - (xmax + 1 - xmin);
         }
@@ -299,16 +312,16 @@ do_kernel_point(struct driz_param_t *p) {
 
             if (map_pixel(p->pixmap, i, j, &ox, &oy)) {
                 ++p->nmiss;
-
-            } else {
+            }
+            else {
                 ii = fortran_round(ox);
                 jj = fortran_round(oy);
 
                 /* Check it is on the output image */
                 if (ii < 0 || ii >= osize[0] || jj < 0 || jj >= osize[1]) {
                     ++p->nmiss;
-
-                } else {
+                }
+                else {
                     vc = get_pixel(p->output_counts, ii, jj);
 
                     /* Allow for stretching because of scale change */
@@ -319,7 +332,8 @@ do_kernel_point(struct driz_param_t *p) {
                        calculated */
                     if (p->weights) {
                         dow = get_pixel(p->weights, i, j) * p->weight_scale;
-                    } else {
+                    }
+                    else {
                         dow = 1.0;
                     }
 
@@ -340,7 +354,7 @@ do_kernel_point(struct driz_param_t *p) {
     return 0;
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * This kernel assumes flux is distrubuted evenly across a circle around the
  * center of a pixel
  *
@@ -348,7 +362,8 @@ do_kernel_point(struct driz_param_t *p) {
  */
 
 static int
-do_kernel_tophat(struct driz_param_t *p) {
+do_kernel_tophat(struct driz_param_t *p)
+{
     struct scanner s;
     integer_t bv, i, j, ii, jj, nhit, nxi, nxa, nyi, nya;
     integer_t ybounds[2], osize[2];
@@ -377,13 +392,15 @@ do_kernel_tophat(struct driz_param_t *p) {
             p->nskip += (ymax + 1 - j);
             p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
             break;
-        } else if (n == 2 || n == 3) {
+        }
+        else if (n == 2 || n == 3) {
             // pixel centered on y is outside of scanner's limits or image [0,
             // height - 1] OR: limits (x1, x2) are equal (line width is 0)
             p->nmiss += (p->xmax - p->xmin);
             ++p->nskip;
             continue;
-        } else {
+        }
+        else {
             // limits (x1, x2) are equal (line width is 0)
             p->nmiss += (p->xmax - p->xmin) - (xmax + 1 - xmin);
         }
@@ -393,8 +410,8 @@ do_kernel_tophat(struct driz_param_t *p) {
 
             if (map_pixel(p->pixmap, i, j, &ox, &oy)) {
                 nhit = 0;
-
-            } else {
+            }
+            else {
                 /* Offset within the subset */
                 xxi = ox - pfo;
                 xxa = ox + pfo;
@@ -411,12 +428,14 @@ do_kernel_tophat(struct driz_param_t *p) {
                 /* Allow for stretching because of scale change */
                 d = get_pixel(p->data, i, j) * scale2;
 
-                /* Scale the weighting mask by the scale factor and inversely by
-                   the Jacobian to ensure conservation of weight in the output
+                /* Scale the weighting mask by the scale factor and inversely
+                   by the Jacobian to ensure conservation of weight in the
+                   output
                  */
                 if (p->weights) {
                     dow = get_pixel(p->weights, i, j) * p->weight_scale;
-                } else {
+                }
+                else {
                     dow = 1.0;
                 }
 
@@ -432,7 +451,8 @@ do_kernel_tophat(struct driz_param_t *p) {
                         r2 = ddx * ddx + ddy * ddy;
 
                         /* Weight is one within the specified radius and zero
-                           outside. Note: weight isn't conserved in this case */
+                           outside. Note: weight isn't conserved in this case
+                         */
                         if (r2 <= pfo2) {
                             /* Count the hits */
                             nhit++;
@@ -460,7 +480,7 @@ do_kernel_tophat(struct driz_param_t *p) {
     return 0;
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * This kernel assumes the flux is distributed acrass a gaussian around the
  * center of an input pixel
  *
@@ -468,7 +488,8 @@ do_kernel_tophat(struct driz_param_t *p) {
  */
 
 static int
-do_kernel_gaussian(struct driz_param_t *p) {
+do_kernel_gaussian(struct driz_param_t *p)
+{
     struct scanner s;
     integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit;
     integer_t ybounds[2], osize[2];
@@ -508,13 +529,15 @@ do_kernel_gaussian(struct driz_param_t *p) {
             p->nskip += (ymax + 1 - j);
             p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
             break;
-        } else if (n == 2 || n == 3) {
+        }
+        else if (n == 2 || n == 3) {
             // pixel centered on y is outside of scanner's limits or image
             // [0, height - 1] OR: limits (x1, x2) are equal (line width is 0)
             p->nmiss += (p->xmax - p->xmin);
             ++p->nskip;
             continue;
-        } else {
+        }
+        else {
             // limits (x1, x2) are equal (line width is 0)
             p->nmiss += (p->xmax - p->xmin) - (xmax + 1 - xmin);
         }
@@ -524,8 +547,8 @@ do_kernel_gaussian(struct driz_param_t *p) {
 
             if (map_pixel(p->pixmap, i, j, &ox, &oy)) {
                 nhit = 0;
-
-            } else {
+            }
+            else {
                 /* Offset within the subset */
                 xxi = ox - pfo;
                 xxa = ox + pfo;
@@ -542,12 +565,14 @@ do_kernel_gaussian(struct driz_param_t *p) {
                 /* Allow for stretching because of scale change */
                 d = get_pixel(p->data, i, j) * scale2;
 
-                /* Scale the weighting mask by the scale factor and inversely by
-                   the Jacobian to ensure conservation of weight in the output
+                /* Scale the weighting mask by the scale factor and inversely
+                   by the Jacobian to ensure conservation of weight in the
+                   output
                  */
                 if (p->weights) {
                     w = get_pixel(p->weights, i, j) * p->weight_scale;
-                } else {
+                }
+                else {
                     w = 1.0;
                 }
 
@@ -590,7 +615,7 @@ do_kernel_gaussian(struct driz_param_t *p) {
     return 0;
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * This kernel assumes flux of input pixel is distributed according to lanczos
  * function
  *
@@ -598,7 +623,8 @@ do_kernel_gaussian(struct driz_param_t *p) {
  */
 
 static int
-do_kernel_lanczos(struct driz_param_t *p) {
+do_kernel_lanczos(struct driz_param_t *p)
+{
     struct scanner s;
     integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit, ix, iy;
     integer_t ybounds[2], osize[2];
@@ -645,13 +671,15 @@ do_kernel_lanczos(struct driz_param_t *p) {
             p->nskip += (ymax + 1 - j);
             p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
             break;
-        } else if (n == 2 || n == 3) {
+        }
+        else if (n == 2 || n == 3) {
             // pixel centered on y is outside of scanner's limits or image [0,
             // height - 1] OR: limits (x1, x2) are equal (line width is 0)
             p->nmiss += (p->xmax - p->xmin);
             ++p->nskip;
             continue;
-        } else {
+        }
+        else {
             // limits (x1, x2) are equal (line width is 0)
             p->nmiss += (p->xmax - p->xmin) - (xmax + 1 - xmin);
         }
@@ -659,8 +687,8 @@ do_kernel_lanczos(struct driz_param_t *p) {
         for (i = xmin; i <= xmax; ++i) {
             if (map_pixel(p->pixmap, i, j, &xx, &yy)) {
                 nhit = 0;
-
-            } else {
+            }
+            else {
                 xxi = xx - dx - pfo;
                 xxa = xx - dx + pfo;
                 yyi = yy - dy - pfo;
@@ -676,12 +704,14 @@ do_kernel_lanczos(struct driz_param_t *p) {
                 /* Allow for stretching because of scale change */
                 d = get_pixel(p->data, i, j) * scale2;
 
-                /* Scale the weighting mask by the scale factor and inversely by
-                   the Jacobian to ensure conservation of weight in the output
+                /* Scale the weighting mask by the scale factor and inversely
+                   by the Jacobian to ensure conservation of weight in the
+                   output
                  */
                 if (p->weights) {
                     w = get_pixel(p->weights, i, j) * p->weight_scale;
-                } else {
+                }
+                else {
                     w = 1.0;
                 }
 
@@ -689,14 +719,15 @@ do_kernel_lanczos(struct driz_param_t *p) {
                 for (jj = nyi; jj <= nya; ++jj) {
                     for (ii = nxi; ii <= nxa; ++ii) {
                         /* X and Y offsets */
-                        ix =
-                            fortran_round(fabs(xx - (double)ii) * lanczos.sdp) +
-                            1;
-                        iy =
-                            fortran_round(fabs(yy - (double)jj) * lanczos.sdp) +
-                            1;
+                        ix = fortran_round(fabs(xx - (double)ii) *
+                                           lanczos.sdp) +
+                             1;
+                        iy = fortran_round(fabs(yy - (double)jj) *
+                                           lanczos.sdp) +
+                             1;
 
-                        /* Weight is product of Lanczos function values in X and
+                        /* Weight is product of Lanczos function values in X
+                         * and
                          * Y */
                         dover = lanczos.lut[ix] * lanczos.lut[iy];
 
@@ -730,7 +761,7 @@ do_kernel_lanczos(struct driz_param_t *p) {
     return 0;
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * This kernel assumes the input flux is evenly distributed over a rectangle
  * whose sides are aligned with the ouput pixel. Called turbo because it is
  * fast, but approximate.
@@ -739,7 +770,8 @@ do_kernel_lanczos(struct driz_param_t *p) {
  */
 
 static int
-do_kernel_turbo(struct driz_param_t *p) {
+do_kernel_turbo(struct driz_param_t *p)
+{
     struct scanner s;
     integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit, iis, iie, jjs, jje;
     integer_t osize[2];
@@ -771,13 +803,15 @@ do_kernel_turbo(struct driz_param_t *p) {
             p->nskip += (ymax + 1 - j);
             p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
             break;
-        } else if (n == 2 || n == 3) {
+        }
+        else if (n == 2 || n == 3) {
             // pixel centered on y is outside of scanner's limits or image [0,
             // height - 1] OR: limits (x1, x2) are equal (line width is 0)
             p->nmiss += (p->xmax - p->xmin);
             ++p->nskip;
             continue;
-        } else {
+        }
+        else {
             // limits (x1, x2) are equal (line width is 0)
             p->nmiss += (p->xmax - p->xmin) - (xmax + 1 - xmin);
         }
@@ -787,8 +821,8 @@ do_kernel_turbo(struct driz_param_t *p) {
 
             if (map_pixel(p->pixmap, i, j, &ox, &oy)) {
                 nhit = 0;
-
-            } else {
+            }
+            else {
                 /* Offset within the subset */
                 xxi = ox - pfo;
                 xxa = ox + pfo;
@@ -811,20 +845,22 @@ do_kernel_turbo(struct driz_param_t *p) {
                 /* Allow for stretching because of scale change */
                 d = get_pixel(p->data, i, j) * (float)scale2;
 
-                /* Scale the weighting mask by the scale factor and inversely by
-                   the Jacobian to ensure conservation of weight in the output.
+                /* Scale the weighting mask by the scale factor and inversely
+                   by the Jacobian to ensure conservation of weight in the
+                   output.
                  */
                 if (p->weights) {
                     w = get_pixel(p->weights, i, j) * p->weight_scale;
-                } else {
+                }
+                else {
                     w = 1.0;
                 }
 
                 /* Loop over the output pixels which could be affected */
                 for (jj = jjs; jj <= jje; ++jj) {
                     for (ii = iis; ii <= iie; ++ii) {
-                        /* Calculate the overlap using the simpler "aligned" box
-                           routine */
+                        /* Calculate the overlap using the simpler "aligned"
+                           box routine */
                         dover = over(ii, jj, xxi, xxa, yyi, yya);
 
                         if (dover > 0.0) {
@@ -860,7 +896,7 @@ do_kernel_turbo(struct driz_param_t *p) {
     return 0;
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * This module does the actual mapping of input flux to output images. It works
  * by calculating the positions of the four corners of a quadrilateral on the
  * output grid corresponding to the corners of the input pixel and then working
@@ -870,7 +906,8 @@ do_kernel_turbo(struct driz_param_t *p) {
  */
 
 int
-do_kernel_square(struct driz_param_t *p) {
+do_kernel_square(struct driz_param_t *p)
+{
     integer_t bv, i, j, ii, jj, min_ii, max_ii, min_jj, max_jj, nhit;
     integer_t osize[2];
     float scale2, vc, d, dow;
@@ -903,13 +940,15 @@ do_kernel_square(struct driz_param_t *p) {
             p->nskip += (ymax + 1 - j);
             p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
             break;
-        } else if (n == 2 || n == 3) {
+        }
+        else if (n == 2 || n == 3) {
             // pixel centered on y is outside of scanner's limits or image [0,
             // height - 1] OR: limits (x1, x2) are equal (line width is 0)
             p->nmiss += (p->xmax - p->xmin);
             ++p->nskip;
             continue;
-        } else {
+        }
+        else {
             // limits (x1, x2) are equal (line width is 0)
             p->nmiss += (p->xmax - p->xmin) - (xmax + 1 - xmin);
         }
@@ -957,7 +996,8 @@ do_kernel_square(struct driz_param_t *p) {
                the Jacobian to ensure conservation of weight in the output */
             if (p->weights) {
                 w = get_pixel(p->weights, i, j) * p->weight_scale;
-            } else {
+            }
+            else {
                 w = 1.0;
             }
 
@@ -1007,25 +1047,27 @@ do_kernel_square(struct driz_param_t *p) {
     return 0;
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * The user selects a kernel to use for drizzling from a function in the
  * following tables The kernels differ in how the flux inside a single pixel is
- * allocated: evenly spread across the pixel, concentrated at the central point,
- * or by some other function.
+ * allocated: evenly spread across the pixel, concentrated at the central
+ * point, or by some other function.
  */
 
 static kernel_handler_t kernel_handler_map[] = {
     do_kernel_square, do_kernel_gaussian, do_kernel_point,  do_kernel_tophat,
     do_kernel_turbo,  do_kernel_lanczos,  do_kernel_lanczos};
 
-/** ----------------------------------------------------------------------------
- * The executive function which calls the kernel which does the actual drizzling
+/** ---------------------------------------------------------------------------
+ * The executive function which calls the kernel which does the actual
+ * drizzling
  *
  * p: structure containing options, input, and output
  */
 
 int
-dobox(struct driz_param_t *p) {
+dobox(struct driz_param_t *p)
+{
     kernel_handler_t kernel_handler = NULL;
     driz_log_message("starting dobox");
 

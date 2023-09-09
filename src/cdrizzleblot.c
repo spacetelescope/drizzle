@@ -13,7 +13,7 @@
 #include <numpy/npy_math.h>
 #include <numpy/arrayobject.h>
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Signature for functions that perform blotting interpolation.
  */
 
@@ -22,7 +22,7 @@ typedef int(interp_function)(const void *, PyArrayObject *, const float,
                              /* Output parameters */
                              float *, struct driz_error_t *);
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * A standard set of asserts for all of the interpolation functions
  */
 
@@ -35,7 +35,7 @@ typedef int(interp_function)(const void *, PyArrayObject *, const float,
     assert(value);                            \
     assert(error);
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * A structure to hold parameters for sinc interpolation.
  */
 struct sinc_param_t {
@@ -43,20 +43,20 @@ struct sinc_param_t {
     float sinscl;
 };
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Procedure to evaluate the bicubic polynomial interpolant.  The array coeff
  * contains the coefficients of the 2D interpolant.  The procedure assumes that
  * 1 <= x <= isize[0] and 1 <= y <= isize[1] and that coeff[1+first_point] =
  * datain[1,1]. The interpolant is evaluated using Everett's central difference
  * formula. (Was: IIBIP3)
  *
- * coeff:     Array of shape \a [len_coeff][len_coeff] contains the coefficients
- * of the 2D interpolant. len_coeff: The dimension (each side of the square) of
- * the coefficient array. firstt:    Offset of the first data point.  (In
- * practice, this is always zero.) npts:      The number of points to calculate.
- * x:         An array of length \a npts of x values.
- * y:         An array of length \a npts of y values.
- * zfit:      An array of length \a npts of interpolated values. (output)
+ * coeff:     Array of shape \a [len_coeff][len_coeff] contains the
+ * coefficients of the 2D interpolant. len_coeff: The dimension (each side of
+ * the square) of the coefficient array. firstt:    Offset of the first data
+ * point.  (In practice, this is always zero.) npts:      The number of points
+ * to calculate. x:         An array of length \a npts of x values. y: An array
+ * of length \a npts of y values. zfit:      An array of length \a npts of
+ * interpolated values. (output)
  */
 
 static inline_macro void
@@ -65,7 +65,8 @@ ii_bipoly3(const float *coeff /* [len_coeff][len_coeff] */,
            const integer_t npts, const float *x /* [npts] */,
            const float *y /* [npts] */,
            /* Output parameters */
-           float *zfit /* [npts] */) {
+           float *zfit /* [npts] */)
+{
     float sx, tx, sx2m1, tx2m1, sy, ty;
     float cd20[4], cd21[4], ztemp[4];
     float cd20y, cd21y;
@@ -102,12 +103,12 @@ ii_bipoly3(const float *coeff /* [len_coeff][len_coeff] */,
             for (j = 0, index = firstw; j < 4; ++j, index += len_coeff) {
                 assert(index > 0 && index < (len_coeff * len_coeff) - 2);
 
-                cd20[j] =
-                    1.0f / 6.0f *
-                    (coeff[index + 1] - 2.0f * coeff[index] + coeff[index - 1]);
-                cd21[j] =
-                    1.0f / 6.0f *
-                    (coeff[index + 2] - 2.0f * coeff[index + 1] + coeff[index]);
+                cd20[j] = 1.0f / 6.0f *
+                          (coeff[index + 1] - 2.0f * coeff[index] +
+                           coeff[index - 1]);
+                cd21[j] = 1.0f / 6.0f *
+                          (coeff[index + 2] - 2.0f * coeff[index + 1] +
+                           coeff[index]);
             }
         }
 
@@ -132,19 +133,19 @@ ii_bipoly3(const float *coeff /* [len_coeff][len_coeff] */,
     }
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Procedure to evaluate a biquintic polynomial.  The array coeff contains the
  * coefficents of the 2D interpolant.  The routine assumes that 0 <= x <
  * isize[0] and 0 <= y < isize[1]. The interpolant is evaluated using Everett's
  * central difference formula. (Was: IIBIP5)
  *
- * coeff:     Array of shape \a [len_coeff][len_coeff] contains the coefficients
- * of the 2D interpolant. len_coeff: The dimension (each side of the square) of
- * the coefficient array. firstt:    Offset of the first data point.  (In
- * practice, this is always zero.) npts:      The number of points to calculate.
- * x:         An array of length \a npts of x values.
- * y:         An array of length \a npts of y values.
- * zfit:      An array of length \a npts of interpolated values. (output)
+ * coeff:     Array of shape \a [len_coeff][len_coeff] contains the
+ * coefficients of the 2D interpolant. len_coeff: The dimension (each side of
+ * the square) of the coefficient array. firstt:    Offset of the first data
+ * point.  (In practice, this is always zero.) npts:      The number of points
+ * to calculate. x:         An array of length \a npts of x values. y: An array
+ * of length \a npts of y values. zfit:      An array of length \a npts of
+ * interpolated values. (output)
  */
 
 static inline_macro void
@@ -153,7 +154,8 @@ ii_bipoly5(const float *coeff /* [len_coeff][len_coeff] */,
            const integer_t npts, const float *x /* [npts] */,
            const float *y /* [npts] */,
            /* Output parameters */
-           float *zfit /* [npts] */) {
+           float *zfit /* [npts] */)
+{
     integer_t nxold, nyold;
     integer_t nx, ny;
     float sx, sx2, tx, tx2, sy, sy2, ty, ty2;
@@ -200,12 +202,12 @@ ii_bipoly5(const float *coeff /* [len_coeff][len_coeff] */,
             for (j = 0, index = firstw; j < 6; ++j, index += len_coeff) {
                 assert(index >= 1 && index < len_coeff * len_coeff - 3);
 
-                cd20[j] =
-                    1.0f / 6.0f *
-                    (coeff[index + 1] - 2.0f * coeff[index] + coeff[index - 1]);
-                cd21[j] =
-                    1.0f / 6.0f *
-                    (coeff[index + 2] - 2.0f * coeff[index + 1] + coeff[index]);
+                cd20[j] = 1.0f / 6.0f *
+                          (coeff[index + 1] - 2.0f * coeff[index] +
+                           coeff[index - 1]);
+                cd21[j] = 1.0f / 6.0f *
+                          (coeff[index + 2] - 2.0f * coeff[index + 1] +
+                           coeff[index]);
                 cd40[j] = 1.0f / 120.0f *
                           (coeff[index - 2] - 4.0f * coeff[index - 1] +
                            6.0f * coeff[index] - 4.0f * coeff[index + 1] +
@@ -246,7 +248,7 @@ ii_bipoly5(const float *coeff /* [len_coeff][len_coeff] */,
     }
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Perform nearest neighbor interpolation.
  *
  * state: A pointer to any constant values specific to this interpolation type.
@@ -260,7 +262,8 @@ interpolate_nearest_neighbor(const void *state UNUSED_PARAM,
                              PyArrayObject *data, const float x, const float y,
                              /* Output parameters */
                              float *value,
-                             struct driz_error_t *error UNUSED_PARAM) {
+                             struct driz_error_t *error UNUSED_PARAM)
+{
     integer_t isize[2];
     get_dimensions(data, isize);
 
@@ -271,7 +274,7 @@ interpolate_nearest_neighbor(const void *state UNUSED_PARAM,
     return 0;
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Perform basic bilinear interpolation.
  *
  * state: A pointer to any constant values specific to this interpolation type.
@@ -284,7 +287,8 @@ static int
 interpolate_bilinear(const void *state UNUSED_PARAM, PyArrayObject *data,
                      const float x, const float y,
                      /* Output parameters */
-                     float *value, struct driz_error_t *error UNUSED_PARAM) {
+                     float *value, struct driz_error_t *error UNUSED_PARAM)
+{
     integer_t nx, ny;
     float sx, tx, sy, ty, f00;
     integer_t isize[2];
@@ -315,11 +319,13 @@ interpolate_bilinear(const void *state UNUSED_PARAM, PyArrayObject *data,
         /* Interpolate along Y-direction only */
         sy = y - (float)ny;
         *value = (1.0f - sy) * f00 + sy * get_pixel(data, nx, ny + 1);
-    } else if (ny == (isize[1] - 1)) {
+    }
+    else if (ny == (isize[1] - 1)) {
         /* Interpolate along X-direction only */
         sx = x - (float)nx;
         *value = (1.0f - sx) * f00 + sx * get_pixel(data, nx + 1, ny);
-    } else {
+    }
+    else {
         /* Bilinear - interpolation */
         sx = x - (float)nx;
         tx = 1.0f - sx;
@@ -334,7 +340,7 @@ interpolate_bilinear(const void *state UNUSED_PARAM, PyArrayObject *data,
     return 0;
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Perform cubic polynomial interpolation.
  *
  * state: A pointer to any constant values specific to this interpolation type.
@@ -347,7 +353,8 @@ static int
 interpolate_poly3(const void *state UNUSED_PARAM, PyArrayObject *data,
                   const float x, const float y,
                   /* Output parameters */
-                  float *value, struct driz_error_t *error UNUSED_PARAM) {
+                  float *value, struct driz_error_t *error UNUSED_PARAM)
+{
     integer_t nx, ny;
     const integer_t rowleh = 4;
     const integer_t nterms = 4;
@@ -371,27 +378,34 @@ interpolate_poly3(const void *state UNUSED_PARAM, PyArrayObject *data,
         if (j >= 0 && j < isize[1]) {
             for (i = nx - 1; i <= nx + 2; ++i, ++ci) {
                 if (i < 0) {
-                    *ci = 2.0f * get_pixel(data, 0, j) - get_pixel(data, -i, j);
-                } else if (i >= isize[0]) {
+                    *ci =
+                        2.0f * get_pixel(data, 0, j) - get_pixel(data, -i, j);
+                }
+                else if (i >= isize[0]) {
                     *ci = 2.0f * get_pixel(data, isize[0] - 1, j) -
                           get_pixel(data, 2 * isize[0] - 2 - i, j);
-                } else {
+                }
+                else {
                     *ci = get_pixel(data, i, j);
                 }
             }
-        } else if (j == ny + 2) {
+        }
+        else if (j == ny + 2) {
             for (i = nx - 1; i <= nx + 2; ++i, ++ci) {
                 if (i < 0) {
                     *ci = 2.0f * get_pixel(data, 0, isize[1] - 3) -
                           get_pixel(data, -i, isize[1] - 3);
-                } else if (i >= isize[0]) {
+                }
+                else if (i >= isize[0]) {
                     *ci = 2.0f * get_pixel(data, isize[0] - 1, isize[1] - 3) -
                           get_pixel(data, 2 * isize[0] - 2 - i, isize[1] - 3);
-                } else {
+                }
+                else {
                     *ci = get_pixel(data, i, isize[1] - 3);
                 }
             }
-        } else {
+        }
+        else {
             ci += 4;
         }
     }
@@ -404,7 +418,8 @@ interpolate_poly3(const void *state UNUSED_PARAM, PyArrayObject *data,
             assert(2 * firstw - j >= 0 && 2 * firstw - j < nterms);
 
             weighted_sum_vectors(nterms, &coeff[firstw][0], 2.0,
-                                 &coeff[2 * firstw - j][0], -1.0, &coeff[j][0]);
+                                 &coeff[2 * firstw - j][0], -1.0,
+                                 &coeff[j][0]);
         }
     }
 
@@ -417,14 +432,17 @@ interpolate_poly3(const void *state UNUSED_PARAM, PyArrayObject *data,
             assert(j >= 0 && j < 4);
 
             weighted_sum_vectors(nterms, &coeff[lastrw][0], 2.0,
-                                 &coeff[2 * lastrw - j][0], -1.0, &coeff[j][0]);
+                                 &coeff[2 * lastrw - j][0], -1.0,
+                                 &coeff[j][0]);
         }
-    } else if (lastrw == 1) {
+    }
+    else if (lastrw == 1) {
         assert(lastrw >= 0 && lastrw < nterms);
 
-        weighted_sum_vectors(nterms, &coeff[lastrw][0], 2.0, &coeff[3][0], -1.0,
-                             &coeff[3][0]);
-    } else {
+        weighted_sum_vectors(nterms, &coeff[lastrw][0], 2.0, &coeff[3][0],
+                             -1.0, &coeff[3][0]);
+    }
+    else {
         assert(lastrw >= 0 && lastrw < nterms);
         assert(2 * lastrw - 3 >= 0 && 2 * lastrw - 3 < nterms);
 
@@ -440,7 +458,7 @@ interpolate_poly3(const void *state UNUSED_PARAM, PyArrayObject *data,
     return 0;
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Perform quintic polynomial interpolation.
  *
  * state: A pointer to any constant values specific to this interpolation type.
@@ -453,7 +471,8 @@ static int
 interpolate_poly5(const void *state UNUSED_PARAM, PyArrayObject *data,
                   const float x, const float y,
                   /* Output parameters */
-                  float *value, struct driz_error_t *error UNUSED_PARAM) {
+                  float *value, struct driz_error_t *error UNUSED_PARAM)
+{
     integer_t nx, ny;
     const integer_t rowleh = 6;
     const integer_t nterms = 6;
@@ -476,27 +495,34 @@ interpolate_poly5(const void *state UNUSED_PARAM, PyArrayObject *data,
         if (j >= 0 && j < isize[1]) {
             for (i = nx - 2; i <= nx + 3; ++i, ++ci) {
                 if (i < 0) {
-                    *ci = 2.0f * get_pixel(data, 0, j) - get_pixel(data, -i, j);
-                } else if (i >= isize[0]) {
+                    *ci =
+                        2.0f * get_pixel(data, 0, j) - get_pixel(data, -i, j);
+                }
+                else if (i >= isize[0]) {
                     *ci = 2.0f * get_pixel(data, isize[0] - 1, j) -
                           get_pixel(data, 2 * isize[0] - 2 - i, j);
-                } else {
+                }
+                else {
                     *ci = get_pixel(data, i, j);
                 }
             }
-        } else if (j == (ny + 3)) {
+        }
+        else if (j == (ny + 3)) {
             for (i = nx - 2; i <= nx + 3; ++i, ++ci) {
                 if (i < 0) {
                     *ci = 2.0f * get_pixel(data, 0, isize[1] - 4) -
                           get_pixel(data, -i, isize[1] - 4);
-                } else if (i >= isize[0]) {
+                }
+                else if (i >= isize[0]) {
                     *ci = 2.0f * get_pixel(data, isize[0] - 1, isize[1] - 4) -
                           get_pixel(data, 2 * isize[0] - 2 - i, isize[1] - 4);
-                } else {
+                }
+                else {
                     *ci = get_pixel(data, i, isize[1] - 4);
                 }
             }
-        } else {
+        }
+        else {
             ci += 6;
         }
     }
@@ -509,7 +535,8 @@ interpolate_poly5(const void *state UNUSED_PARAM, PyArrayObject *data,
             assert(2 * firstw - j >= 0 && 2 * firstw - j < nterms);
 
             weighted_sum_vectors(nterms, &coeff[firstw][0], 2.0,
-                                 &coeff[2 * firstw - j][0], -1.0, &coeff[j][0]);
+                                 &coeff[2 * firstw - j][0], -1.0,
+                                 &coeff[j][0]);
         }
     }
 
@@ -521,12 +548,15 @@ interpolate_poly5(const void *state UNUSED_PARAM, PyArrayObject *data,
             assert(2 * lastrw - j >= 0 && 2 * lastrw - j < nterms);
 
             weighted_sum_vectors(nterms, &coeff[lastrw][0], 2.0,
-                                 &coeff[2 * lastrw - j][0], -1.0, &coeff[j][0]);
+                                 &coeff[2 * lastrw - j][0], -1.0,
+                                 &coeff[j][0]);
         }
-    } else if (lastrw == 2) {
+    }
+    else if (lastrw == 2) {
         weighted_sum_vectors(nterms, &coeff[2][0], 2.0, &coeff[5][0], -1.0,
                              &coeff[5][0]);
-    } else {
+    }
+    else {
         assert(2 * lastrw - 5 >= 0 && 2 * lastrw - 5 < nterms);
 
         weighted_sum_vectors(nterms, &coeff[lastrw][0], 2.0,
@@ -541,7 +571,7 @@ interpolate_poly5(const void *state UNUSED_PARAM, PyArrayObject *data,
     return 0;
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * (Was: iinisc)
  */
 
@@ -553,7 +583,8 @@ interpolate_sinc_(PyArrayObject *data, const integer_t firstt,
                   const float *y /*[npts]*/, const float mindx,
                   const float mindy, const float sinscl,
                   /* Output parameters */
-                  float *value, struct driz_error_t *error UNUSED_PARAM) {
+                  float *value, struct driz_error_t *error UNUSED_PARAM)
+{
     const integer_t nconv = INTERPOLATE_SINC_NCONV;
     const integer_t nsinc = (nconv - 1) / 2;
     /* TODO: This is to match Fortan, but is probably technically less precise
@@ -588,7 +619,8 @@ interpolate_sinc_(PyArrayObject *data, const integer_t firstt,
 
             taper[j + nsinc] = 1.0;
         }
-    } else {
+    }
+    else {
         sdx = -1.0;
         errno = 0;
         for (j = -nsinc; j <= nsinc; ++j) {
@@ -629,7 +661,8 @@ interpolate_sinc_(PyArrayObject *data, const integer_t firstt,
         sumx = 0.0f;
         sumy = 0.0f;
         for (j = 0; j < nconv; ++j) {
-            /* TODO: These out of range indices also seem to be in Fortran... */
+            /* TODO: These out of range indices also seem to be in Fortran...
+             */
             ax = dxn - (float)j - 1; /* TODO: Base check */
             ay = dyn - (float)j - 1; /* TODO: Base check */
             assert(ax != 0.0);
@@ -637,21 +670,26 @@ interpolate_sinc_(PyArrayObject *data, const integer_t firstt,
 
             if (ax == 0.0) {
                 px = 1.0;
-            } else if (dx == 0.0) {
+            }
+            else if (dx == 0.0) {
                 px = 0.0;
-            } else {
+            }
+            else {
                 px = taper[j - 1] / ax;
             }
 
             if (ay == 0.0) {
                 py = 1.0;
-            } else if (dy == 0.0) {
+            }
+            else if (dy == 0.0) {
                 py = 0.0;
-            } else {
+            }
+            else {
                 py = taper[j - 1] / ay;
             }
 
-            /* TODO: These out of range indices also seem to be in Fortran... */
+            /* TODO: These out of range indices also seem to be in Fortran...
+             */
             ac[j - 1] = px;
             ar[j - 1] = py;
             sumx += px;
@@ -709,8 +747,8 @@ interpolate_sinc_(PyArrayObject *data, const integer_t firstt,
                 for (k = maxk + 1; k <= nx + nsinc; ++k) {
                     assert(k + offk >= 0 && k + offk < INTERPOLATE_SINC_NCONV);
 
-                    sum +=
-                        ac[k + offk] * get_pixel_at_pos(data, index + isize[0]);
+                    sum += ac[k + offk] *
+                           get_pixel_at_pos(data, index + isize[0]);
                 }
 
                 assert(j + offj >= 0 && j + offj < INTERPOLATE_SINC_NCONV);
@@ -728,7 +766,7 @@ interpolate_sinc_(PyArrayObject *data, const integer_t firstt,
     return 0;
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Perform sinc interpolation.
  *
  * state: A pointer to a \a sinc_param_t object
@@ -743,7 +781,8 @@ static int
 interpolate_sinc(const void *state, PyArrayObject *data, const float x,
                  const float y,
                  /* Output parameters */
-                 float *value, struct driz_error_t *error) {
+                 float *value, struct driz_error_t *error)
+{
     const struct sinc_param_t *param = (const struct sinc_param_t *)state;
     integer_t isize[2];
     get_dimensions(data, isize);
@@ -755,7 +794,7 @@ interpolate_sinc(const void *state, PyArrayObject *data, const float x,
                              value, error);
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Perform Lanczos interpolation.
  *
  * state: A pointer to a \a lanczos_param_t object
@@ -770,7 +809,8 @@ static int
 interpolate_lanczos(const void *state, PyArrayObject *data, const float x,
                     const float y,
                     /* Output parameters */
-                    float *value, struct driz_error_t *error UNUSED_PARAM) {
+                    float *value, struct driz_error_t *error UNUSED_PARAM)
+{
     integer_t ixs, iys, ixe, iye;
     integer_t xoff, yoff;
     float luty, sum;
@@ -819,7 +859,7 @@ interpolate_lanczos(const void *state, PyArrayObject *data, const float x,
     return 0;
 }
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * A mapping from e_interp_t enumeration values to function pointers that
  * actually perform the interpolation.  NULL elements will raise an
  * "unimplemented" error.
@@ -836,14 +876,15 @@ interp_function *interp_function_map[interp_LAST] = {
     &interpolate_lanczos,
     &interpolate_lanczos};
 
-/** ----------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Interpolate grid of pixels onto new grid of different size.
  *
  * p:   structure containing options, input, and output
  */
 
 int
-doblot(struct driz_param_t *p) {
+doblot(struct driz_param_t *p)
+{
     const size_t nlut = 2048;
     const float space = 0.01;
     integer_t isize[2], osize[2];
@@ -862,8 +903,8 @@ doblot(struct driz_param_t *p) {
     assert(p->interpolation >= 0 && p->interpolation < interp_LAST);
     interpolate = interp_function_map[p->interpolation];
     if (interpolate == NULL) {
-        driz_error_set_message(p->error,
-                               "Requested interpolation type not implemented.");
+        driz_error_set_message(
+            p->error, "Requested interpolation type not implemented.");
         goto doblot_exit_;
     }
 
@@ -886,9 +927,9 @@ doblot(struct driz_param_t *p) {
         lanczos.misval = p->misval;
 
         state = &lanczos;
-
-    } else if (p->interpolation == interp_sinc ||
-               p->interpolation == interp_lsinc) {
+    }
+    else if (p->interpolation == interp_sinc ||
+             p->interpolation == interp_lsinc) {
         sinc.sinscl = p->sinscl;
         state = &sinc;
 
@@ -897,8 +938,8 @@ doblot(struct driz_param_t *p) {
     /* In the WCS case, we can't use the scale to calculate the Jacobian,
        so we need to do it.
 
-       Note that we use the center of the image, rather than the reference pixel
-       as the reference here.
+       Note that we use the center of the image, rather than the reference
+       pixel as the reference here.
 
        This is taken from dobox, except for the inversion of the image order.
 
@@ -917,7 +958,8 @@ doblot(struct driz_param_t *p) {
                 driz_error_format_message(p->error, "OOB in pixmap[%d,%d]", i,
                                           j);
                 return 1;
-            } else {
+            }
+            else {
                 xo = get_pixmap(p->pixmap, i, j)[0];
                 yo = get_pixmap(p->pixmap, i, j)[1];
             }
@@ -943,18 +985,20 @@ doblot(struct driz_param_t *p) {
                     driz_error_format_message(
                         p->error, "OOB in output_data[%d,%d]", i, j);
                     return 1;
-                } else {
+                }
+                else {
                     set_pixel(p->output_data, i, j, value);
                 }
-
-            } else {
+            }
+            else {
                 /* If there is nothing for us then set the output to missing C
                    value flag */
                 if (oob_pixel(p->output_data, i, j)) {
                     driz_error_format_message(
                         p->error, "OOB in output_data[%d,%d]", i, j);
                     return 1;
-                } else {
+                }
+                else {
                     set_pixel(p->output_data, i, j, p->misval);
                     p->nmiss++;
                 }

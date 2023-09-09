@@ -23,12 +23,13 @@
 static PyObject *gl_Error;
 FILE *driz_log_handle = NULL;
 
-/** --------------------------------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Multiply each pixel in an image by a scale factor
  */
 
 static void
-scale_image(PyArrayObject *image, double scale_factor) {
+scale_image(PyArrayObject *image, double scale_factor)
+{
     long i, size;
     float *imptr;
 
@@ -44,12 +45,13 @@ scale_image(PyArrayObject *image, double scale_factor) {
     return;
 }
 
-/** --------------------------------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Top level function for drizzling, interfaces with python code
  */
 
 static PyObject *
-tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords) {
+tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
+{
     const char *kwlist[] = {"input",   "weights", "pixmap",   "output",
                             "counts",  "context", "uniqid",   "xmin",
                             "xmax",    "ymin",    "ymax",     "scale",
@@ -90,11 +92,11 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords) {
     driz_error_init(&error);
 
     if (!PyArg_ParseTupleAndKeywords(
-            args, keywords, "OOOOOO|lllllddssffs:tdriz", (char **)kwlist, &oimg,
-            &owei, &pixmap, &oout, &owht, &ocon,     /* OOOOOO */
-            &uniqid, &xmin, &xmax, &ymin, &ymax,     /* lllll */
-            &scale, &pfract, &kernel_str, &inun_str, /* ddss */
-            &expin, &wtscl, &fillstr)                /* ffs */
+            args, keywords, "OOOOOO|lllllddssffs:tdriz", (char **)kwlist,
+            &oimg, &owei, &pixmap, &oout, &owht, &ocon, /* OOOOOO */
+            &uniqid, &xmin, &xmax, &ymin, &ymax,        /* lllll */
+            &scale, &pfract, &kernel_str, &inun_str,    /* ddss */
+            &expin, &wtscl, &fillstr)                   /* ffs */
     ) {
         return NULL;
     }
@@ -138,17 +140,18 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords) {
 
     /* Convert t`he fill value string */
 
-    if (fillstr == NULL || *fillstr == 0 || strncmp(fillstr, "INDEF", 6) == 0 ||
+    if (fillstr == NULL || *fillstr == 0 ||
+        strncmp(fillstr, "INDEF", 6) == 0 ||
         strncmp(fillstr, "indef", 6) == 0) {
         do_fill = 0;
         fill_value = 0.0;
-
-    } else if (strncmp(fillstr, "NaN", 4) == 0 ||
-               strncmp(fillstr, "nan", 4) == 0) {
+    }
+    else if (strncmp(fillstr, "NaN", 4) == 0 ||
+             strncmp(fillstr, "nan", 4) == 0) {
         do_fill = 1;
         fill_value = NPY_NANF;
-
-    } else {
+    }
+    else {
         do_fill = 1;
 #ifdef _WIN32
         fill_value = atof(fillstr);
@@ -266,19 +269,21 @@ _exit:
     if (driz_error_is_set(&error)) {
         PyErr_SetString(PyExc_ValueError, driz_error_get_message(&error));
         return NULL;
-    } else {
+    }
+    else {
         return Py_BuildValue(
             "sii", "Callable C-based DRIZZLE Version 1.12 (28th June 2018)",
             p.nmiss, p.nskip);
     }
 }
 
-/** --------------------------------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Top level function for blotting, interfaces with python code
  */
 
 static PyObject *
-tblot(PyObject *obj, PyObject *args, PyObject *keywords) {
+tblot(PyObject *obj, PyObject *args, PyObject *keywords)
+{
     const char *kwlist[] = {"source",  "pixmap", "output", "xmin",   "xmax",
                             "ymin",    "ymax",   "scale",  "kscale", "interp",
                             "exptime", "misval", "sinscl", NULL};
@@ -395,17 +400,19 @@ _exit:
         if (strcmp(driz_error_get_message(&error), "<PYTHON>") != 0)
             PyErr_SetString(PyExc_Exception, driz_error_get_message(&error));
         return NULL;
-    } else {
+    }
+    else {
         return Py_BuildValue("i", istat);
     }
 }
 
-/** --------------------------------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Top level of C unit tests, interfaces with python code
  */
 
 static PyObject *
-test_cdrizzle(PyObject *self, PyObject *args) {
+test_cdrizzle(PyObject *self, PyObject *args)
+{
     PyObject *data, *weights, *pixmap, *output_data, *output_counts,
         *output_context;
     PyArrayObject *dat, *wei, *map, *odat, *ocnt, *ocon;
@@ -434,8 +441,8 @@ test_cdrizzle(PyObject *self, PyObject *args) {
         return PyErr_Format(gl_Error, "Invalid pixmap.");
     }
 
-    odat = (PyArrayObject *)PyArray_ContiguousFromAny(output_data, NPY_FLOAT, 2,
-                                                      2);
+    odat = (PyArrayObject *)PyArray_ContiguousFromAny(output_data, NPY_FLOAT,
+                                                      2, 2);
     if (!odat) {
         return PyErr_Format(gl_Error, "Invalid output data array.");
     }
@@ -446,8 +453,8 @@ test_cdrizzle(PyObject *self, PyObject *args) {
         return PyErr_Format(gl_Error, "Invalid output counts array.");
     }
 
-    ocon = (PyArrayObject *)PyArray_ContiguousFromAny(output_context, NPY_INT32,
-                                                      2, 2);
+    ocon = (PyArrayObject *)PyArray_ContiguousFromAny(output_context,
+                                                      NPY_INT32, 2, 2);
     if (!ocon) {
         return PyErr_Format(gl_Error, "Invalid context array");
     }
@@ -459,7 +466,8 @@ test_cdrizzle(PyObject *self, PyObject *args) {
 }
 
 static PyObject *
-invert_pixmap_wrap(PyObject *self, PyObject *args) {
+invert_pixmap_wrap(PyObject *self, PyObject *args)
+{
     PyObject *pixmap, *xyout, *bbox;
     PyArrayObject *xyout_arr, *pixmap_arr, *bbox_arr;
     struct driz_param_t par;
@@ -492,7 +500,8 @@ invert_pixmap_wrap(PyObject *self, PyObject *args) {
         par.xmax = ndim[1] - 0.5;
         par.ymin = -0.5;
         par.ymax = ndim[0] - 0.5;
-    } else {
+    }
+    else {
         bbox_arr =
             (PyArrayObject *)PyArray_ContiguousFromAny(bbox, NPY_DOUBLE, 2, 2);
         if (!bbox_arr) {
@@ -519,7 +528,8 @@ invert_pixmap_wrap(PyObject *self, PyObject *args) {
 }
 
 static PyObject *
-clip_polygon_wrap(PyObject *self, PyObject *args) {
+clip_polygon_wrap(PyObject *self, PyObject *args)
+{
     int k;
     PyObject *pin, *qin;
     PyArrayObject *pin_arr, *qin_arr;
@@ -530,12 +540,14 @@ clip_polygon_wrap(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    pin_arr = (PyArrayObject *)PyArray_ContiguousFromAny(pin, NPY_DOUBLE, 2, 2);
+    pin_arr =
+        (PyArrayObject *)PyArray_ContiguousFromAny(pin, NPY_DOUBLE, 2, 2);
     if (!pin_arr) {
         return PyErr_Format(gl_Error, "Invalid P.");
     }
 
-    qin_arr = (PyArrayObject *)PyArray_ContiguousFromAny(qin, NPY_DOUBLE, 2, 2);
+    qin_arr =
+        (PyArrayObject *)PyArray_ContiguousFromAny(qin, NPY_DOUBLE, 2, 2);
     if (!qin_arr) {
         return PyErr_Format(gl_Error, "Invalid Q.");
     }
@@ -566,7 +578,7 @@ clip_polygon_wrap(PyObject *self, PyObject *args) {
     return Py_BuildValue("N", list);
 }
 
-/** --------------------------------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  * Table of functions callable from python
  */
 
@@ -585,12 +597,13 @@ static struct PyMethodDef cdrizzle_methods[] = {
     {NULL, NULL} /* sentinel */
 };
 
-/** --------------------------------------------------------------------------------------------------
+/** ---------------------------------------------------------------------------
  */
 
 #if PY_MAJOR_VERSION < 3
 PyMODINIT_FUNC
-initcdrizzle(void) {
+initcdrizzle(void)
+{
     /* Create the module and add the functions */
     (void)Py_InitModule("cdrizzle", cdrizzle_methods);
 
@@ -612,7 +625,8 @@ static struct PyModuleDef moduledef = {PyModuleDef_HEAD_INIT,
                                        NULL};
 
 PyMODINIT_FUNC *
-PyInit_cdrizzle(void) {
+PyInit_cdrizzle(void)
+{
     PyObject *m;
     m = PyModule_Create(&moduledef);
 

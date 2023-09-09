@@ -15,14 +15,16 @@
  ERROR HANDLING
 */
 void
-driz_error_init(struct driz_error_t *error) {
+driz_error_init(struct driz_error_t *error)
+{
     assert(error);
 
     error->last_message[0] = 0;
 }
 
 int
-driz_error_check(struct driz_error_t *error, const char *message, int test) {
+driz_error_check(struct driz_error_t *error, const char *message, int test)
+{
     if (!test) {
         driz_error_set_message(error, message);
         return 1;
@@ -32,7 +34,8 @@ driz_error_check(struct driz_error_t *error, const char *message, int test) {
 }
 
 void
-driz_error_set_message(struct driz_error_t *error, const char *message) {
+driz_error_set_message(struct driz_error_t *error, const char *message)
+{
     assert(error);
     assert(message);
 
@@ -40,7 +43,8 @@ driz_error_set_message(struct driz_error_t *error, const char *message) {
 }
 
 void
-driz_error_format_message(struct driz_error_t *error, const char *format, ...) {
+driz_error_format_message(struct driz_error_t *error, const char *format, ...)
+{
     /* See http://c-faq.com/varargs/vprintf.html
        for an explanation of how all this variable length argument list stuff
        works. */
@@ -55,21 +59,24 @@ driz_error_format_message(struct driz_error_t *error, const char *format, ...) {
 }
 
 const char *
-driz_error_get_message(struct driz_error_t *error) {
+driz_error_get_message(struct driz_error_t *error)
+{
     assert(error);
 
     return error->last_message;
 }
 
 int
-driz_error_is_set(struct driz_error_t *error) {
+driz_error_is_set(struct driz_error_t *error)
+{
     assert(error);
 
     return error->last_message[0] != 0;
 }
 
 void
-driz_error_unset(struct driz_error_t *error) {
+driz_error_unset(struct driz_error_t *error)
+{
     assert(error);
 
     driz_error_init(error);
@@ -79,7 +86,8 @@ driz_error_unset(struct driz_error_t *error) {
  DATA TYPES
 */
 void
-driz_param_dump(struct driz_param_t *p) {
+driz_param_dump(struct driz_param_t *p)
+{
     assert(p);
 
     printf(
@@ -99,7 +107,8 @@ driz_param_dump(struct driz_param_t *p) {
 }
 
 void
-driz_param_init(struct driz_param_t *p) {
+driz_param_init(struct driz_param_t *p)
+{
     assert(p);
 
     /* Kernel shape and size */
@@ -154,7 +163,8 @@ static const char *bool_string_table[] = {"FALSE", "TRUE", NULL};
 
 static int
 str2enum(const char *s, const char *table[], int *result,
-         struct driz_error_t *error) {
+         struct driz_error_t *error)
+{
     const char **it = table;
 
     assert(s);
@@ -175,7 +185,8 @@ str2enum(const char *s, const char *table[], int *result,
 
 int
 kernel_str2enum(const char *s, enum e_kernel_t *result,
-                struct driz_error_t *error) {
+                struct driz_error_t *error)
+{
     if (str2enum(s, kernel_string_table, (int *)result, error)) {
         driz_error_format_message(error, "Unknown kernel type '%s'", s);
         return 1;
@@ -185,8 +196,8 @@ kernel_str2enum(const char *s, enum e_kernel_t *result,
 }
 
 int
-unit_str2enum(const char *s, enum e_unit_t *result,
-              struct driz_error_t *error) {
+unit_str2enum(const char *s, enum e_unit_t *result, struct driz_error_t *error)
+{
     if (str2enum(s, unit_string_table, (int *)result, error)) {
         driz_error_format_message(error, "Unknown unit type '%s'", s);
         return 1;
@@ -197,7 +208,8 @@ unit_str2enum(const char *s, enum e_unit_t *result,
 
 int
 interp_str2enum(const char *s, enum e_interp_t *result,
-                struct driz_error_t *error) {
+                struct driz_error_t *error)
+{
     if (str2enum(s, interp_string_table, (int *)result, error)) {
         driz_error_format_message(error, "Unknown interp type '%s'", s);
         return 1;
@@ -207,28 +219,32 @@ interp_str2enum(const char *s, enum e_interp_t *result,
 }
 
 const char *
-kernel_enum2str(enum e_kernel_t value) {
+kernel_enum2str(enum e_kernel_t value)
+{
     assert(value >= 0 && value < kernel_LAST);
 
     return kernel_string_table[value];
 }
 
 const char *
-unit_enum2str(enum e_unit_t value) {
+unit_enum2str(enum e_unit_t value)
+{
     assert(value >= 0 && value < 2);
 
     return unit_string_table[value];
 }
 
 const char *
-interp_enum2str(enum e_interp_t value) {
+interp_enum2str(enum e_interp_t value)
+{
     assert(value >= 0 && value < interp_LAST);
 
     return interp_string_table[value];
 }
 
 const char *
-bool2str(bool_t value) {
+bool2str(bool_t value)
+{
     return bool_string_table[value ? 1 : 0];
 }
 
@@ -237,7 +253,8 @@ bool2str(bool_t value) {
 */
 void
 create_lanczos_lut(const int kernel_order, const size_t npix, const float del,
-                   float *lanczos_lut) {
+                   float *lanczos_lut)
+{
     integer_t i;
     const float forder = (float)kernel_order;
     float poff;
@@ -253,14 +270,16 @@ create_lanczos_lut(const int kernel_order, const size_t npix, const float del,
         if (poff < M_PI * forder) {
             lanczos_lut[i] =
                 sin(poff) / poff * sin(poff / forder) / (poff / forder);
-        } else {
+        }
+        else {
             lanczos_lut[i] = 0.0;
         }
     }
 }
 
 void
-put_fill(struct driz_param_t *p, const float fill_value) {
+put_fill(struct driz_param_t *p, const float fill_value)
+{
     integer_t i, j, osize[2];
 
     assert(p);
@@ -271,13 +290,13 @@ put_fill(struct driz_param_t *p, const float fill_value) {
                 driz_error_format_message(p->error,
                                           "OOB in output_counts[%d,%d]", i, j);
                 return;
-
-            } else if (oob_pixel(p->output_data, i, j)) {
-                driz_error_format_message(p->error, "OOB in output_data[%d,%d]",
-                                          i, j);
+            }
+            else if (oob_pixel(p->output_data, i, j)) {
+                driz_error_format_message(p->error,
+                                          "OOB in output_data[%d,%d]", i, j);
                 return;
-
-            } else if (get_pixel(p->output_counts, i, j) == 0.0) {
+            }
+            else if (get_pixel(p->output_counts, i, j) == 0.0) {
                 set_pixel(p->output_data, i, j, fill_value);
             }
         }
@@ -285,7 +304,8 @@ put_fill(struct driz_param_t *p, const float fill_value) {
 }
 
 double
-mgf2(double lambda) {
+mgf2(double lambda)
+{
     double sig, sig2;
 
     sig = 1.0e7 / lambda;

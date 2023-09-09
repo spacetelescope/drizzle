@@ -27,7 +27,8 @@ struct driz_error_t {
 };
 
 void driz_error_init(struct driz_error_t *error);
-int driz_error_check(struct driz_error_t *error, const char *message, int test);
+int driz_error_check(struct driz_error_t *error, const char *message,
+                     int test);
 void driz_error_set_message(struct driz_error_t *error, const char *message);
 void driz_error_format_message(struct driz_error_t *error, const char *format,
                                ...);
@@ -117,15 +118,16 @@ struct lanczos_param_t {
 
 struct driz_param_t {
     /* Options */
-    enum e_kernel_t kernel;  /* Kernel shape and size */
-    double pixel_fraction;   /* was: PIXFRAC */
-    float exposure_time;     /* Exposure time was: EXPIN */
-    float weight_scale;      /* Weight scale was: WTSCL */
-    float fill_value;        /* Filling was: FILVAL */
-    bool_t do_fill;          /* was: FILL */
-    enum e_unit_t in_units;  /* CPS / counts was: INCPS, either counts or CPS */
-    enum e_unit_t out_units; /* CPS / counts was: INCPS, either counts or CPS */
-    integer_t uuid;          /* was: UNIQID */
+    enum e_kernel_t kernel; /* Kernel shape and size */
+    double pixel_fraction;  /* was: PIXFRAC */
+    float exposure_time;    /* Exposure time was: EXPIN */
+    float weight_scale;     /* Weight scale was: WTSCL */
+    float fill_value;       /* Filling was: FILVAL */
+    bool_t do_fill;         /* was: FILL */
+    enum e_unit_t in_units; /* CPS / counts was: INCPS, either counts or CPS */
+    enum e_unit_t
+        out_units;  /* CPS / counts was: INCPS, either counts or CPS */
+    integer_t uuid; /* was: UNIQID */
 
     /* Scaling */
     double scale;
@@ -178,7 +180,8 @@ void driz_param_dump(struct driz_param_t *p);
 extern FILE *driz_log_handle;
 
 static inline_macro FILE *
-driz_log_init(FILE *handle) {
+driz_log_init(FILE *handle)
+{
     const char *dirs[] = {"TMPDIR", "TMP", "TEMP", "TEMPDIR"};
     int i;
     char *p;
@@ -206,12 +209,14 @@ driz_log_init(FILE *handle) {
 }
 
 static inline_macro int
-driz_log_close(FILE *handle) {
+driz_log_close(FILE *handle)
+{
     return fclose(driz_log_handle);
 }
 
 static inline_macro int
-driz_log_message(const char *message) {
+driz_log_message(const char *message)
+{
     if (!driz_log_handle) driz_log_handle = driz_log_init(driz_log_handle);
 
     fputs(message, driz_log_handle);
@@ -221,7 +226,8 @@ driz_log_message(const char *message) {
 
 #else
 static inline_macro void *
-driz_log_idem(void *ptr) {
+driz_log_idem(void *ptr)
+{
     return ptr;
 }
 
@@ -237,7 +243,8 @@ driz_log_idem(void *ptr) {
 /* New numpy based accessors */
 
 static inline_macro void
-get_dimensions(PyArrayObject *image, integer_t size[2]) {
+get_dimensions(PyArrayObject *image, integer_t size[2])
+{
     npy_intp *ndim = PyArray_DIMS(image);
 
     /* Put dimensions in xy order */
@@ -248,14 +255,16 @@ get_dimensions(PyArrayObject *image, integer_t size[2]) {
 }
 
 static inline_macro double *
-get_pixmap(PyArrayObject *pixmap, integer_t xpix, integer_t ypix) {
+get_pixmap(PyArrayObject *pixmap, integer_t xpix, integer_t ypix)
+{
     return (double *)PyArray_GETPTR3(pixmap, ypix, xpix, 0);
 }
 
 #if defined(LOGGING) && defined(CHECK_OOB)
 
 static inline_macro int
-oob_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
+oob_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix)
+{
     char buffer[64];
     npy_intp *ndim = PyArray_DIMS(image);
     if ((xpix < 0 || xpix >= ndim[1]) || (ypix < 0 || ypix >= ndim[0])) {
@@ -275,40 +284,44 @@ oob_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
 #endif
 
 static inline_macro float
-get_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
+get_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix)
+{
     return *(float *)PyArray_GETPTR2(image, ypix, xpix);
 }
 
 static inline_macro float
-get_pixel_at_pos(PyArrayObject *image, integer_t pos) {
+get_pixel_at_pos(PyArrayObject *image, integer_t pos)
+{
     float *imptr;
     imptr = (float *)PyArray_DATA(image);
     return imptr[pos];
 }
 
 static inline_macro void
-set_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix, double value) {
+set_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix, double value)
+{
     *(float *)PyArray_GETPTR2(image, ypix, xpix) = value;
     return;
 }
 
 static inline_macro int
-get_bit(PyArrayObject *image, integer_t xpix, integer_t ypix,
-        integer_t bitval) {
+get_bit(PyArrayObject *image, integer_t xpix, integer_t ypix, integer_t bitval)
+{
     integer_t value;
     value = *(integer_t *)PyArray_GETPTR2(image, ypix, xpix) & bitval;
     return value ? 1 : 0;
 }
 
 static inline_macro void
-set_bit(PyArrayObject *image, integer_t xpix, integer_t ypix,
-        integer_t bitval) {
+set_bit(PyArrayObject *image, integer_t xpix, integer_t ypix, integer_t bitval)
+{
     *(integer_t *)PyArray_GETPTR2(image, ypix, xpix) |= bitval;
     return;
 }
 
 static inline_macro void
-unset_bit(PyArrayObject *image, integer_t xpix, integer_t ypix) {
+unset_bit(PyArrayObject *image, integer_t xpix, integer_t ypix)
+{
     *(integer_t *)PyArray_GETPTR2(image, ypix, xpix) = 0;
     return;
 }
@@ -370,7 +383,8 @@ static inline_macro void
 weighted_sum_vectors(const integer_t npix, const float *a /*[npix]*/,
                      const float w1, const float *b /*[npix]*/, const float w2,
                      /* Output arguments */
-                     float *c /*[npix]*/) {
+                     float *c /*[npix]*/)
+{
     float *c_end = c + npix;
 
     assert(a);
@@ -384,12 +398,14 @@ weighted_sum_vectors(const integer_t npix, const float *a /*[npix]*/,
  Round to nearest integer in a way that mimics fortrans NINT
 */
 static inline_macro integer_t
-fortran_round(const double x) {
+fortran_round(const double x)
+{
     return (x >= 0) ? (integer_t)floor(x + .5) : (integer_t)-floor(.5 - x);
 }
 
 static inline_macro double
-min_doubles(const double *a, const integer_t size) {
+min_doubles(const double *a, const integer_t size)
+{
     const double *end = a + size;
     double value = MAX_DOUBLE;
     for (; a != end; ++a)
@@ -398,7 +414,8 @@ min_doubles(const double *a, const integer_t size) {
 }
 
 static inline_macro double
-max_doubles(const double *a, const integer_t size) {
+max_doubles(const double *a, const integer_t size)
+{
     const double *end = a + size;
     double value = MIN_DOUBLE;
     for (; a != end; ++a)
@@ -424,7 +441,8 @@ as this is physically meaningless.
 static inline_macro void
 rad3(const double x, const double y, const double *co,
      /* Output parameters */
-     double *xo, double *yo) {
+     double *xo, double *yo)
+{
     double r, f;
 
     assert(co);
