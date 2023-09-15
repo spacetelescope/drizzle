@@ -35,7 +35,7 @@ static const double MAX_INV_ERR = 0.03;
  * @param[in,out] int ymin - position of the bottom edge of the bounding box.
  * @param[in,out] int ymax - position of the top edge of the bounding box.
  * @return 0 if successul and 1 if there is only one or no valid pixel map
- * values.
+ *         values.
  *
  */
 int
@@ -175,12 +175,14 @@ interpolate_point(struct driz_param_t *par, double xin, double yin,
  * x - X-coordinate of the point on the output image (output)
  * y - Y-coordinate of the point on the output image (output)
  */
-
 int
 map_pixel(PyArrayObject *pixmap, int i, int j, double *x, double *y) {
-    double *pv = (double *)PyArray_GETPTR3(pixmap, j, i, 0);
+    double *pv;
+
+    pv = (double *)PyArray_GETPTR3(pixmap, j, i, 0);
     *x = *pv;
     *y = *(pv + 1);
+
     return ((npy_isnan(*x) || npy_isnan(*y)) ? 1 : 0);
 }
 
@@ -243,6 +245,7 @@ eval_inversion(struct driz_param_t *par, double x, double y, double xref,
     if (interpolate_point(par, x, y, &xout, &yout)) {
         return 1;
     }
+
     dx = xout - xref;
     dy = yout - yref;
     *dist2 = dx * dx + dy * dy;  // sqrt would be slower
@@ -736,6 +739,7 @@ int
 get_scanline_limits(struct scanner *s, int y, int *x1, int *x2) {
     double pyb, pyt;  // pixel top and bottom limits
     double xlb, xlt, xrb, xrt, edge_ymax, xmin, xmax;
+
     struct edge *el_max, *er_max;
 
     el_max = ((struct edge *)s->left_edges) + (s->nleft - 1);
