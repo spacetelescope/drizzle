@@ -9,7 +9,7 @@ Release Notes
 
 
 
-1.14.0 (unreleased)
+1.14.0 (2023-09-15)
 ===================
 
 - Fixed a bug in how drizzle would compute overlaps between input images and
