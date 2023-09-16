@@ -59,11 +59,11 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
 
   /* Arguments in the order they appear */
   PyObject *oimg, *owei, *pixmap, *oout, *owht, *ocon;
-  long uniqid = 1;
-  long xmin = 0;
-  long xmax = 0;
-  long ymin = 0;
-  long ymax = 0;
+  integer_t uniqid = 1;
+  integer_t xmin = 0;
+  integer_t xmax = 0;
+  integer_t ymin = 0;
+  integer_t ymax = 0;
   double scale = 1.0;
   double pfract = 1.0;
   char *kernel_str = "square";
@@ -89,9 +89,9 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   driz_log_message("starting tdriz");
   driz_error_init(&error);
 
-  if (!PyArg_ParseTupleAndKeywords(args, keywords, "OOOOOO|lllllddssffs:tdriz", (char **)kwlist,
+  if (!PyArg_ParseTupleAndKeywords(args, keywords, "OOOOOO|iiiiiddssffs:tdriz", (char **)kwlist,
                         &oimg, &owei, &pixmap, &oout, &owht, &ocon, /* OOOOOO */
-                        &uniqid, &xmin, &xmax, &ymin, &ymax,  /* lllll */
+                        &uniqid, &xmin, &xmax, &ymin, &ymax,  /* iiiii */
                         &scale, &pfract, &kernel_str, &inun_str, /* ddss */
                         &expin, &wtscl,  &fillstr) /* ffs */
                        ) {
