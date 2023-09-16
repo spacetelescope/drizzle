@@ -7,10 +7,16 @@ Release Notes
 .. 1.14.2 (unreleased)
    ===================
 
-1.14.1 (2023-09-16)
+1.14.2 (2023-09-16)
 ===================
 
 - Addressed test failures on big endian architectures. [#116]
+
+
+1.14.1 (2023-09-16)
+===================
+
+- Duplicate re-release of 1.14.0.
 
 
 1.14.0 (2023-09-15)
