@@ -4,8 +4,15 @@
 Release Notes
 =============
 
-.. 1.14.2 (unreleased)
+.. 1.14.4 (unreleased)
    ===================
+
+
+1.14.3 (2023-10-02)
+===================
+
+- Disable logging to fix a segfault on some systems. [#119]
+
 
 1.14.2 (2023-09-16)
 ===================
