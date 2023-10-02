@@ -177,8 +177,6 @@ driz_param_dump(struct driz_param_t* p);
 /****************************************************************************/
 /* LOGGING */
 
-#define LOGGING
-
 #ifdef LOGGING
 extern FILE *driz_log_handle;
 
@@ -203,24 +201,32 @@ driz_log_init(FILE *handle) {
         }
     }
     if (!p) {
-        sprintf(buf, "%ctmp%cdrizzle.log", dirsep, dirsep);
+        sprintf(buf, "drizzle.log");
     }
 
     handle = fopen(buf, "a");
-    setbuf(handle, 0);
+    if (handle) {
+        setbuf(handle, 0);
+    }
     return handle;
 }
 
 
 static inline_macro int
 driz_log_close(FILE *handle) {
-    return fclose(driz_log_handle);
+    if (handle) {
+        return fclose(handle);
+    }
 }
 
 static inline_macro int
 driz_log_message(const char* message) {
-    if (! driz_log_handle)
+    if (!driz_log_handle) {
         driz_log_handle = driz_log_init(driz_log_handle);
+        if (!driz_log_handle) {
+            return 1;
+        }
+    }
 
     fputs(message, driz_log_handle);
     fputs("\n", driz_log_handle);
