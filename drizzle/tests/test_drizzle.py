@@ -38,7 +38,10 @@ def centroid(image, size, center):
     xhi = min(xlo + size, image.shape[1])
 
     yx1 = np.mgrid[ylo:yhi, xlo:xhi, 1:2]
-    center = (yx1[..., 0] * image[ylo:yhi, xlo:xhi]).sum(axis=(1, 2))
+    center = (yx1[..., 0] * image[ylo:yhi, xlo:xhi]).sum(
+        axis=(1, 2),
+        dtype=np.float64,
+    )
 
     if center[2] == 0.0:
         return None
