@@ -35,4 +35,7 @@ def get_extensions():
     return [Extension(str('drizzle.cdrizzle'), sources, **cfg)]
 
 
-setup(ext_modules=get_extensions())
+setup(
+    ext_modules=get_extensions(),
+    python_requires='>=3.7',
+)
