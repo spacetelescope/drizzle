@@ -2,10 +2,10 @@ name: CI
 
 on:
   push:
-    branches: 
+    branches:
       - master
       - '*.x'
-    tags: 
+    tags:
       - "*"
   pull_request:
   schedule:
@@ -31,7 +31,9 @@ jobs:
         - linux: py310-xdist
         - linux: py311-xdist
         - macos: py311-xdist
-        - windows: py311-xdist
-        - linux: py311-devdeps-xdist
-        - linux: py311-xdist-cov
+        - linux: py312-xdist
+        - macos: py312-xdist
+        - windows: py312-xdist
+        - linux: py312-devdeps-xdist
+        - linux: py312-xdist-cov
           coverage: codecov
