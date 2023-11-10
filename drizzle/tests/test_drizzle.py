@@ -37,12 +37,8 @@ def centroid(image, size, center):
     xlo = int(center[1] - size / 2)
     xhi = min(xlo + size, image.shape[1])
 
-    center = [0.0, 0.0, 0.0]
-    for y in range(ylo, yhi):
-        for x in range(xlo, xhi):
-            center[0] += y * image[y,x]
-            center[1] += x * image[y,x]
-            center[2] += image[y,x]
+    yx1 = np.mgrid[ylo:yhi, xlo:xhi, 1:2]
+    center = (yx1[..., 0] * image[ylo:yhi, xlo:xhi]).sum(axis=(1, 2))
 
     if center[2] == 0.0:
         return None
@@ -304,6 +300,7 @@ def test_square_with_grid(tmpdir):
     insci = read_image(input_file)
     inwcs = read_wcs(input_file)
     insci = make_grid_image(insci, 64, 100.0)
+
     inwht = np.ones(insci.shape,dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
