@@ -1,6 +1,11 @@
 """
 A package for combining dithered images into a single image
 """
+from . import drizzle
+from . import dodrizzle
+from . import doblot
+from . import calc_pixmap
+from . import util
 from importlib.metadata import PackageNotFoundError, version
 
 
