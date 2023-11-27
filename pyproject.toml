@@ -30,7 +30,6 @@ Documentation = "http://spacetelescope.github.io/drizzle/"
 [project.optional-dependencies]
 test = [
     "pytest",
-    "ci-watson",
 ]
 docs = [
     "tomli; python_version<'3.11'",

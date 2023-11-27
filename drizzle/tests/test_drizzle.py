@@ -8,13 +8,8 @@ from astropy.io import fits
 
 from drizzle import drizzle, cdrizzle
 
-CI = os.environ.get("CI", "false") == "true"
-if CI:
-    DATA_DIR = os.environ["DATADIR"]
-else:
-    TEST_DIR = os.path.abspath(os.path.dirname(__file__))
-    DATA_DIR = os.path.join(TEST_DIR, 'data')
-
+TEST_DIR = os.path.abspath(os.path.dirname(__file__))
+DATA_DIR = os.path.join(TEST_DIR, 'data')
 ok = False
 
 
