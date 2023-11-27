@@ -36,5 +36,5 @@ def get_extensions():
 
 
 setup(
-    ext_modules=get_extensions()
+    ext_modules=get_extensions(),
 )
