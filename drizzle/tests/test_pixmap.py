@@ -1,4 +1,4 @@
-import os.path
+import os
 
 import numpy as np
 from numpy.testing import assert_equal, assert_almost_equal
@@ -7,9 +7,12 @@ from astropy.io import fits
 
 from drizzle import calc_pixmap
 
-
-TEST_DIR = os.path.abspath(os.path.dirname(__file__))
-DATA_DIR = os.path.join(TEST_DIR, 'data')
+CI = os.environ.get("CI", "false") == "true"
+if CI:
+    DATA_DIR = os.environ["DATADIR"]
+else:
+    TEST_DIR = os.path.abspath(os.path.dirname(__file__))
+    DATA_DIR = os.path.join(TEST_DIR, 'data')
 
 
 def test_map_rectangular():
