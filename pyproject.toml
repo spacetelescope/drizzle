@@ -60,9 +60,6 @@ norecursedirs = [
     "build",
     "docs/_build",
 ]
-addopts = [
-    "--import-mode=append",
-]
 
 [tool.ruff]
 line-length = 100
