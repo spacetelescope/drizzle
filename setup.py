@@ -36,6 +36,5 @@ def get_extensions():
 
 
 setup(
-    ext_modules=get_extensions(),
-    python_requires='>=3.7',
+    ext_modules=get_extensions()
 )

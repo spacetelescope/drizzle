@@ -16,17 +16,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
+  test:
     uses: OpenAstronomy/github-actions-workflows/.github/workflows/tox.yml@v1
     with:
       envs: |
         - linux: check-style
         - linux: check-security
-  test:
-    uses: OpenAstronomy/github-actions-workflows/.github/workflows/tox.yml@v1
-    with:
-      envs: |
-        - linux: py38-xdist
+
         - linux: py39-xdist
         - linux: py310-xdist
         - linux: py311-xdist
@@ -34,6 +30,6 @@ jobs:
         - linux: py312-xdist
         - macos: py312-xdist
         - windows: py312-xdist
-        - linux: py312-devdeps-xdist
+        - linux: py312-xdist-devdeps
         - linux: py312-xdist-cov
           coverage: codecov
