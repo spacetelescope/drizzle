@@ -2,8 +2,7 @@ include README.rst
 include CODE_OF_CONDUCT.md
 include pyproject.toml
 
-recursive-include *.c *
-recursive-include *.h *
+recursive-include src *.c *.h
 recursive-include docs *
 recursive-include licenses *
 
