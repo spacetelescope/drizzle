@@ -23,17 +23,16 @@ jobs:
         - linux: check-style
         - linux: check-security
 
-        - linux: py39-test
-        - linux: py310-test
-        - linux: py311-test
-        - macos: py311-test
-        - linux: py312-test
-        - macos: py312-test
-        - windows: py312-test
-        - linux: py312-test-cov
+        - linux: py39-xdist
+        - linux: py310-xdist
+        - linux: py311-xdist
+        - macos: py311-xdist
+        - linux: py312-xdist
+        - macos: py312-xdist
+        - windows: py312-xdist
+        - linux: py312-xdist-cov
           coverage: codecov
-
-        #- linux: py312-test-devdeps
+        - linux: py312-xdist-devdeps
 
   # When py312-xdist-devdeps works again, we can remove this.
   dev_deps_tests:
@@ -54,7 +53,7 @@ jobs:
         python -m pip install --extra-index-url https://pypi.anaconda.org/scientific-python-nightly-wheels/simple numpy>=0.0.dev0 --pre --upgrade
         python -m pip install --extra-index-url https://pypi.anaconda.org/liberfa/simple pyerfa>=0.0.dev0 --pre --upgrade
         python -m pip install --extra-index-url https://pypi.anaconda.org/astropy/simple astropy>=0.0.dev0 --pre --upgrade
-        python -m pip install --pre --no-build-isolation -v -e .[test]
+        python -m pip install --no-build-isolation -v -e .[test]
     - name: Test with dev deps
       run: |
         pip freeze
