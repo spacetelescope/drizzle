@@ -54,7 +54,7 @@ jobs:
         python -m pip install --extra-index-url https://pypi.anaconda.org/scientific-python-nightly-wheels/simple numpy>=0.0.dev0 --pre --upgrade
         python -m pip install --extra-index-url https://pypi.anaconda.org/liberfa/simple pyerfa>=0.0.dev0 --pre --upgrade
         python -m pip install --extra-index-url https://pypi.anaconda.org/astropy/simple astropy>=0.0.dev0 --pre --upgrade
-        python -m pip install --pre -v -e .[test]
+        python -m pip install --pre --no-build-isolation -v -e .[test]
     - name: Test with dev deps
       run: |
         pip freeze
