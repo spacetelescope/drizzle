@@ -32,11 +32,13 @@ jobs:
         - windows: py312-xdist
         - linux: py312-xdist-cov
           coverage: codecov
-        - linux: py312-xdist-devdeps
+
+        #- linux: py312-xdist-devdeps
 
   # When py312-xdist-devdeps works again, we can remove this.
+  # When, you ask? Well, maybe after numpy 2.0 is released, maybe.
   dev_deps_tests:
-    name: CI with dev dependencies
+    name: py312-devdeps
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
