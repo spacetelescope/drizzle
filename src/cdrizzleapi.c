@@ -11,9 +11,6 @@
 #ifndef NPY_NO_DEPRECATED_API
 #define NPY_NO_DEPRECATED_API NPY_1_10_API_VERSION
 #endif
-#ifndef NPY_TARGET_VERSION
-#define NPY_TARGET_VERSION NPY_1_21_API_VERSION
-#endif
 #include <numpy/arrayobject.h>
 #include <numpy/npy_math.h>
 
