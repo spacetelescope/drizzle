@@ -18,7 +18,7 @@ file = "README.rst"
 content-type = "text/x-rst"
 
 [project.license]
-file = "licenses/LICENSE.rst"
+file = "LICENSE.rst"
 content-type = "text/plain"
 
 [project.urls]
