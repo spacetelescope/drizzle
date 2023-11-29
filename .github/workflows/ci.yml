@@ -16,24 +16,45 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
+  test:
     uses: OpenAstronomy/github-actions-workflows/.github/workflows/tox.yml@v1
     with:
       envs: |
         - linux: check-style
         - linux: check-security
-  test:
-    uses: OpenAstronomy/github-actions-workflows/.github/workflows/tox.yml@v1
-    with:
-      envs: |
-        - linux: py38-xdist
+
         - linux: py39-xdist
         - linux: py310-xdist
         - linux: py311-xdist
-        - macos: py311-xdist
-        - linux: py312-xdist
         - macos: py312-xdist
         - windows: py312-xdist
-        - linux: py312-devdeps-xdist
         - linux: py312-xdist-cov
           coverage: codecov
+
+        #- linux: py312-xdist-devdeps
+
+  # When py312-xdist-devdeps works again, we can remove this.
+  # When, you ask? Well, maybe after numpy 2.0 is released, maybe.
+  dev_deps_tests:
+    name: py312-devdeps
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    - name: Install and build
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install --extra-index-url https://pypi.anaconda.org/scientific-python-nightly-wheels/simple numpy>=0.0.dev0 --pre --upgrade
+        python -m pip install --extra-index-url https://pypi.anaconda.org/liberfa/simple pyerfa>=0.0.dev0 --pre --upgrade
+        python -m pip install --extra-index-url https://pypi.anaconda.org/astropy/simple astropy>=0.0.dev0 --pre --upgrade
+        python -m pip install --no-build-isolation -v -e .[test]
+    - name: Test with dev deps
+      run: |
+        pip freeze
+        pytest -v

@@ -13,6 +13,14 @@ drizzle Documentation
     :target: https://github.com/spacetelescope/drizzle/actions
     :alt: CI Status
 
+.. image:: https://readthedocs.org/projects/spacetelescope-drizzle/badge/?version=latest
+    :target: https://spacetelescope-drizzle.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+
+.. image:: https://img.shields.io/pypi/v/drizzle.svg
+    :target: https://pypi.org/project/drizzle
+    :alt: PyPI Status
+
 The ``drizzle`` library is a Python package for combining dithered images into a
 single image. This library is derived from code used in DrizzlePac. Like
 DrizzlePac, most of the code is implemented in the C language. The biggest
@@ -28,11 +36,11 @@ the new GWCS code.
 Requirements
 ------------
 
-- Python 3.6 or later
+- Python 3.9 or later
 
-- Numpy 1.13 or later
+- Numpy
 
-- Astropy 3.0 or later
+- Astropy
 
 The Drizzle Algorithm
 ---------------------

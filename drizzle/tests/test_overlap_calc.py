@@ -1,4 +1,3 @@
-import os
 import pytest
 from math import sqrt
 
@@ -6,9 +5,6 @@ import numpy as np
 
 from drizzle.cdrizzle import clip_polygon, invert_pixmap
 
-
-TEST_DIR = os.path.abspath(os.path.dirname(__file__))
-DATA_DIR = os.path.join(TEST_DIR, 'data')
 SQ2 = 1.0 / sqrt(2.0)
 
 

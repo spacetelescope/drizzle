@@ -8,11 +8,8 @@ from astropy.io import fits
 
 from drizzle import drizzle, cdrizzle
 
-
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
-
-
 ok = False
 
 
