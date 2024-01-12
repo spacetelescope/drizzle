@@ -16,7 +16,7 @@ shifts in pixel space across the detector caused by geometric distortion of the
 optics, true interlacing of images is generally not feasible.
 
 Another standard simple linear technique for combining shifted images,
-descriptively named “shift-and-add”, has been used for many years to combine
+descriptively named ``shift-and-add``, has been used for many years to combine
 dithered infrared data onto finer grids. Each input pixel is block-replicated
 onto a finer subsampled grid, shifted into place, and added to the output image.
 Shift-and-add has the advantage of being able to easily handle arbitrary dither
@@ -97,23 +97,44 @@ transformations as inputs.
 
 Pixmap Generation
 ------------------
-A ``pixmap`` provides the position in the output frame of each input pixel as a lookup table.
-This 3-D array contains 2 ``NxM`` arrays where the dimensions ``NxM`` are identical to the input
-image array's and the first array specifies the output X position while the second array specifies
-the output Y position.  Creating this array requires the WCS information for both the input
-and output arrays.  Each input pixel position ``(x,y)`` gets translated by the input
-WCS into sky coordinates ``(RA,Dec)`` using the ``.all_pix2world()`` method of the input astropy WCS.
-These sky coordinates ``(RA,Dec)`` then get translated to pixel positions in the output array
-using the ``.all_sky2world()`` method of the output astropy WCS.  These output pixel
-positions ``(xout,yout)`` then get written out the pixmap array element corresponding to
-the original input pixel value ``(x,y)``.  The ``drizzle.drizzle.calc_pixmap`` module includes
-the function ``calc_pixmap()`` for computing the pixmap for astropy-compatible images.
+A ``pixmap`` provides the position in the output frame of each input pixel as a lookup table based
+on the available WCS information for the input and output arrays.  This WCS information should
+include all distortion models as well as transformation information from pixels to sky coordinates
+in order to accurated reproduce the output pixel position for each input pixel.
+
+The pixmap has the shape of ``2xNxM`` where the dimensions ``NxM`` represent the input
+image array shape.  The first array ``[0,N,M]`` specifies the output X position for each input pixel,
+while the second array ``[1,N,M]`` specifies the output Y position for each input pixel.
+Creating this array requires:
+
+    - the WCS information for the input ``NxM`` array
+    - the WCS information for the output array
+
+Computing the pixmap using this WCS information can be done using these steps based on the
+astropy-compatible WCS coordinate transformation methods:
+
+    #. Translate each input pixel position ``(x,y)`` into sky coordinates ``(RA,Dec)`` using the
+       ``.all_pix2world()`` method of the input astropy WCS.
+        - **For GWCS JWST WCS objects**, use the ``.forward_transform()`` method instead
+
+    #. Use the ``.all_sky2world()`` method of the output astropy WCS to Convert those sky
+       coordinates into pixel positions ``(xout,yout)`` in the output array.
+        - **For GWCS JWST WCS objects**, use the ``.backward_transform()`` method instead
+
+    #. Create an empty ``2xNxM`` array as the pixmap
+    #. Write out an ``NxM`` array with the ``xout`` pixel positions for each element/position of the input array as ``pixmap[0,N,M]``
+    #. Write out an ``NxM`` array with the ``yout`` pixel positions for each element/position of the input array as ``pixmap[1,N,M]``
+
+The ``drizzle.drizzle.calc_pixmap`` module includes
+the function ``calc_pixmap()`` for computing the pixmap for astropy-compatible images as an
+example of how to to perform this calculation.
 
 For data which are not supported by ``astropy.wcs.WCS``, the pixmap array can be computed
 using the methods for converting pixel positions to sky coordinates using the WCS code
 which supports the instrument that took the data.  JWST data, for example, relies on the
 ``gwcs`` package to specify the WCS as read in from the ASDF files using the ``asdf``
-package.  The computation of the JWST pixmap relies on using the ``.forward_transform()``
-method to compute the sky coordinates for each input pixel position and the ``.backward_transform()``
-to convert those sky positions into output pixel positions.  This computation can be seen in the
-``jwst.resample.resample_utils`` module of the JWST pipeline.
+package.  As noted earlier, the computation of the JWST pixmap relies on using the
+``.forward_transform()`` method to compute the sky coordinates for each input pixel
+position and the ``.backward_transform()`` to convert those sky positions into
+output pixel positions.  This computation can be seen in the ``jwst.resample.resample_utils``
+module of the JWST pipeline.

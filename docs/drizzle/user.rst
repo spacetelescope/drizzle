@@ -1,34 +1,261 @@
 Using Drizzle
 ==============
 
-There are 2 ways to use this package:  use the ``Drizzle`` class in an object-oriented way
-or use the core function ``drizzle.dodrizzle.dodrizzle()`` directly.  Which approach
-should be taken depends entirely on whether or not the input images have WCS information
-which are accessed using ``astropy.wcs.WCS`` or not.  Images whose WCS information can read
-in using ``astropy.wcs.WCS`` can take advantage of the simpler object-oriented ``Drizzle``
+There are 2 ways to use this package:
+
+  #. use the ``Drizzle`` class in an object-oriented way, or
+  #. use the core function ``drizzle.dodrizzle.apply_drizzle()`` directly
+
+Which approach should be taken depends entirely on whether or not the input images have WCS information
+which are based on ``astropy.wcs.WCS`` or not.  Images whose WCS information can be read
+in using ``astropy.wcs.WCS`` can take advantage of the object-oriented ``Drizzle``
 class.  Data which includes WCS information written to the image header using some convention
 other than the FITS conventions understood by ``astropy.wcs.WCS``, such as JWST data, will
 need to use the core function directly.
 
 The object-oriented interface simplifies calling this code by computing the many
-specific inputs for the core function, ``drizzle.dodrizzle.dodrizzle()`` within the
+specific inputs for the core function, ``drizzle.dodrizzle.apply_drizzle()`` within the
 class itself.  This implementation, though, assumes that the input and output images
 are FITS images with WCS information written to the headers in a convention supported
 by ``astropy.wcs.WCS``.  As long as the data is compatible with ``astropy.wcs.WCS``,
 the ``Drizzle`` class should be able to successfully combine the data using the
 drizzle algorithm.
 
-Calling the core drizzle function ``drizzle.dodrizzle.dodrizzle()`` directly
-allows the user the freedom to generate the inputs to the core function using whatever conventions
-best support the input data.  This function relies on a parameter called a ``pixmap``
-to specify the translation from the input array to the output array based on the
-WCS information of the input and output data.  Computing the ``pixmap`` requires
-reading and interpreting the WCS information from the input and output images,
+Calling the core drizzle function ``drizzle.dodrizzle.apply_drizzle()`` directly
+allows the user the freedom to generate the inputs to the core function using whatever
+WCS conventions best support the input data.  This function relies on a parameter
+called a ``pixmap`` to specify the translation from the input array to the output array
+based on the WCS information of the input and output data.  Computing the ``pixmap``
+requires reading and interpreting the WCS information from the input and output images,
 something which the user can implement using whatever code supports the data
 they are processing.
 
 The following sections describe each interface and provide examples on how to
 call the necessary code to drizzle the data.
+
+Defining Output WCS
+--------------------
+The most important aspect of using this code is defining the WCS for the
+output frame.  This defines where the pixels from the input frame will go
+when they are drizzled.  This output WCS can be defined in any one of 3 ways:
+
+  #. create new WCS from scratch
+  #. use the all the input WCSs and define a WCS without distortion that
+     encompasses all the input frames
+  #. read in a previously defined WCS from an already existing, preferably
+     undistorted, image file.  Obviously this will only work if one of the previous
+     two methods were used to write out the previous image.
+
+Create WCS from scratch
+************************
+This method leaves the entire definition of the WCS up to the end user and how
+this gets done depends on the WCS library that needs to be used for the type of
+output image file to be created.
+
+For FITS images, a basic WCS can be created using ``astropy.wcs.WCS`` by defining
+the output frame reference point on the sky, the plate scale and orientation.
+Descriptions on how to define such a WCS using ``astropy.wcs`` can be found
+at https://docs.astropy.org/en/stable/wcs/example_create_imaging.html.
+
+For JWST images based on GWCS, the GWCS readthedocs pages contain an explanation
+of how to define an imaging WCS from scratch at https://gwcs.readthedocs.io/en/latest/#a-step-by-step-example-of-constructing-an-imaging-gwcs-object.
+
+Define new WCS based on input WCSs
+***********************************
+The default output WCS desired most of the time would be one which defines
+a tangent plane that matches the undistorted plate scale and orientation of
+the input frames and that spans the full field-of-view of all input frames.
+Defining such a WCS requires understaning how the distortion model has been
+included in the input image WCSs, so that a new WCS can be defined without those
+terms.
+
+This computation requires determining the full extent of the input frames on the sky
+after applying the distortion models, then using that footprint to define
+the tangent plane.
+
+For FITS images, the ``STWCS`` package contains a function,
+``stwcs.distortion.output_wcs()``, designed specifically
+to perform this computation based on a list of input astropy-compatible WCS objects.
+This function serves as an example of the steps needed to perform this computation.
+
+For JWST images based on GWCS, the JWST pipeline contains a function,
+``jwst.assign_wcs.util.wcs_from_footprints()``, which performs this computation.
+
+
+The Drizzle Function
+---------------------
+Data which contains a WCS specified in a file format or convention which astropy
+does not support can be drizzled by calling the core ``apply_drizzle()`` function
+directly.  It can also be called directly for cases where you may want control
+over each chip such that only some chips in the input image get drizzled to the
+output frame and not others.  Images taken by the HST WFPC2 camera contain one
+chip with a plate scale on the sky of 0.045"/pixel while the other 3 chips have
+a plate scale of roughly 0.1"/pixel on the sky.  Frequently only the chips with
+the same plate scale are drizzled, and for the examples given here, WFPC2 data
+will be used.  The HST/WFPC2 data are fully supported by ``astropy.wcs.WCS``, so
+the part of the computation which needs to be revised for other types of data
+will be indicated in the examples.  An example based on JWST data is also being
+provided to illustrate the differences in computations due to the image file
+format and WCS library.
+
+The basic function has a signature of::
+
+    def apply_drizzle(insci, inwht,
+                      pixmap,
+                      outsci, outwht, outcon,
+                      expin, in_units, wt_scl,
+                      pix_ratio=1.0, uniqid=1,
+                      xmin=0, xmax=0, ymin=0, ymax=0,
+                      pixfrac=1.0, kernel='square',
+                      fillval="INDEF")
+
+
+This input parameters for this function are numpy arrays for the input and output images
+and ``astropy.wcs.WCS`` instances for the ``input_wcs`` and ``output_wcs`` parameters.  All
+the rest of the parameters starting with ``expin`` control how the drizzling gets applied and are
+simple floats, ints or strings, making it very easy to call.  The computations requires
+for calling this function are limited to defining the input weighting array ``inwht`` based on
+the form of weighting desired by the user, to keeping track of the unique ID ``uniqid`` for each input,
+and to passing in a valid value for ``wt_scl``.  The rest either are read in from the input, such
+as the input exposure time ``expin``, or specified by the user, such as the kernel being used.  In
+rare cases, only a subset of the output array will be used for drizzling as specified by the
+``xmin``, ``xmax``, ``ymin``, and ``ymax`` parameters, which may require some additional computations
+or checks in the calling code to set the correct values.
+
+The number of required parameters makes calling this function a fairly long process which
+requires a significant amount of code.
+
+.. note:: The ``apply_drizzle()`` function replaces the original ``dodrizzle()`` function from the same module.  The ``dodrizzle()`` function only works with astropy-compatible WCS objects as it calls a hard-coded version of ``calc_pixmap()`` for FITS images only.  As such, the ``dodrizzle()`` function should be considered **DEPRECATED**.
+
+
+HST example
+***********
+This simple example demonstrates how to use this code to drizzle a single HST/WFC3 image
+onto an arbitrary (pre-defined) output frame. ::
+
+    import numpy as np
+    from astropy import wcs
+    from astropy.io import fits
+    from drizzle import dodrizzle, calc_pixmap
+    import stwcs
+
+    # open input science array and create a WCS object for it
+    fhdu = fits.open('ib3y01c6q_flt.fits')
+    # Use the 'fobj' parameter so that wcs.WCS can find all related distortion header keywords
+    input_wcs = wcs.WCS(header=fhdu["sci",1].header, fobj=fhdu)
+    # do the same for the output array, if array and WCS are not already in memory
+    ohdu = fits.open('output_drz.fits', mode='update')
+    # create the output WCS based on the input WCS object
+    # this example will rely on the STWCS function for simplicity of this example
+    #
+    output_wcs = stwcs.distortion.output_wcs([input_wcs])
+
+    # define the output arrays
+    outsci = np.zeros(output_wcs.pixel_shape, dtype=fhdu["sci",1].data.dtype)
+    outwht = np.zeros(output_wcs.pixel_shape, dtype=fhdu["sci",1].data.dtype)
+    outcon = np.zeros(output_wcs.pixel_shape, dtype=np.uint32)
+
+    # define drizzling parameters - typically, user inputs
+    expin = fhdu[0].header['exptime']
+    in_units = 'cps'
+    pixfrac = 1.0
+    kernel = 'square'
+    fillval = 'INDEF'
+    uniqid = 1
+
+    # create the pixmap
+    pixmap = calc_pixmap.calc_pixmap(input_wcs, output_wcs)
+
+    # drizzle the input array onto the output frame
+    _vers, nmiss, nskip = dodrizzle.apply_drizzle(insci, inwht, pixmap,
+                                                  outsci, outwht, outcon,
+                                                  expin, in_units, wt_scl=1.0,
+                                                  pix_ratio=pix_ratio, uniqid=uniqid,
+                                                  xmin=0, xmax=0, ymin=0, ymax=0,
+                                                  pixfrac=pixfrac, kernel=kernel, fillval=fillval)
+    # write out output arrays to a file now with basic header...
+    fits.PrimaryHDU(data=outsci, header=output_wcs.to_header())
+
+
+Defining the Output
+*********************
+Creating the output WCS can be done in any number of ways depending on what is desired for the output frame.
+The only real requirement is that there is a defined method or function that can be used to transform sky
+coordinates into the correct position in the output array.  A valid output WCS can be defined from scratch
+by defining the fiducial or reference point or tangent point (depending on the type of WCS), a matrix
+providing the plate scale and orientation of the pixels on the sky, and finally keywords defining the
+number of pixels that make up the output array to emcompass the desired region on the sky.
+The JWST pipeline performs this computation using the ``jwst.assign_wcs.util.wcs_from_footprints()`` function, which
+as the name suggests, computes an ouptut WCS that (by default) fully encompasses all pixels from all input frames.
+The HST pipeline performs essentially the same computation using the **STWCS** package's
+``stwcs.distortion.utils.output_wcs()`` function.
+
+
+JWST Example
+****************
+Calling the ``apply_drizzle()`` function to drizzle imaging data written out in a format not supported by
+astropy requires the same steps based on the detector's file format and WCS specification.  For JWST,
+the JWST package includes all the code necessary for file I/O and for defining the WCS objects.
+JWST data relies on the ASDF package for file I/O to extract the image
+data as numpy arrays and on the GWCS package for the WCS interpretation.  The
+JWST pipeline includes a revised copy of this ``dodrizzle()`` function based on
+the GWCS package in the ``jwst.resample.gwcs_drizzle`` module.
+
+This example demonstrates the basic steps that can be used outside of the pipeline
+to resample a set of input frames onto an output frame using the ``apply_drizzle()``
+function.  ::
+
+    from jwst.assign_wcs import utils
+    from jwst.resample import resample_utils
+    from stdatamodels.jwst import datamodels
+
+    # read in the input frames based on a JWST association `input_asn`
+    input_models = datamodels.open(input_asn)
+
+    # create output WCS to fully encompass all input frames
+    # for simplicity of this example, it calls a JWST function
+    # which wraps the fundamental jwst.assign_wcs.wcs_from_footprints() function
+    #
+    output_wcs = resample_utils.make_output_wcs(input_models,
+                                                ref_wcs=None,
+                                                pscale_ratio=pscale_ratio,
+                                                pscale=pscale,
+                                                rotation=rotation,
+                                                shape=None,
+                                                crpix=None,
+                                                crval=None)
+
+    blank_output = datamodels.ImageModel(tuple(output_wcs.array_shape))
+    # update meta data and wcs
+    blank_output.update(input_models[0])
+    blank_output.meta.wcs = output_wcs
+
+    # define drizzling parameters - typically, user inputs
+    in_units = 'cps'
+    pixfrac = 1.0
+    kernel = 'square'
+
+    # drizzle each input onto the output frame
+    for uniqid,input in enumerate(input_models):
+            expin = input.meta.exposure.exposure_time
+            inwht = resample_utils.build_driz_weight(input,
+                                                     weight_type='exptime',
+                                                     good_bits=0)
+            # compute pixmap for input
+            pixmap = resample_utils.calc_gwcs_pixmap(input.meta.wcs, output_wcs, input.data.shape)
+
+            # drizzle the input array onto the output frame
+            _vers, nmiss, nskip = dodrizzle.apply_drizzle(input.data, inwht, pixmap,
+                                                          blank_output.data,
+                                                          blank_output.wht,
+                                                          blank_output.con,
+                                                          expin, in_units, wt_scl='exptime',
+                                                          pix_ratio=1.0, uniqid=uniqid,
+                                                          xmin=0, xmax=0, ymin=0, ymax=0,
+                                                          pixfrac=pixfrac, kernel=kernel,
+                                                          fillval="INDEF")
+    # write out blank_output to a file here...
+    blank_output.to_asdf(f"{input_asn.meta.asn_table.products[0].name}_resampled.asdf")
 
 
 The Drizzle Class
@@ -205,7 +432,7 @@ methods are called::
         driz.write(outfile)
 
 HST Example
-===========
+***********
 This example uses an HST WFPC2 exposure to illustrate how to use the ``Drizzle``
 object to combine 3 of the 4 chips of the WFPC2 image into a single mosaic.
 This example includes code for robustly handling HST filenames as well as
@@ -381,76 +608,4 @@ This short example is based on code from ``jwst.resample.resample.py``::
 
     # Write out the result to a FITS file.
     blank_output.to_fits("jwst_drizzle.fits")
-
-
-
-The Drizzle Function
----------------------
-Data which contains a WCS specified in a file format or convention which astropy
-does not support can be drizzled by calling the core ``dodrizzle()`` function
-directly.  It can also be called directly for cases where you may want control
-over each chip such that only some chips in the input image get drizzled to the
-output frame and not others.  Images taken by the HST WFPC2 camera contain one
-chip with a plate scale on the sky of 0.045"/pixel while the other 3 chips have
-a plate scale of roughly 0.1"/pixel on the sky.  Frequently only the chips with
-the same plate scale are drizzled, and for the examples given here, WFPC2 data
-will be used.  The HST/WFPC2 data are fully supported by ``astropy.wcs.WCS``, so
-the part of the computation which needs to be revised for other types of data
-will be indicated in the examples.  An example based on JWST data is also being
-provided to illustrate the differences in computations due to the image file
-format and WCS library.
-
-The basic function has a signature of::
-
-    def dodrizzle(insci, input_wcs, inwht,
-                  output_wcs, outsci, outwht, outcon,
-                  expin, in_units, wt_scl,
-                  wcslin_pscale=1.0, uniqid=1,
-                  xmin=0, xmax=0, ymin=0, ymax=0,
-                  pixfrac=1.0, kernel='square', fillval="INDEF"):
-
-This input parameters for this function are numpy arrays for the input and output images
-and ``astropy.wcs.WCS`` instances for the ``input_wcs`` and ``output_wcs`` parameters.  All
-the rest of the parameters starting with ``expin`` control how the drizzling gets applied and are
-simple floats, ints or strings, making it very easy to call.  The computations requires
-for calling this function are limited to defining the input weighting array ``inwht`` based on
-the form of weighting desired by the user, to keeping track of the unique ID ``uniqid`` for each input,
-and to passing in a valid value for ``wt_scl``.  The rest either are read in from the input, such
-as the input exposure time ``expin``, or specified by the user, such as the kernel being used.  In
-rare cases, only a subset of the output array will be used for drizzling as specified by the
-``xmin``, ``xmax``, ``ymin``, and ``ymax`` parameters, which may require some additional computations
-or checks in the calling code to set the correct values.
-
-The number of required parameters makes calling this function a fairly long process which
-requires a significant amount of code.
-
-
-HST example
-***********
-
-::
-
-        dodrizzle.dodrizzle(insci, inwcs, inwht, self.outwcs,
-                            self.outsci, self.outwht, self.outcon,
-                            expin, in_units, wt_scl,
-                            wcslin_pscale=inwcs.pscale, uniqid=self.uniqid,
-                            xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax,
-                            pixfrac=self.pixfrac, kernel=self.kernel,
-                            fillval=self.fillval)
-
-
-Non-HST Example
-****************
-Calling this function to drizzle imaging data written out in a format not supported by
-Astropy requires creating a copy of the function.  That copy would then need to be
-modified to call a new function for computing the pixmap using code specific to the data.
-The calling code would also need to handle the I/O of the input and output data using
-libraries compatible with the data.
-
-JWST data, for example, relies on the ASDF package for file I/O to extract the image
-data as numpy arrays and on the GWCS package for the WCS interpretation.  The
-JWST pipeline includes a revised copy of this ``dodrizzle()`` function based on
-the GWCS package in the ``jwst.resample.gwcs_drizzle`` module.
-
-
 
