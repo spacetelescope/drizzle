@@ -42,10 +42,10 @@ class Drizzle():
             "lanczos2", and "lanczos3". The square kernel is the default.
 
         out_shape : tuple, None, optional
-            Shape of the output images (context image will have a third
-            dimension of size proportional to the number of input images).
-            This parameter is helpful when neither ``out_sci``, ``out_wht``,
-            nor ``out_ctx`` images are provided.
+            Shape (`numpy` order ``(Ny, Nx)``) of the output images (context
+            image will have a third dimension of size proportional to the number
+            of input images). This parameter is helpful when neither
+            ``out_sci``, ``out_wht``, nor ``out_ctx`` images are provided.
 
         fillval: float, None, str, optional
             The value of output pixels that did not have contributions from
@@ -53,8 +53,8 @@ class Drizzle():
             ``"INDEF"`` and ``out_sci`` is provided, the values of ``out_sci``
             will not be modified. When ``fillval`` is either `None` or
             ``"INDEF"`` and ``out_sci`` is **not provided**, the values of
-            ``out_sci`` will be initialized to 0. If ``fillval`` is a number
-            of a string that can be converted to a number, then the output
+            ``out_sci`` will be initialized to `numpy.nan`. If ``fillval``
+            is a string that can be converted to a number, then the output
             pixels with no contributions from input images will be set to this
             ``fillval`` value.
 
@@ -74,8 +74,6 @@ class Drizzle():
             Subsequent calls hold intermediate results.
 
         """
-        if not isinstance(ctx_id, numbers.Integral) or ctx_id < 0:
-            raise TypeError("'ctx_id' must be a non-negative integer number")
         self.ctx_id = -1  # the ID of the *last* image to be resampled
         self.exptime = 0.0
 
@@ -85,6 +83,7 @@ class Drizzle():
 
         if fillval is None:
             fillval = "INDEF"
+
         elif isinstance(str, fillval):
             fillval = fillval.strip()
             if fillval == "":
@@ -94,6 +93,10 @@ class Drizzle():
             else:
                 float(fillval)
                 fillval = str(fillval)
+
+        if out_sci is None and fillval == "INDEF":
+            fillval = "NaN"
+
         self.fillval = fillval
 
         if (out_shape is None and out_sci is None and out_wht is None and
@@ -104,18 +107,16 @@ class Drizzle():
 
         shapes = set()
 
-        if out_sci is None:
-            if fillval == "INDEF":
-                raise ValueError(
-                    "Fill value 'INDEF' is not allowed when 'out_sci' is None."
-                )
-        else:
+        if out_sci is not None:
+            out_sci = np.asarray(out_sci, dtype=np.float32)
             shapes.add(out_sci.shape)
 
         if out_wht is not None:
+            out_wht = np.asarray(out_wht, dtype=np.float32)
             shapes.add(out_wht.shape)
 
         if out_ctx is not None:
+            out_ctx = np.asarray(out_ctx, dtype=np.int32)
             if len(out_ctx.shape) == 3:
                 shapes.add(out_ctx.shape[1:])
             else:
@@ -144,23 +145,30 @@ class Drizzle():
                 "provided."
             )
 
-        self._alloc_output_arrays(n_images=n_images)
+        self._alloc_output_arrays(
+            out_shape=self.out_shape,
+            n_images=n_images,
+            out_sci=out_sci,
+            out_wht=out_wht,
+            out_ctx=out_ctx,
+        )
 
-    def _alloc_output_arrays(self, n_images):
+    def _alloc_output_arrays(self, out_shape, n_images, out_sci, out_wht,
+                             out_ctx):
         # allocate arrays as needed:
         if out_sci is None:
-            self.out_sci = np.empty(self.out_shape, dtype=np.float32)
-            self.out_sci.fill(float(self.fillval))
+            self.out_sci = np.empty(out_shape, dtype=np.float32)
+            self.out_sci.fill(self.fillval)
 
         if out_wht is None:
-            self.out_wht = np.ones(self.out_shape, dtype=np.float32)
+            self.out_wht = np.zeros(out_shape, dtype=np.float32)
 
         if out_ctx is None:
             n_ctx_planes = (n_images - 1) // CTX_PLANE_BITS + 1
             if n_ctx_planes == 1:
-                ctx_shape = self.out_shape
+                ctx_shape = out_shape
             else:
-                ctx_shape = (n_ctx_planes, ) + self.out_shape
+                ctx_shape = (n_ctx_planes, ) + out_shape
             self.out_ctx = np.zeros(ctx_shape, dtype=np.int32)
 
     def _increment_ctx_id(self):
@@ -268,6 +276,12 @@ class Drizzle():
         self.exptime += exptime
 
         data = np.asarray(data, dtype=np.float32)
+        pixmap = np.asarray(pixmap, dtype=np.float64)
+
+        if pixmap.shape[:2] != data.shape:
+            raise ValueError(
+                "'pixmap' shape is not consistent with 'data' shape."
+            )
 
         # TODO: this is code that would enable initializer to not need output
         #       image shape at all and set output image shape based on
@@ -292,14 +306,16 @@ class Drizzle():
         if ymin is None or ymin < 0:
             ymin = 0
 
-        if xmax > self.out_shape[1] - 1:
+        if xmax is None or xmax > self.out_shape[1] - 1:
             xmax = self.out_shape[1] - 1
 
-        if ymax > self.out_shape[0] - 1:
+        if ymax is None or ymax > self.out_shape[0] - 1:
             ymax = self.out_shape[0] - 1
 
         if weight_map is not None:
             weight_map = np.asarray(weight_map, dtype=np.float32)
+        else:  # TODO: this should not be needed after C code modifications
+            weight_map = np.ones_like(data)
 
         pixmap = np.asarray(pixmap, dtype=np.float64)
 
@@ -309,14 +325,20 @@ class Drizzle():
         # TODO: While drizzle code in cdrizzlebox.c supports weight_map=None,
         #       cdrizzleapi.c does not. It should be modified to support this
         #       for performance reasons.
+        if len(self.out_ctx.shape) == 2:
+            assert plane_no == 0
+            ctx_plane = self.out_ctx
+        else:
+            ctx_plane = self.out_ctx[plane_no]
+
         _vers, nmiss, nskip = cdrizzle.tdriz(
             data,
             weight_map,
             pixmap,
             self.out_sci,
             self.out_wht,
-            self.out_ctx[plane_no],
-            uniqid=id_in_plane,
+            ctx_plane,
+            uniqid=id_in_plane + 1,
             xmin=xmin,
             xmax=xmax,
             ymin=ymin,
@@ -334,8 +356,6 @@ class Drizzle():
         return nmiss, nskip
 
 
-#     pixmap = calc_pixmap.calc_pixmap(blot_wcs, source_wcs)
-#     pix_ratio = source_wcs.pscale / blot_wcs.pscale
 def blot_image(data, pixmap, pix_ratio, exptime, output_pixel_shape,
                interp='poly5', sinscl=1.0):
     """
