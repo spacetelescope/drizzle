@@ -802,7 +802,7 @@ get_scanline_limits(struct scanner *s, int y, int *x1, int *x2) {
     xlt = s->left->m * y + s->left->c - MAX_INV_ERR;
     xrt = s->right->m * y + s->right->c + MAX_INV_ERR;
 
-    xmin = s->xmin;
+    xmin = s->xmin + 1;
     xmax = s->xmax;
     if (s->xmax >= s->xmin) {
         if (xlb < xmin) {
@@ -973,7 +973,7 @@ _setup_scanner:
     // initialize polygon scanner:
     driz_error_unset(par->error);
     n = init_scanner(&inpq, par, s);
-    *ymin = MAX(0, (int)(s->min_y + 0.5 + 2.0 * MAX_INV_ERR));
+    *ymin = MAX(1, (int)(s->min_y + 0.5 + 2.0 * MAX_INV_ERR));
     *ymax = MIN(s->ymax, (int)(s->max_y + 2.0 * MAX_INV_ERR));
     return n;
 }

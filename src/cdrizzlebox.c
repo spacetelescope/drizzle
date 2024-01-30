@@ -725,13 +725,14 @@ do_kernel_turbo(struct driz_param_t* p) {
     double pfo, scale2, ac;
     double xxi, xxa, yyi, yya, w, dover;
     int xmin, xmax, ymin, ymax, n;
+    integer_t xarr,yarr;
 
     driz_log_message("starting do_kernel_turbo");
     bv = compute_bit_value(p->uuid);
     ac = 1.0 / (p->pixel_fraction * p->pixel_fraction);
     pfo = p->pixel_fraction / p->scale / 2.0;
     scale2 = p->scale * p->scale;
-
+    nhit = 0;
     if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
@@ -763,15 +764,15 @@ do_kernel_turbo(struct driz_param_t* p) {
         for (i = xmin; i <= xmax; ++i) {
             double ox, oy;
 
-            if (map_pixel(p->pixmap, i, j, &ox, &oy)) {
+            if (map_pixel(p->pixmap, i-1, j-1, &ox, &oy)) {
                 nhit = 0;
 
             } else {
                 /* Offset within the subset */
-                xxi = ox - pfo;
-                xxa = ox + pfo;
-                yyi = oy - pfo;
-                yya = oy + pfo;
+                xxi = ox - xmin - pfo;
+                xxa = ox - xmin + pfo;
+                yyi = oy - ymin - pfo;
+                yya = oy - ymin + pfo;
 
                 nxi = fortran_round(xxi);
                 nxa = fortran_round(xxa);
@@ -783,14 +784,18 @@ do_kernel_turbo(struct driz_param_t* p) {
                 jje = MIN(nya, osize[1]-1);
 
                 nhit = 0;
+                /* Convert i,j 1-based pixel positions into 0-based
+                   indices for accessing data array. */
+                xarr = i-1;
+                yarr = j-1;
 
                 /* Allow for stretching because of scale change */
-                d = get_pixel(p->data, i, j) * (float)scale2;
+                d = get_pixel(p->data, xarr, yarr) * (float)scale2;
 
                 /* Scale the weighting mask by the scale factor and inversely by
                    the Jacobian to ensure conservation of weight in the output. */
                 if (p->weights) {
-                    w = get_pixel(p->weights, i, j) * p->weight_scale;
+                    w = get_pixel(p->weights, xarr, yarr) * p->weight_scale;
                 } else {
                     w = 1.0;
                 }
