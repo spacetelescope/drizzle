@@ -764,7 +764,7 @@ do_kernel_turbo(struct driz_param_t* p) {
         for (i = xmin; i <= xmax; ++i) {
             double ox, oy;
 
-            if (map_pixel(p->pixmap, i-1, j-1, &ox, &oy)) {
+            if (map_pixel(p->pixmap, i, j, &ox, &oy)) {
                 nhit = 0;
 
             } else {
@@ -785,10 +785,12 @@ do_kernel_turbo(struct driz_param_t* p) {
 
                 nhit = 0;
                 /* Convert i,j 1-based pixel positions into 0-based
-                   indices for accessing data array. */
+                   indices for accessing data array. *
                 xarr = i-1;
                 yarr = j-1;
-
+                */
+                xarr = i;
+                yarr = j;
                 /* Allow for stretching because of scale change */
                 d = get_pixel(p->data, xarr, yarr) * (float)scale2;
 

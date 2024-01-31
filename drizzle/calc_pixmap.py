@@ -47,6 +47,6 @@ def calc_pixmap(first_wcs, second_wcs):
         pixmap = second_wcs.all_world2pix(worldmap, 1)
 
     pixmap = pixmap.reshape(first_naxis2, first_naxis1, 2)
-    pixmap = pixmap # - one
+    pixmap = pixmap - one
 
     return pixmap
