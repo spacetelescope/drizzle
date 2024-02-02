@@ -247,10 +247,8 @@ class Drizzle(object):
                 hdu = util.get_extn(handle, extn=extn)
 
                 if hdu is not None:
-                    # specify fobj on input to support extended WCS conventions
-                    # used by HST images or any other data using the extended
-                    # FITS conventions for lookup tables in the WCS.
-                    inwcs = wcs.WCS(header=hdu.header, fobj=handle)
+                    insci = hdu.data
+                    inwcs = wcs.WCS(header=hdu.header)
                     insci = hdu.data.copy()
                 handle.close()
 
@@ -400,10 +398,7 @@ class Drizzle(object):
             hdu = util.get_extn(handle, extn=extn)
 
             if hdu is not None:
-                # specify fobj on input to support extended WCS conventions
-                # used by HST images or any other data using the extended
-                # FITS conventions for lookup tables in the WCS.
-                blotwcs = wcs.WCS(header=hdu.header, fobj=handle)
+                blotwcs = wcs.WCS(header=hdu.header)
             handle.close()
 
         if not blotwcs:
