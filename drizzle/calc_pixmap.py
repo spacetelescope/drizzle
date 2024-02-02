@@ -12,7 +12,7 @@ def calc_pixmap(first_wcs, second_wcs):
         A WCS object representing the coordinate system you are
         converting from
 
-    second_wcs : wcs
+    seond_wcs : wcs
         A WCS object representing the coordinate system you are
         converting to
 
