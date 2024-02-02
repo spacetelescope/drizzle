@@ -16,7 +16,6 @@
 #include <stdint.h>
 #endif
 #include <stdlib.h>
-#include <stdio.h>
 
 /*****************************************************************
  ERROR HANDLING
@@ -183,12 +182,7 @@ extern FILE *driz_log_handle;
 
 
 static inline_macro FILE*
-driz_log_init_file(FILE *handle) {
-    return stdout;
-}
-
-static inline_macro FILE*
-driz_log_init_file(FILE *handle) {
+driz_log_init(FILE *handle) {
     const char* dirs[] = {"TMPDIR", "TMP", "TEMP", "TEMPDIR"};
     int i;
     char *p;
