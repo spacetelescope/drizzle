@@ -105,6 +105,8 @@ class Drizzle():
                 "'out_shape' cannot be None when all output arrays are None."
             )
 
+        # shapes will collect user specified 'out_shape' and shapes of
+        # out_* arrays (if provided) in order to check all shapes are the same.
         shapes = set()
 
         if out_sci is not None:
@@ -128,7 +130,7 @@ class Drizzle():
                     "'out_shape' cannot be None when all output arrays are "
                     "None."
                 )
-            out_shape = shapes[0]
+            out_shape = shapes.pop()
         else:
             shapes.add(out_shape)
 

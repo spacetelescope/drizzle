@@ -24,6 +24,15 @@ def calc_pixmap(wcs_from, wcs_to, estimate_pixel_scale_ratio=False,
     estimate_pixel_scale_ratio : bool, optional
         Estimate the ratio of "to" to "from" WCS pixel scales.
 
+        .. note::
+            Pixel scale is estimated as the square root of pixel's area
+            (i.e., pixels are assumed to have a square shape) at the reference
+            pixel position which is taken as the center of the bounding box
+            if ``wcs_*`` has a bounding box defined, or as the center of the box
+            defined by the ``pixel_shape`` attribute of the input WCS if
+            ``pixel_shape`` is defined (not `None`), or at pixel coordinates
+            ``(0, 0)``.
+
     refpix_from : numpy.ndarray, tuple, list
         Image coordinates of the reference pixel near which pixel scale should
         be computed in the "from" image. In FITS WCS this could be, for example,
@@ -72,7 +81,10 @@ def _estimate_pixel_scale(wcs, refpix):
     # from https://trs.jpl.nasa.gov/handle/2014/40409
     if refpix is None:
         if wcs.bounding_box is None:
-            refpix = np.ones(wcs.pixel_n_dim)
+            if wcs.pixel_shape:
+                refpix = np.array([(i - 1) // 2 for i in wcs.pixel_shape])
+            else:
+                refpix = np.zeros(wcs.pixel_n_dim)
         else:
             refpix = np.mean(wcs.bounding_box, axis=-1)
     else:
