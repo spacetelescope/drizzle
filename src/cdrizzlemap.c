@@ -280,8 +280,8 @@ invert_pixmap(struct driz_param_t *par, double xout, double yout, double *xin,
     xmax = ((double)par->xmax) + 0.5;
     ymin = ((double)par->ymin) - 0.5;
     ymax = ((double)par->ymax) + 0.5;
-    dx = xmax;
-    dy = ymax;
+    dx = xmax - xmin;
+    dy = ymax - ymin;
 
     niter = 0;
 

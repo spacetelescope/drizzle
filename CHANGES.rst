@@ -9,6 +9,8 @@ Release Notes
 
 - Dropped Python 3.8. [#128]
 
+- Fixed a bug in the pixmap coordinate inversion routine. [#137]
+
 1.14.4 (2023-11-15)
 ===================
 
