@@ -1,5 +1,6 @@
 import pytest
 from math import sqrt
+from itertools import product
 
 import numpy as np
 
@@ -67,6 +68,17 @@ def test_invert_pixmap():
     for xr, yr in test_coords:
         xout_t, yout_t = _coord_mapping(xr, yr)
         xyin = invert_pixmap(pixmap, [xout_t, yout_t], [[-0.5, 1199.5], [-0.5, 999.5]])
+        assert np.allclose(xyin, [xr, yr], atol=0.05)
+
+
+def test_invert_small_pixmap():
+    yin, xin = np.indices((2, 2), dtype=float)
+    pixmap = np.dstack([xin, yin])
+
+    test_coords = list(product(*(2 * [[-0.5, 1.5]])))
+
+    for xr, yr in test_coords:
+        xyin = invert_pixmap(pixmap, [xr, yr], [[-0.5, 1.5], [-0.5, 1.5]])
         assert np.allclose(xyin, [xr, yr], atol=0.05)
 
 
