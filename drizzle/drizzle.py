@@ -60,8 +60,11 @@ class Drizzle(object):
         kernel : str, optional
             The name of the kernel used to combine the inputs. The choice of
             kernel controls the distribution of flux over the kernel. The kernel
-            names are: "square", "gaussian", "point", "tophat", "turbo", "lanczos2",
-            and "lanczos3". The square kernel is the default.
+            names are: "square", "turbo", "point", "gaussian", "lanczos2",
+            and "lanczos3".
+
+            .. warning::
+              The "gaussian" and "lanczos2/3" kernels **DO NOT** conserve flux.
 
         fillval : str, otional
             The value a pixel is set to in the output if the input image does

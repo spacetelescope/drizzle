@@ -84,6 +84,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   struct driz_error_t error;
   struct driz_param_t p;
   integer_t isize[2], psize[2], wsize[2];
+  char warn_msg[96];
 
   driz_log_handle = driz_log_init(driz_log_handle);
   driz_log_message("starting tdriz");
@@ -180,6 +181,22 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   if (kernel_str2enum(kernel_str, &kernel, &error) ||
       unit_str2enum(inun_str, &inun, &error)) {
     goto _exit;
+  }
+
+  if (kernel == kernel_tophat) {
+      if (sprintf(warn_msg,
+            "Kernel '%s' has been deprecated and it will be removed in a future release.",
+            kernel_str) < 1) {
+          strcpy(warn_msg, "Selected kernel has been deprecated and it will be removed in a future release.");
+      }
+      PyErr_WarnEx(PyExc_DeprecationWarning, warn_msg, 1);
+  } else if (kernel == kernel_gaussian || kernel == kernel_lanczos2 || kernel == kernel_lanczos3) {
+      if (sprintf(warn_msg,
+            "Kernel '%s' is not a flux-conserving kernel.",
+            kernel_str) < 1) {
+          strcpy(warn_msg, "Selected kernel '%s' is not a flux-conserving kernel.");
+      }
+      PyErr_WarnEx(PyExc_DeprecationWarning, warn_msg, 1);
   }
 
   if (pfract <= 0.001){

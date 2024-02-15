@@ -4,12 +4,19 @@
 Release Notes
 =============
 
-1.15.0 (unreleased)
+1.15.0 (2024-02-15)
 ===================
 
 - Dropped Python 3.8. [#128]
 
 - Fixed a bug in the pixmap coordinate inversion routine. [#137]
+
+- Deprecated "tophat" kernel which will be remover in the next release. It is
+  not working correctly and should not be used. [#140]
+
+- Added warnings that "gaussian", "lanczos2", and "lanczos3" kernels are not
+  flux conserving. [#140]
+
 
 1.14.4 (2023-11-15)
 ===================
