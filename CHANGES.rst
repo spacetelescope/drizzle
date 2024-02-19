@@ -4,6 +4,14 @@
 Release Notes
 =============
 
+
+1.15.1 (Unreleased)
+===================
+
+- Fixed the warning type for the "gaussian", "lanczos2", and "lanczos3" kernels
+  (``DeprecationWarning`` to ``Warning``). [#141]
+
+
 1.15.0 (2024-02-16)
 ===================
 
