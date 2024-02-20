@@ -653,22 +653,21 @@ def test_context_planes():
         pytest.param(
             'lanczos2',
             False,
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel')
+            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
         ),
         pytest.param(
             'lanczos3',
             False,
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel')
+            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
         ),
         pytest.param(
             'gaussian',
             False,
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel')
+            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
         ),
     ],
 )
 def test_flux_conservation_nondistorted(kernel, conserves):
-
     n = 200
     in_shape = (n, n)
 
@@ -702,16 +701,25 @@ def test_flux_conservation_nondistorted(kernel, conserves):
     out_wht = np.zeros(out_shape, dtype=np.float32)
 
     cdrizzle.tdriz(
-        in_sci, in_wht, pixmap, out_sci, out_wht, out_ctx,
-        pixfrac=1.0, scale=1.0, kernel=kernel, in_units="cps",
-        expscale=1.0, wtscale=1.0
+        in_sci,
+        in_wht,
+        pixmap,
+        out_sci,
+        out_wht,
+        out_ctx,
+        pixfrac=1.0,
+        scale=1.0,
+        kernel=kernel,
+        in_units="cps",
+        expscale=1.0,
+        wtscale=1.0,
     )
 
     assert np.allclose(
         np.sum(out_sci * out_wht),
         np.sum(in_sci),
         atol=0.0,
-        rtol=0.0001
+        rtol=0.0001,
     )
 
 @pytest.mark.parametrize(
@@ -723,22 +731,21 @@ def test_flux_conservation_nondistorted(kernel, conserves):
         pytest.param(
             'lanczos2',
             False,
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel')
+            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
         ),
         pytest.param(
             'lanczos3',
             False,
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel')
+            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
         ),
         pytest.param(
             'gaussian',
             False,
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel')
+            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
         ),
     ],
 )
 def test_flux_conservation_distorted(kernel, conserves):
-
     n = 200
     in_shape = (n, n)
 
@@ -775,14 +782,23 @@ def test_flux_conservation_distorted(kernel, conserves):
     out_wht = np.zeros(out_shape, dtype=np.float32)
 
     cdrizzle.tdriz(
-        in_sci, in_wht, pixmap, out_sci, out_wht, out_ctx,
-        pixfrac=1.0, scale=1.0, kernel=kernel, in_units="cps",
-        expscale=1.0, wtscale=1.0
+        in_sci,
+        in_wht,
+        pixmap,
+        out_sci,
+        out_wht,
+        out_ctx,
+        pixfrac=1.0,
+        scale=1.0,
+        kernel=kernel,
+        in_units="cps",
+        expscale=1.0,
+        wtscale=1.0,
     )
 
     assert np.allclose(
         np.sum(out_sci * out_wht),
         np.sum(in_sci),
         atol=0.0,
-        rtol=0.0001
+        rtol=0.0001,
     )
