@@ -642,3 +642,157 @@ def test_context_planes():
 
     driz.add_image(image, inwcs)
     assert driz.outcon.shape == (2, 10, 10)
+
+
+@pytest.mark.parametrize(
+    'kernel',
+    [
+        'square',
+        'point',
+        'turbo',
+        pytest.param(
+            'lanczos2',
+            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
+        ),
+        pytest.param(
+            'lanczos3',
+            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
+        ),
+        pytest.param(
+            'gaussian',
+            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
+        ),
+    ],
+)
+def test_flux_conservation_nondistorted(kernel):
+    n = 200
+    in_shape = (n, n)
+
+    # input coordinate grid:
+    y, x = np.indices(in_shape, dtype=np.float64)
+
+    # simulate a gaussian "star":
+    fwhm = 2.9
+    x0 = 50.0
+    y0 = 68.0
+    sig = fwhm / (2.0 * np.sqrt(2.0 * np.log(2.0 * fwhm)))
+    sig2 = sig * sig
+    star = np.exp(-0.5 / sig2 * ((x.astype(np.float32) - x0)**2 + (y.astype(np.float32) - y0)**2))
+    in_sci = (star / np.sum(star)).astype(np.float32)  # normalize to 1
+    in_wht = np.ones(in_shape, dtype=np.float32)
+
+    # linear shift:
+    xp = x + 0.5
+    yp = y + 0.2
+
+    pixmap = np.dstack([xp, yp])
+
+    out_shape = (int(yp.max()) + 1, int(xp.max()) + 1)
+    # make sure distorion is not moving flux out of the image towards negative
+    # coordinates (just because of the simple way of how we account for output
+    # image size)
+    assert np.min(xp) > -0.5 and np.min(yp) > -0.5
+
+    out_sci = np.zeros(out_shape, dtype=np.float32)
+    out_ctx = np.zeros(out_shape, dtype=np.int32)
+    out_wht = np.zeros(out_shape, dtype=np.float32)
+
+    cdrizzle.tdriz(
+        in_sci,
+        in_wht,
+        pixmap,
+        out_sci,
+        out_wht,
+        out_ctx,
+        pixfrac=1.0,
+        scale=1.0,
+        kernel=kernel,
+        in_units="cps",
+        expscale=1.0,
+        wtscale=1.0,
+    )
+
+    assert np.allclose(
+        np.sum(out_sci * out_wht),
+        np.sum(in_sci),
+        atol=0.0,
+        rtol=0.0001,
+    )
+
+@pytest.mark.parametrize(
+    'kernel',
+    [
+        'square',
+        'point',
+        'turbo',
+        pytest.param(
+            'lanczos2',
+            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
+        ),
+        pytest.param(
+            'lanczos3',
+            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
+        ),
+        pytest.param(
+            'gaussian',
+            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
+        ),
+    ],
+)
+def test_flux_conservation_distorted(kernel):
+    n = 200
+    in_shape = (n, n)
+
+    # input coordinate grid:
+    y, x = np.indices(in_shape, dtype=np.float64)
+
+    # simulate a gaussian "star":
+    fwhm = 2.9
+    x0 = 50.0
+    y0 = 68.0
+    sig = fwhm / (2.0 * np.sqrt(2.0 * np.log(2.0 * fwhm)))
+    sig2 = sig * sig
+    star = np.exp(-0.5 / sig2 * ((x.astype(np.float32) - x0)**2 + (y.astype(np.float32) - y0)**2))
+    in_sci = (star / np.sum(star)).astype(np.float32)  # normalize to 1
+    in_wht = np.ones(in_shape, dtype=np.float32)
+
+    # linear shift:
+    xp = x + 0.5
+    yp = y + 0.2
+    # add distortion:
+    xp += 1e-4 * x**2 + 1e-5 * x * y
+    yp += 1e-3 * y**2 - 2e-5 * x * y
+
+    pixmap = np.dstack([xp, yp])
+
+    out_shape = (int(yp.max()) + 1, int(xp.max()) + 1)
+    # make sure distorion is not moving (pixels with) flux out of the image
+    # towards negative coordinates (just because of the simple way of how we
+    # account for output image size):
+    assert np.min(xp) > -0.5 and np.min(yp) > -0.5
+
+    out_sci = np.zeros(out_shape, dtype=np.float32)
+    out_ctx = np.zeros(out_shape, dtype=np.int32)
+    out_wht = np.zeros(out_shape, dtype=np.float32)
+
+    cdrizzle.tdriz(
+        in_sci,
+        in_wht,
+        pixmap,
+        out_sci,
+        out_wht,
+        out_ctx,
+        pixfrac=1.0,
+        scale=1.0,
+        kernel=kernel,
+        in_units="cps",
+        expscale=1.0,
+        wtscale=1.0,
+    )
+
+    assert np.allclose(
+        np.sum(out_sci * out_wht),
+        np.sum(in_sci),
+        atol=0.0,
+        rtol=0.0001,
+    )

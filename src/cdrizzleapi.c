@@ -196,7 +196,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
             kernel_str) < 1) {
           strcpy(warn_msg, "Selected kernel is not a flux-conserving kernel.");
       }
-      PyErr_WarnEx(PyExc_DeprecationWarning, warn_msg, 1);
+      PyErr_WarnEx(PyExc_Warning, warn_msg, 1);
   }
 
   if (pfract <= 0.001){
