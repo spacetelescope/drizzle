@@ -645,29 +645,26 @@ def test_context_planes():
 
 
 @pytest.mark.parametrize(
-    'kernel,conserves',
+    'kernel',
     [
-        ('square', True),
-        ('point', True),
-        ('turbo', True),
+        'square',
+        'point',
+        'turbo',
         pytest.param(
             'lanczos2',
-            False,
             marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
         ),
         pytest.param(
             'lanczos3',
-            False,
             marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
         ),
         pytest.param(
             'gaussian',
-            False,
             marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
         ),
     ],
 )
-def test_flux_conservation_nondistorted(kernel, conserves):
+def test_flux_conservation_nondistorted(kernel):
     n = 200
     in_shape = (n, n)
 
@@ -723,29 +720,26 @@ def test_flux_conservation_nondistorted(kernel, conserves):
     )
 
 @pytest.mark.parametrize(
-    'kernel,conserves',
+    'kernel',
     [
-        ('square', True),
-        ('point', True),
-        ('turbo', True),
+        'square',
+        'point',
+        'turbo',
         pytest.param(
             'lanczos2',
-            False,
             marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
         ),
         pytest.param(
             'lanczos3',
-            False,
             marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
         ),
         pytest.param(
             'gaussian',
-            False,
             marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
         ),
     ],
 )
-def test_flux_conservation_distorted(kernel, conserves):
+def test_flux_conservation_distorted(kernel):
     n = 200
     in_shape = (n, n)
 
