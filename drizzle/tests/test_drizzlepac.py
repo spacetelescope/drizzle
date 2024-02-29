@@ -1,15 +1,12 @@
-import copy
-import math
 import os
 import pytest
-import json
 
 import numpy as np
 from astropy import wcs
 from astropy.io import fits
 from astropy.nddata import bitfield_to_boolean_mask
 
-from drizzle import cdrizzle, util
+from drizzle import cdrizzle
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
@@ -94,7 +91,7 @@ def run_drizzle_test(kernel):
         in_units='cps',
         expscale=1.0,
         wtscale=testdict['expin'],
-        fillstr=str(0)
+        fillstr=str(0),
     )
 
     # convert reference from list to ndarray
