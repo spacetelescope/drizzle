@@ -30,6 +30,8 @@ Documentation = "http://spacetelescope.github.io/drizzle/"
 [project.optional-dependencies]
 test = [
     "pytest",
+    "pytest-cov",
+    "pytest-doctestplus",
 ]
 docs = [
     "tomli; python_version<'3.11'",
@@ -76,6 +78,7 @@ select = [
 ]
 exclude = [
     "docs",
-    ".eggs",
     ".tox",
+    ".eggs",
+    "build",
 ]

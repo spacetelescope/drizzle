@@ -5,7 +5,7 @@ from numpy.testing import assert_equal, assert_almost_equal
 from astropy import wcs
 from astropy.io import fits
 
-from drizzle import calc_pixmap
+from drizzle.utils import calc_pixmap, decode_context
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
@@ -21,7 +21,7 @@ def test_map_rectangular():
     pixmap = np.indices((naxis1, naxis2), dtype='float32')
     pixmap = pixmap.transpose()
 
-    assert_equal(pixmap[5,500], (500,5))
+    assert_equal(pixmap[5, 500], (500, 5))
 
 
 def test_map_to_self():
@@ -38,7 +38,7 @@ def test_map_to_self():
     ok_pixmap = np.indices((naxis1, naxis2), dtype='float32')
     ok_pixmap = ok_pixmap.transpose()
 
-    pixmap = calc_pixmap.calc_pixmap(input_wcs, input_wcs)
+    pixmap = calc_pixmap(input_wcs, input_wcs)
 
     # Got x-y transpose right
     assert_equal(pixmap.shape, ok_pixmap.shape)
@@ -68,9 +68,35 @@ def test_translated_map():
     ok_pixmap = np.indices((naxis1, naxis2), dtype='float32') - 2.0
     ok_pixmap = ok_pixmap.transpose()
 
-    pixmap = calc_pixmap.calc_pixmap(first_wcs, second_wcs)
+    pixmap = calc_pixmap(first_wcs, second_wcs)
 
     # Got x-y transpose right
     assert_equal(pixmap.shape, ok_pixmap.shape)
     # Mapping an array to a translated array
     assert_almost_equal(pixmap, ok_pixmap, decimal=5)
+
+
+def test_decode_context():
+    con = np.array(
+        [[[0, 0, 0, 0, 0, 0],
+          [0, 0, 0, 36196864, 0, 0],
+          [0, 0, 0, 0, 0, 0],
+          [0, 0, 0, 0, 0, 0],
+          [0, 0, 537920000, 0, 0, 0]],
+         [[0, 0, 0, 0, 0, 0,],
+          [0, 0, 0, 67125536, 0, 0],
+          [0, 0, 0, 0, 0, 0],
+          [0, 0, 0, 0, 0, 0],
+          [0, 0, 163856, 0, 0, 0]],
+         [[0, 0, 0, 0, 0, 0],
+          [0, 0, 0, 8203, 0, 0],
+          [0, 0, 0, 0, 0, 0],
+          [0, 0, 0, 0, 0, 0],
+          [0, 0, 32865, 0, 0, 0]]],
+        dtype=np.int32
+    )
+
+    idx1, idx2 = decode_context(con, [3, 2], [1, 4])
+
+    assert sorted(idx1) == [9, 12, 14, 19, 21, 25, 37, 40, 46, 58, 64, 65, 67, 77]
+    assert sorted(idx2) == [9, 20, 29, 36, 47, 49, 64, 69, 70, 79]
