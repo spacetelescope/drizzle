@@ -1,12 +1,12 @@
 import math
 import os
-import pytest
 
 import numpy as np
+import pytest
+
 from astropy import wcs
 from astropy.io import fits
-
-from drizzle import resample, utils, cdrizzle
+from drizzle import cdrizzle, resample, utils
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
@@ -110,7 +110,7 @@ def centroid_statistics(title, fname, image1, image2, amp, size):
     distances = centroid_distances(image1, image2, amp, size)
     indexes = (0, int(len(distances) / 2), len(distances) - 1)
     fd = open(fname, 'w')
-    fd.write("*** %s ***\n" % title)
+    fd.write(f"*** {title:s} ***\n")
 
     if len(distances) == 0:
         diff = [0.0, 0.0, 0.0]
@@ -120,8 +120,10 @@ def centroid_statistics(title, fname, image1, image2, amp, size):
         diff = [distances[0][0], distances[0][0], distances[0][0]]
 
         fd.write("1 match\n")
-        fd.write("distance = %f flux difference = %f\n" %
-                 (distances[0][0], distances[0][1]))
+        fd.write(
+            f"distance = {distances[0][0]:f} "
+            f"flux difference = {distances[0][1]:f}\n"
+        )
 
         for j in range(2, 4):
             ylo = int(distances[0][j][0]) - 1
@@ -129,19 +131,23 @@ def centroid_statistics(title, fname, image1, image2, amp, size):
             xlo = int(distances[0][j][1]) - 1
             xhi = int(distances[0][j][1]) + 2
             subimage = images[j][ylo:yhi, xlo:xhi]
-            fd.write("\n%s image centroid = (%f,%f) image flux = %f\n" %
-                     (im_type[j], distances[0][j][0], distances[0][j][1],
-                      distances[0][j][2]))
+            fd.write(
+                f"\n{im_type[j]} image centroid = "
+                f"({distances[0][j][0]:f}, {distances[0][j][1]:f}) "
+                f"image flux = {distances[0][j][2]:f}\n"
+            )
             fd.write(str(subimage) + "\n")
 
     else:
-        fd.write("%d matches\n" % len(distances))
+        fd.write(f"{len(distances)} matches\n")
 
-        for k in range(0, 3):
+        for k in range(3):
             i = indexes[k]
             diff.append(distances[i][0])
-            fd.write("\n%s distance = %f flux difference = %f\n" %
-                     (stats[k], distances[i][0], distances[i][1]))
+            fd.write(
+                f"\n{stats[k]} distance = {distances[i][0]:f} "
+                f"flux difference = {distances[i][1]:f}\n"
+            )
 
             for j in range(2, 4):
                 ylo = int(distances[i][j][0]) - 1
@@ -149,9 +155,11 @@ def centroid_statistics(title, fname, image1, image2, amp, size):
                 xlo = int(distances[i][j][1]) - 1
                 xhi = int(distances[i][j][1]) + 2
                 subimage = images[j][ylo:yhi, xlo:xhi]
-                fd.write("\n%s %s image centroid = (%f,%f) image flux = %f\n" %
-                         (stats[k], im_type[j], distances[i][j][0],
-                          distances[i][j][1], distances[i][j][2]))
+                fd.write(
+                    f"\n{stats[k]} {im_type[j]} image centroid = "
+                    f"({distances[i][j][0]:f}, {distances[i][j][1]:f}) "
+                    f"image flux = {distances[i][j][2]:f}\n"
+                )
                 fd.write(str(subimage) + "\n")
 
     fd.close()

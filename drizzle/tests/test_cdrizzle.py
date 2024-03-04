@@ -25,5 +25,5 @@ def test_cdrizzle():
         pixmap,
         output_data,
         output_counts,
-        output_context
+        output_context,
     )

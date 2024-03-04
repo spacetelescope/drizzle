@@ -6,7 +6,6 @@ import numpy as np
 
 from . import cdrizzle
 
-
 SUPPORTED_DRIZZLE_KERNELS = [
     "square",
     "gaussian",
@@ -14,7 +13,7 @@ SUPPORTED_DRIZZLE_KERNELS = [
     "tophat",
     "turbo",
     "lanczos2",
-    "lanczos3"
+    "lanczos3",
 ]
 
 CTX_PLANE_BITS = 32
@@ -129,13 +128,11 @@ class Drizzle:
 
     References
     ----------
-
     A full description of the drizzling algorithm can be found in
     `Fruchter and Hook, PASP 2002 <https://doi.org/10.1086/338393>`_.
 
     Examples
     --------
-
     .. highlight:: python
     .. code-block:: python
 
@@ -163,6 +160,7 @@ class Drizzle:
         d.out_wht
 
     """
+
     def __init__(self, kernel="square", fillval=None, out_shape=None,
                  out_img=None, out_wht=None, out_ctx=None, exptime=0.0,
                  begin_ctx_id=0, max_ctx_id=None):
@@ -242,13 +240,14 @@ class Drizzle:
 
         if exptime < 0.0:
             raise ValueError("Exposure time must be non-negative.")
-        elif (exptime > 0.0 and out_img is None and out_ctx is None and
-              out_wht is None):
+
+        if (exptime > 0.0 and out_img is None and out_ctx is None and out_wht is None):
             raise ValueError(
                 "Exposure time must be 0.0 for the first resampling "
                 "(when no ouput resampled images have been provided)."
             )
-        elif (exptime == 0.0 and
+
+        if (exptime == 0.0 and
                 (
                     (out_ctx is not None and np.sum(out_ctx) > 0) or
                     (out_wht is not None and np.sum(out_wht) > 0)
@@ -340,36 +339,36 @@ class Drizzle:
 
     @property
     def fillval(self):
-        """ Fill value for output pixels without contributions from input images. """
+        """Fill value for output pixels without contributions from input images."""
         return self._fillval
 
     @property
     def kernel(self):
-        """ Resampling kernel. """
+        """Resampling kernel."""
         return self._kernel
 
     @property
     def ctx_id(self):
-        """ Context image "ID" (0-based ) of the next image to be resampled. """
+        """Context image "ID" (0-based ) of the next image to be resampled."""
         return self._ctx_id
 
     @property
     def out_img(self):
-        """ Output resampled image. """
+        """Output resampled image."""
         return self._out_img
 
     @property
     def out_wht(self):
-        """ Output weight image.  """
+        """Output weight image."""
 
     @property
     def out_ctx(self):
-        """ Output "context" image. """
+        """Output "context" image."""
         return self._out_ctx
 
     @property
     def total_exptime(self):
-        """ Total exposure time of all resampled images. """
+        """Total exposure time of all resampled images."""
         return self._texptime
 
     def _alloc_output_arrays(self, out_shape, max_ctx_id, out_img, out_wht,
@@ -406,6 +405,11 @@ class Drizzle:
             self._out_img.fill(self._fillval)
 
     def _increment_ctx_id(self):
+        """
+        Returns a pair of the *current* plane number and bit number in that
+        plane and increments context image ID
+        (after computing the return value).
+        """
         if self._ctx_id < 0:
             ValueError("Invalid context image ID")
 
@@ -432,7 +436,6 @@ class Drizzle:
 
         Parameters
         ----------
-
         data : 2d array
             A 2d numpy array containing the input image to be drizzled.
             it is an error to not supply an image.
@@ -572,7 +575,6 @@ class Drizzle:
         #       cdrizzleapi.c does not. It should be modified to support this
         #       for performance reasons.
         if self._out_ctx.ndim == 2:
-            assert plane_no == 0
             ctx_plane = self._out_ctx
         else:
             ctx_plane = self._out_ctx[plane_no]
@@ -595,7 +597,7 @@ class Drizzle:
             in_units=in_units,
             expscale=expscale,
             wtscale=wht_scale,
-            fillstr=self._fillval
+            fillstr=self._fillval,
         )
         self._cversion = _vers  # TODO: probably not needed
 
@@ -613,7 +615,6 @@ def blot_image(data, pixmap, pix_ratio, exptime, output_pixel_shape,
 
     Parameters
     ----------
-
     data : 2D array
         Input numpy array of the source image in units of 'cps'.
 
@@ -641,7 +642,6 @@ def blot_image(data, pixmap, pix_ratio, exptime, output_pixel_shape,
     sincscl : float, optional
         The scaling factor for sinc interpolation.
     """
-
     out_img = np.zeros(output_pixel_shape[::-1], dtype=np.float32)
 
     cdrizzle.tblot(data, pixmap, out_img, scale=pix_ratio, kscale=1.0,
