@@ -82,7 +82,7 @@ def _estimate_pixel_scale(wcs, refpix):
     # estimate pixel scale (in rad) using approximate algorithm
     # from https://trs.jpl.nasa.gov/handle/2014/40409
     if refpix is None:
-        if hasattr(wcs, 'bounding_box') and wcs.bounding_box is None:
+        if not hasattr(wcs, 'bounding_box') or wcs.bounding_box is None:
             if wcs.pixel_shape:
                 refpix = np.array([(i - 1) // 2 for i in wcs.pixel_shape])
             else:

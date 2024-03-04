@@ -1,11 +1,12 @@
 import os
 
 import numpy as np
+import pytest
 from numpy.testing import assert_almost_equal, assert_equal
 
 from astropy import wcs
 from astropy.io import fits
-from drizzle.utils import calc_pixmap, decode_context
+from drizzle.utils import _estimate_pixel_scale, calc_pixmap, decode_context
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
@@ -42,8 +43,14 @@ def test_map_to_self():
 
     # Got x-y transpose right
     assert_equal(pixmap.shape, ok_pixmap.shape)
+
     # Mapping an array to itself
     assert_almost_equal(pixmap, ok_pixmap, decimal=5)
+
+    # Check that an exception is raised for WCS without pixel_shape:
+    input_wcs.pixel_shape = None
+    with pytest.raises(ValueError):
+        calc_pixmap(input_wcs, input_wcs)
 
 
 def test_translated_map():
@@ -76,8 +83,41 @@ def test_translated_map():
     assert_almost_equal(pixmap, ok_pixmap, decimal=5)
 
 
+def test_estimate_pixel_scale_no_refpix():
+    # create a WCS without higher order (polynomial) distortions:
+    fits_file = os.path.join(DATA_DIR, 'input1.fits')
+    with fits.open(fits_file) as h:
+        w = wcs.WCS(h[1].header, h)
+        w.sip = None
+        w.det2im1 = None
+        w.det2im2 = None
+        w.cpdis1 = None
+        w.cpdis2 = None
+        pixel_shape = w.pixel_shape[:]
+
+    ref_pscale = _estimate_pixel_scale(w, w.wcs.crpix)
+
+    if hasattr(w, 'bounding_box'):
+        del w.bounding_box
+    pscale1 = _estimate_pixel_scale(w, None)
+    assert np.allclose(ref_pscale, pscale1, atol=0.0, rtol=1.0e-8)
+
+    w.bounding_box = None
+    w.pixel_shape = None
+    pscale2 = _estimate_pixel_scale(w, None)
+    assert np.allclose(pscale1, pscale2, atol=0.0, rtol=1.0e-8)
+
+    w.pixel_shape = pixel_shape
+    pscale3 = _estimate_pixel_scale(w, None)
+    assert np.allclose(pscale1, pscale3, atol=0.0, rtol=1.0e-14)
+
+    w.bounding_box = ((-0.5, pixel_shape[0] - 0.5), (-0.5, pixel_shape[1] - 0.5))
+    pscale4 = _estimate_pixel_scale(w, None)
+    assert np.allclose(pscale3, pscale4, atol=0.0, rtol=1.0e-8)
+
+
 def test_decode_context():
-    con = np.array(
+    ctx = np.array(
         [[[0, 0, 0, 0, 0, 0],
           [0, 0, 0, 36196864, 0, 0],
           [0, 0, 0, 0, 0, 0],
@@ -96,7 +136,25 @@ def test_decode_context():
         dtype=np.int32
     )
 
-    idx1, idx2 = decode_context(con, [3, 2], [1, 4])
+    idx1, idx2 = decode_context(ctx, [3, 2], [1, 4])
 
     assert sorted(idx1) == [9, 12, 14, 19, 21, 25, 37, 40, 46, 58, 64, 65, 67, 77]
     assert sorted(idx2) == [9, 20, 29, 36, 47, 49, 64, 69, 70, 79]
+
+    # context array must be 3D:
+    with pytest.raises(ValueError):
+        decode_context(ctx[0], [3, 2], [1, 4])
+
+    # pixel coordinates must be integer:
+    with pytest.raises(ValueError):
+        decode_context(ctx[0], [3.0, 2], [1, 4])
+
+    # coordinate lists must be equal in length:
+    with pytest.raises(ValueError):
+        decode_context(ctx[0], [3, 2], [1, 4, 5])
+
+    # coordinate lists must be 1D:
+    with pytest.raises(ValueError):
+        decode_context(ctx[0], [[3, 2]], [[1, 4]])
+
+
