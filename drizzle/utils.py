@@ -1,6 +1,5 @@
 import numpy as np
 
-
 __all__ = ["calc_pixmap", "decode_context"]
 
 
@@ -14,7 +13,6 @@ def calc_pixmap(wcs_from, wcs_to, estimate_pixel_scale_ratio=False,
 
     Parameters
     ----------
-
     wcs_from : wcs
         A WCS object representing the coordinate system you are
         converting from. This object *must* have ``pixel_shape`` property
@@ -48,7 +46,6 @@ def calc_pixmap(wcs_from, wcs_to, estimate_pixel_scale_ratio=False,
 
     Returns
     -------
-
     pixmap : numpy.ndarray
         A three dimensional array representing the transformation between
         the two. The last dimension is of length two and contains the x and
@@ -105,7 +102,7 @@ def _estimate_pixel_scale(wcs, refpix):
 
 
 def decode_context(context, x, y):
-    """ Get 0-based indices of input images that contributed to (resampled)
+    """Get 0-based indices of input images that contributed to (resampled)
     output pixel with coordinates ``x`` and ``y``.
 
     Parameters
@@ -121,7 +118,6 @@ def decode_context(context, x, y):
 
     Returns
     -------
-
     A list of `numpy.ndarray` objects each containing indices of input images
     that have contributed to an output pixel with coordinates ``x`` and ``y``.
     The length of returned list is equal to the number of input coordinate
@@ -129,7 +125,6 @@ def decode_context(context, x, y):
 
     Examples
     --------
-
     An example context array for an output image of array shape ``(5, 6)``
     obtained by resampling 80 input images.
 

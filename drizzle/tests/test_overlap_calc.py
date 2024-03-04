@@ -1,8 +1,8 @@
-import pytest
-from math import sqrt
 from itertools import product
+from math import sqrt
 
 import numpy as np
+import pytest
 
 from drizzle.cdrizzle import clip_polygon, invert_pixmap
 
