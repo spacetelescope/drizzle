@@ -1,7 +1,5 @@
 API Documentation
 =================
 
-.. automodapi::  drizzle.drizzle
-.. automodapi::  drizzle.dodrizzle
-.. automodapi::  drizzle.doblot
-.. automodapi::  drizzle.calc_pixmap
+.. automodapi::  drizzle.resample
+.. automodapi::  drizzle.utils

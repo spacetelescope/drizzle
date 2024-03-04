@@ -6,11 +6,10 @@ import numpy as np
 from astropy import wcs
 from astropy.io import fits
 
-from drizzle import drizzle, cdrizzle
+from drizzle import resample, utils, cdrizzle
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
-ok = False
 
 
 def bound_image(image):
@@ -129,7 +128,7 @@ def centroid_statistics(title, fname, image1, image2, amp, size):
             yhi = int(distances[0][j][0]) + 2
             xlo = int(distances[0][j][1]) - 1
             xhi = int(distances[0][j][1]) + 2
-            subimage = images[j][ylo:yhi,xlo:xhi]
+            subimage = images[j][ylo:yhi, xlo:xhi]
             fd.write("\n%s image centroid = (%f,%f) image flux = %f\n" %
                      (im_type[j], distances[0][j][0], distances[0][j][1],
                       distances[0][j][2]))
@@ -138,18 +137,18 @@ def centroid_statistics(title, fname, image1, image2, amp, size):
     else:
         fd.write("%d matches\n" % len(distances))
 
-        for k in range(0,3):
+        for k in range(0, 3):
             i = indexes[k]
             diff.append(distances[i][0])
             fd.write("\n%s distance = %f flux difference = %f\n" %
-                     (stats[k],distances[i][0], distances[i][1]))
+                     (stats[k], distances[i][0], distances[i][1]))
 
             for j in range(2, 4):
                 ylo = int(distances[i][j][0]) - 1
                 yhi = int(distances[i][j][0]) + 2
                 xlo = int(distances[i][j][1]) - 1
                 xhi = int(distances[i][j][1]) + 2
-                subimage = images[j][ylo:yhi,xlo:xhi]
+                subimage = images[j][ylo:yhi, xlo:xhi]
                 fd.write("\n%s %s image centroid = (%f,%f) image flux = %f\n" %
                          (stats[k], im_type[j], distances[i][j][0],
                           distances[i][j][1], distances[i][j][2]))
@@ -178,17 +177,9 @@ def make_grid_image(input_image, spacing, value):
     half_space = int(spacing / 2)
     for y in range(half_space, shape[0], spacing):
         for x in range(half_space, shape[1], spacing):
-            output_image[y,x] = value
+            output_image[y, x] = value
 
     return output_image
-
-
-def print_wcs(title, wcs):
-    """
-    Print the wcs header cards
-    """
-    print("=== %s ===" % title)
-    print(wcs.to_header_string())
 
 
 def read_image(filename):
@@ -218,7 +209,6 @@ def test_square_with_point(tmpdir):
     """
     Test do_driz square kernel with point
     """
-    output = str(tmpdir.join('output_square_point.fits'))
     output_difference = str(tmpdir.join('difference_square_point.txt'))
 
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
@@ -227,31 +217,65 @@ def test_square_with_point(tmpdir):
     insci = read_image(input_file)
     inwcs = read_wcs(input_file)
     insci = make_point_image(insci, (500, 200), 100.0)
-    inwht = np.ones(insci.shape,dtype=insci.dtype)
+    inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="")
-    driz.add_image(insci, inwcs, inwht=inwht)
+    pixmap, pscale = utils.calc_pixmap(
+        inwcs,
+        output_wcs,
+        estimate_pixel_scale_ratio=True,
+        refpix_from=inwcs.wcs.crpix,
+        refpix_to=output_wcs.wcs.crpix
+    )
 
-    if ok:
-        driz.write(output_template)
-    else:
-        driz.write(output)
-        template_data = read_image(output_template)
+    # ignore previous pscale and compute it the old way (only to make
+    # tests work with old truth files and thus to show that new API gives
+    # same results when equal definitions of the pixel scale is ised):
+    pscale = np.sqrt(
+        np.sum(output_wcs.wcs.pc**2, axis=0)[0] /
+        np.sum(inwcs.wcs.cd**2, axis=0)[0]
+    )
 
-        min_diff, med_diff, max_diff = centroid_statistics("square with point",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 8)
+    driz = resample.Drizzle(
+        kernel='square',
+        out_shape=output_wcs.array_shape,
+        fillval=0.0,
+    )
+    driz.add_image(
+        insci,
+        exptime=1.0,
+        pixmap=pixmap,
+        weight_map=inwht,
+        scale=pscale,
+    )
 
-        assert med_diff < 1.0e-6
-        assert max_diff < 1.0e-5
+    template_data = read_image(output_template)
+
+    _, med_diff, max_diff = centroid_statistics(
+        "square with point",
+        output_difference,
+        driz.out_img,
+        template_data,
+        20.0,
+        8,
+    )
+
+    assert med_diff < 1.0e-6
+    assert max_diff < 1.0e-5
 
 
 @pytest.mark.parametrize(
-    'kernel', ['square', 'point', 'turbo', 'gaussian', 'lanczos3'],
+    'kernel,fc',
+    [
+        ('square', True),
+        ('point', True),
+        ('turbo', True),
+        ('lanczos2', False),
+        ('lanczos3', False),
+        ('gaussian', False),
+    ],
 )
-def test_zero_input_weight(kernel):
+def test_zero_input_weight(kernel, fc):
     """
     Test do_driz square kernel with grid
     """
@@ -269,19 +293,48 @@ def test_zero_input_weight(kernel):
     pixmap = np.moveaxis(np.mgrid[1:201, 1:401][::-1], 0, -1)
 
     # resample:
-    cdrizzle.tdriz(
-        insci, inwht, pixmap,
-        outsci, outwht, outctx,
-        uniqid=1,
-        xmin=0, xmax=400,
-        ymin=0, ymax=200,
-        pixfrac=1,
-        kernel=kernel,
-        in_units='cps',
-        expscale=1,
-        wtscale=1,
-        fillstr='INDEF',
-    )
+    if fc:
+        cdrizzle.tdriz(
+            insci,
+            inwht,
+            pixmap,
+            outsci,
+            outwht,
+            outctx,
+            uniqid=1,
+            xmin=0,
+            xmax=400,
+            ymin=0,
+            ymax=200,
+            pixfrac=1,
+            kernel=kernel,
+            in_units='cps',
+            expscale=1,
+            wtscale=1,
+            fillstr='INDEF',
+        )
+    else:
+        with pytest.warns(Warning):
+            cdrizzle.tdriz(
+                insci,
+                inwht,
+                pixmap,
+                outsci,
+                outwht,
+                outctx,
+                uniqid=1,
+                xmin=0,
+                xmax=400,
+                ymin=0,
+                ymax=200,
+                pixfrac=1,
+                kernel=kernel,
+                in_units='cps',
+                expscale=1,
+                wtscale=1,
+                fillstr='INDEF',
+            )
+        # pytest.xfail("Not a flux-conserving kernel")
 
     # check that no pixel with 0 weight has any counts:
     assert np.sum(np.abs(outsci[(outwht == 0)])) == 0.0
@@ -291,7 +344,6 @@ def test_square_with_grid(tmpdir):
     """
     Test do_driz square kernel with grid
     """
-    output = str(tmpdir.join('output_square_grid.fits'))
     output_difference = str(tmpdir.join('difference_square_grid.txt'))
 
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
@@ -301,31 +353,55 @@ def test_square_with_grid(tmpdir):
     inwcs = read_wcs(input_file)
     insci = make_grid_image(insci, 64, 100.0)
 
-    inwht = np.ones(insci.shape,dtype=insci.dtype)
+    inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="")
-    driz.add_image(insci, inwcs, inwht=inwht)
+    pixmap, pscale = utils.calc_pixmap(
+        inwcs,
+        output_wcs,
+        estimate_pixel_scale_ratio=True,
+        refpix_from=inwcs.wcs.crpix,
+        refpix_to=output_wcs.wcs.crpix,
+    )
 
-    if ok:
-        driz.write(output_template)
-    else:
-        driz.write(output)
-        template_data = read_image(output_template)
+    # ignore previous pscale and compute it the old way (only to make
+    # tests work with old truth files and thus to show that new API gives
+    # same results when equal definitions of the pixel scale is ised):
+    pscale = np.sqrt(
+        np.sum(output_wcs.wcs.pc**2, axis=0)[0] /
+        np.sum(inwcs.wcs.cd**2, axis=0)[0]
+    )
 
-        min_diff, med_diff, max_diff = centroid_statistics("square with grid",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 8)
-        assert med_diff < 1.0e-6
-        assert max_diff < 1.0e-5
+    driz = resample.Drizzle(
+        kernel='square',
+        out_shape=output_wcs.array_shape,
+        fillval=0.0,
+    )
+    driz.add_image(
+        insci,
+        exptime=1.0,
+        pixmap=pixmap,
+        weight_map=inwht,
+        scale=pscale,
+    )
+    template_data = read_image(output_template)
+
+    _, med_diff, max_diff = centroid_statistics(
+        "square with grid",
+        output_difference,
+        driz.out_img,
+        template_data,
+        20.0,
+        8,
+    )
+    assert med_diff < 1.0e-6
+    assert max_diff < 1.0e-5
 
 
 def test_turbo_with_grid(tmpdir):
     """
     Test do_driz turbo kernel with grid
     """
-    output = str(tmpdir.join('output_turbo_grid.fits'))
     output_difference = str(tmpdir.join('difference_turbo_grid.txt'))
 
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
@@ -334,32 +410,60 @@ def test_turbo_with_grid(tmpdir):
     insci = read_image(input_file)
     inwcs = read_wcs(input_file)
     insci = make_grid_image(insci, 64, 100.0)
-    inwht = np.ones(insci.shape,dtype=insci.dtype)
+    inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='turbo')
-    driz.add_image(insci, inwcs, inwht=inwht)
+    # driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='turbo')
+    # driz.add_image(insci, inwcs, inwht=inwht)
 
-    if ok:
-        driz.write(output_template)
-    else:
-        driz.write(output)
-        template_data = read_image(output_template)
+    pixmap, pscale = utils.calc_pixmap(
+        inwcs,
+        output_wcs,
+        estimate_pixel_scale_ratio=True,
+        refpix_from=inwcs.wcs.crpix,
+        refpix_to=output_wcs.wcs.crpix,
+    )
 
-        min_diff, med_diff, max_diff = centroid_statistics("turbo with grid",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 8)
+    # ignore previous pscale and compute it the old way (only to make
+    # tests work with old truth files and thus to show that new API gives
+    # same results when equal definitions of the pixel scale is ised):
+    pscale = np.sqrt(
+        np.sum(output_wcs.wcs.pc**2, axis=0)[0] /
+        np.sum(inwcs.wcs.cd**2, axis=0)[0]
+    )
 
-        assert med_diff < 1.0e-6
-        assert max_diff < 1.0e-5
+    driz = resample.Drizzle(
+        kernel='turbo',
+        out_shape=output_wcs.array_shape,
+        fillval=0.0,
+    )
+    driz.add_image(
+        insci,
+        exptime=1.0,
+        pixmap=pixmap,
+        weight_map=inwht,
+        scale=pscale,
+    )
+
+    template_data = read_image(output_template)
+
+    _, med_diff, max_diff = centroid_statistics(
+        "turbo with grid",
+        output_difference,
+        driz.out_img,
+        template_data,
+        20.0,
+        8,
+    )
+
+    assert med_diff < 1.0e-6
+    assert max_diff < 1.0e-5
 
 
 def test_gaussian_with_grid(tmpdir):
     """
     Test do_driz gaussian kernel with grid
     """
-    output = str(tmpdir.join('output_gaussian_grid.fits'))
     output_difference = str(tmpdir.join('difference_gaussian_grid.txt'))
 
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
@@ -368,32 +472,58 @@ def test_gaussian_with_grid(tmpdir):
     insci = read_image(input_file)
     inwcs = read_wcs(input_file)
     insci = make_grid_image(insci, 64, 100.0)
-    inwht = np.ones(insci.shape,dtype=insci.dtype)
+    inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='gaussian')
-    driz.add_image(insci, inwcs, inwht=inwht)
+    pixmap, pscale = utils.calc_pixmap(
+        inwcs,
+        output_wcs,
+        estimate_pixel_scale_ratio=True,
+        refpix_from=inwcs.wcs.crpix,
+        refpix_to=output_wcs.wcs.crpix,
+    )
 
-    if ok:
-        driz.write(output_template)
-    else:
-        driz.write(output)
-        template_data = read_image(output_template)
+    # ignore previous pscale and compute it the old way (only to make
+    # tests work with old truth files and thus to show that new API gives
+    # same results when equal definitions of the pixel scale is ised):
+    pscale = np.sqrt(
+        np.sum(output_wcs.wcs.pc**2, axis=0)[0] /
+        np.sum(inwcs.wcs.cd**2, axis=0)[0]
+    )
 
-        min_diff, med_diff, max_diff = centroid_statistics("gaussian with grid",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 8)
+    driz = resample.Drizzle(
+        kernel='gaussian',
+        out_shape=output_wcs.array_shape,
+        fillval=0.0,
+    )
+    with pytest.warns(Warning):
+        driz.add_image(
+            insci,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=inwht,
+            scale=pscale,
+        )
 
-        assert med_diff < 1.0e-6
-        assert max_diff < 2.0e-5
+    template_data = read_image(output_template)
+
+    _, med_diff, max_diff = centroid_statistics(
+        "gaussian with grid",
+        output_difference,
+        driz.out_img,
+        template_data,
+        20.0,
+        8,
+    )
+
+    assert med_diff < 1.0e-6
+    assert max_diff < 2.0e-5
 
 
 def test_lanczos_with_grid(tmpdir):
     """
     Test do_driz lanczos kernel with grid
     """
-    output = str(tmpdir.join('output_lanczos_grid.fits'))
     output_difference = str(tmpdir.join('difference_lanczos_grid.txt'))
 
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
@@ -402,31 +532,57 @@ def test_lanczos_with_grid(tmpdir):
     insci = read_image(input_file)
     inwcs = read_wcs(input_file)
     insci = make_grid_image(insci, 64, 100.0)
-    inwht = np.ones(insci.shape,dtype=insci.dtype)
+    inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='lanczos3')
-    driz.add_image(insci, inwcs, inwht=inwht)
+    pixmap, pscale = utils.calc_pixmap(
+        inwcs,
+        output_wcs,
+        estimate_pixel_scale_ratio=True,
+        refpix_from=inwcs.wcs.crpix,
+        refpix_to=output_wcs.wcs.crpix,
+    )
 
-    if ok:
-        driz.write(output_template)
-    else:
-        driz.write(output)
-        template_data = read_image(output_template)
+    # ignore previous pscale and compute it the old way (only to make
+    # tests work with old truth files and thus to show that new API gives
+    # same results when equal definitions of the pixel scale is ised):
+    pscale = np.sqrt(
+        np.sum(output_wcs.wcs.pc**2, axis=0)[0] /
+        np.sum(inwcs.wcs.cd**2, axis=0)[0]
+    )
 
-        min_diff, med_diff, max_diff = centroid_statistics("lanczos with grid",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 8)
-        assert med_diff < 1.0e-6
-        assert max_diff < 1.0e-5
+    driz = resample.Drizzle(
+        kernel='lanczos3',
+        out_shape=output_wcs.array_shape,
+        fillval=0.0,
+    )
+    with pytest.warns(Warning):
+        driz.add_image(
+            insci,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=inwht,
+            scale=pscale,
+        )
+
+    template_data = read_image(output_template)
+
+    _, med_diff, max_diff = centroid_statistics(
+        "lanczos with grid",
+        output_difference,
+        driz.out_img,
+        template_data,
+        20.0,
+        8,
+    )
+    assert med_diff < 1.0e-6
+    assert max_diff < 1.0e-5
 
 
 def test_tophat_with_grid(tmpdir):
     """
     Test do_driz tophat kernel with grid
     """
-    output = str(tmpdir.join('output_tophat_grid.fits'))
     output_difference = str(tmpdir.join('difference_tophat_grid.txt'))
 
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
@@ -435,31 +591,57 @@ def test_tophat_with_grid(tmpdir):
     insci = read_image(input_file)
     inwcs = read_wcs(input_file)
     insci = make_grid_image(insci, 64, 100.0)
-    inwht = np.ones(insci.shape,dtype=insci.dtype)
+    inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='tophat')
-    driz.add_image(insci, inwcs, inwht=inwht)
+    pixmap, pscale = utils.calc_pixmap(
+        inwcs,
+        output_wcs,
+        estimate_pixel_scale_ratio=True,
+        refpix_from=inwcs.wcs.crpix,
+        refpix_to=output_wcs.wcs.crpix,
+    )
 
-    if ok:
-        driz.write(output_template)
-    else:
-        driz.write(output)
-        template_data = read_image(output_template)
+    # ignore previous pscale and compute it the old way (only to make
+    # tests work with old truth files and thus to show that new API gives
+    # same results when equal definitions of the pixel scale is ised):
+    pscale = np.sqrt(
+        np.sum(output_wcs.wcs.pc**2, axis=0)[0] /
+        np.sum(inwcs.wcs.cd**2, axis=0)[0]
+    )
 
-        min_diff, med_diff, max_diff = centroid_statistics("tophat with grid",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 8)
-        assert med_diff < 1.0e-6
-        assert max_diff < 1.0e-5
+    driz = resample.Drizzle(
+        kernel='tophat',
+        out_shape=output_wcs.array_shape,
+        fillval=0.0,
+    )
+    with pytest.warns(DeprecationWarning):
+        driz.add_image(
+            insci,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=inwht,
+            scale=pscale,
+        )
+
+    template_data = read_image(output_template)
+
+    _, med_diff, max_diff = centroid_statistics(
+        "tophat with grid",
+        output_difference,
+        driz.out_img,
+        template_data,
+        20.0,
+        8,
+    )
+    assert med_diff < 1.0e-6
+    assert max_diff < 1.0e-5
 
 
 def test_point_with_grid(tmpdir):
     """
     Test do_driz point kernel with grid
     """
-    output = str(tmpdir.join('output_point_grid.fits'))
     output_difference = str(tmpdir.join('difference_point_grid.txt'))
 
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
@@ -468,31 +650,32 @@ def test_point_with_grid(tmpdir):
     insci = read_image(input_file)
     inwcs = read_wcs(input_file)
     insci = make_grid_image(insci, 64, 100.0)
-    inwht = np.ones(insci.shape,dtype=insci.dtype)
+    inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='point')
-    driz.add_image(insci, inwcs, inwht=inwht)
+    pixmap = utils.calc_pixmap(inwcs, output_wcs)
 
-    if ok:
-        driz.write(output_template)
-    else:
-        driz.write(output)
-        template_data = read_image(output_template)
+    driz = resample.Drizzle(kernel='point', out_shape=output_wcs.array_shape, fillval=0.0)
+    driz.add_image(insci, exptime=1.0, pixmap=pixmap, weight_map=inwht)
 
-        min_diff, med_diff, max_diff = centroid_statistics("point with grid",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 8)
-        assert med_diff < 1.0e-6
-        assert max_diff < 1.0e-5
+    template_data = read_image(output_template)
+
+    _, med_diff, max_diff = centroid_statistics(
+        "point with grid",
+        output_difference,
+        driz.out_img,
+        template_data,
+        20.0,
+        8,
+    )
+    assert med_diff < 1.0e-6
+    assert max_diff < 1.0e-5
 
 
 def test_blot_with_point(tmpdir):
     """
     Test do_blot with point image
     """
-    output = str(tmpdir.join('output_blot_point.fits'))
     output_difference = str(tmpdir.join('difference_blot_point.txt'))
 
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
@@ -503,30 +686,42 @@ def test_blot_with_point(tmpdir):
     outsci = make_point_image(outsci, (500, 200), 40.0)
     inwcs = read_wcs(output_template)
 
-    driz = drizzle.Drizzle(outwcs=outwcs)
-    driz.outsci = outsci
+    pixmap = utils.calc_pixmap(inwcs, outwcs)
 
-    driz.blot_image(inwcs)
+    # compute pscale the old way (only to make
+    # tests work with old truth files and thus to show that new API gives
+    # same results when equal definitions of the pixel scale is ised):
+    pscale = np.sqrt(
+        np.sum(inwcs.wcs.pc**2, axis=0)[0] /
+        np.sum(outwcs.wcs.cd**2, axis=0)[0]
+    )
 
-    if ok:
-        driz.write(output_template)
-    else:
-        driz.write(output)
-        template_data = read_image(output_template)
+    blotted_image = resample.blot_image(
+        outsci,
+        pixmap=pixmap,
+        pix_ratio=pscale,
+        exptime=1.0,
+        output_pixel_shape=inwcs.array_shape,
+    )
 
-        min_diff, med_diff, max_diff = centroid_statistics("blot with point",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 16)
-        assert med_diff < 1.0e-6
-        assert max_diff < 1.0e-5
+    template_data = read_image(output_template)
+
+    _, med_diff, max_diff = centroid_statistics(
+        "blot with point",
+        output_difference,
+        blotted_image,
+        template_data,
+        20.0,
+        16,
+    )
+    assert med_diff < 1.0e-6
+    assert max_diff < 1.0e-5
 
 
 def test_blot_with_default(tmpdir):
     """
     Test do_blot with default grid image
     """
-    output = str(tmpdir.join('output_blot_default.fits'))
     output_difference = str(tmpdir.join('difference_blot_default.txt'))
 
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
@@ -537,31 +732,43 @@ def test_blot_with_default(tmpdir):
     outwcs = read_wcs(input_file)
     inwcs = read_wcs(output_template)
 
-    driz = drizzle.Drizzle(outwcs=outwcs)
-    driz.outsci = outsci
+    pixmap = utils.calc_pixmap(inwcs, outwcs)
 
-    driz.blot_image(inwcs)
+    # compute pscale the old way (only to make
+    # tests work with old truth files and thus to show that new API gives
+    # same results when equal definitions of the pixel scale is ised):
+    pscale = np.sqrt(
+        np.sum(inwcs.wcs.pc**2, axis=0)[0] /
+        np.sum(outwcs.wcs.cd**2, axis=0)[0]
+    )
 
-    if ok:
-        driz.write(output_template)
-    else:
-        driz.write(output)
-        template_data = read_image(output_template)
+    blotted_image = resample.blot_image(
+        outsci,
+        pixmap=pixmap,
+        pix_ratio=pscale,
+        exptime=1.0,
+        output_pixel_shape=inwcs.array_shape,
+    )
 
-        min_diff, med_diff, max_diff = centroid_statistics("blot with defaults",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 16)
+    template_data = read_image(output_template)
 
-        assert med_diff < 1.0e-6
-        assert max_diff < 1.0e-5
+    _, med_diff, max_diff = centroid_statistics(
+        "blot with defaults",
+        output_difference,
+        blotted_image,
+        template_data,
+        20.0,
+        16,
+    )
+
+    assert med_diff < 1.0e-6
+    assert max_diff < 1.0e-5
 
 
 def test_blot_with_lan3(tmpdir):
     """
     Test do_blot with lan3 grid image
     """
-    output = str(tmpdir.join('output_blot_lan3.fits'))
     output_difference = str(tmpdir.join('difference_blot_lan3.txt'))
 
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
@@ -572,30 +779,44 @@ def test_blot_with_lan3(tmpdir):
     outwcs = read_wcs(input_file)
     inwcs = read_wcs(output_template)
 
-    driz = drizzle.Drizzle(outwcs=outwcs)
-    driz.outsci = outsci
+    pixmap = utils.calc_pixmap(inwcs, outwcs)
 
-    driz.blot_image(inwcs, interp="lan3")
+    # compute pscale the old way (only to make
+    # tests work with old truth files and thus to show that new API gives
+    # same results when equal definitions of the pixel scale is ised):
+    pscale = np.sqrt(
+        np.sum(inwcs.wcs.pc**2, axis=0)[0] /
+        np.sum(outwcs.wcs.cd**2, axis=0)[0]
+    )
 
-    if ok:
-        driz.write(output_template)
-    else:
-        driz.write(output)
-        template_data = read_image(output_template)
+    blotted_image = resample.blot_image(
+        outsci,
+        pixmap=pixmap,
+        pix_ratio=pscale,
+        exptime=1.0,
+        output_pixel_shape=inwcs.array_shape,
+        interp="lan3",
+    )
 
-        min_diff, med_diff, max_diff = centroid_statistics("blot with lan3",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 16)
-        assert med_diff < 1.0e-6
-        assert max_diff < 1.0e-5
+    template_data = read_image(output_template)
+
+    _, med_diff, max_diff = centroid_statistics(
+        "blot with lan3",
+        output_difference,
+        blotted_image,
+        template_data,
+        20.0,
+        16,
+    )
+
+    assert med_diff < 1.0e-6
+    assert max_diff < 1.0e-5
 
 
 def test_blot_with_lan5(tmpdir):
     """
     Test do_blot with lan5 grid image
     """
-    output = str(tmpdir.join('output_blot_lan5.fits'))
     output_difference = str(tmpdir.join('difference_blot_lan5.txt'))
 
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
@@ -606,65 +827,83 @@ def test_blot_with_lan5(tmpdir):
     outwcs = read_wcs(input_file)
     inwcs = read_wcs(output_template)
 
-    driz = drizzle.Drizzle(outwcs=outwcs)
-    driz.outsci = outsci
+    pixmap = utils.calc_pixmap(inwcs, outwcs)
 
-    driz.blot_image(inwcs, interp="lan5")
+    # compute pscale the old way (only to make
+    # tests work with old truth files and thus to show that new API gives
+    # same results when equal definitions of the pixel scale is ised):
+    pscale = np.sqrt(
+        np.sum(inwcs.wcs.pc**2, axis=0)[0] /
+        np.sum(outwcs.wcs.cd**2, axis=0)[0]
+    )
 
-    if ok:
-        driz.write(output_template)
-    else:
-        driz.write(output)
-        template_data = read_image(output_template)
+    blotted_image = resample.blot_image(
+        outsci,
+        pixmap=pixmap,
+        pix_ratio=pscale,
+        exptime=1.0,
+        output_pixel_shape=inwcs.array_shape,
+        interp="lan5",
+    )
 
-        min_diff, med_diff, max_diff = centroid_statistics("blot with lan5",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 16)
-        assert med_diff < 1.0e-6
-        assert max_diff < 1.0e-5
+    template_data = read_image(output_template)
+
+    _, med_diff, max_diff = centroid_statistics(
+        "blot with lan5",
+        output_difference,
+        blotted_image,
+        template_data,
+        20.0,
+        16,
+    )
+
+    assert med_diff < 1.0e-6
+    assert max_diff < 1.0e-5
 
 
 def test_context_planes():
     """Reproduce error seen in issue #50"""
     shape = [10, 10]
-    outwcs = wcs.WCS()
-    outwcs.pixel_shape = shape
-    driz = drizzle.Drizzle(outwcs=outwcs)
+    output_wcs = wcs.WCS()
+    output_wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    output_wcs.wcs.pc = [[1, 0], [0, 1]]
+    output_wcs.pixel_shape = shape
+    driz = resample.Drizzle(out_shape=tuple(shape))
 
     image = np.ones(shape)
     inwcs = wcs.WCS()
+    inwcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    inwcs.wcs.cd = [[1, 0], [0, 1]]
     inwcs.pixel_shape = shape
 
-    for i in range(32):
-        driz.add_image(image, inwcs)
-    assert driz.outcon.shape == (1, 10, 10)
+    pixmap = utils.calc_pixmap(inwcs, output_wcs)
 
-    driz.add_image(image, inwcs)
-    assert driz.outcon.shape == (2, 10, 10)
+    driz = resample.Drizzle(
+        kernel='square',
+        out_shape=output_wcs.array_shape,
+        fillval=0.0,
+    )
+
+    for i in range(32):
+        driz.add_image(image, exptime=1.0, pixmap=pixmap)
+    assert driz.out_ctx.shape == (1, 10, 10)
+
+    driz.add_image(image, exptime=1.0, pixmap=pixmap)
+    assert driz.out_ctx.shape == (2, 10, 10)
 
 
 @pytest.mark.parametrize(
-    'kernel',
+    'kernel,fc',
     [
-        'square',
-        'point',
-        'turbo',
-        pytest.param(
-            'lanczos2',
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
-        ),
-        pytest.param(
-            'lanczos3',
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
-        ),
-        pytest.param(
-            'gaussian',
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
-        ),
+        ('square', True),
+        ('point', True),
+        ('turbo', True),
+        ('lanczos2', False),
+        ('lanczos3', False),
+        ('gaussian', False),
     ],
 )
-def test_flux_conservation_nondistorted(kernel):
+def test_flux_conservation_nondistorted(kernel, fc):
     n = 200
     in_shape = (n, n)
 
@@ -693,53 +932,63 @@ def test_flux_conservation_nondistorted(kernel):
     # image size)
     assert np.min(xp) > -0.5 and np.min(yp) > -0.5
 
-    out_sci = np.zeros(out_shape, dtype=np.float32)
+    out_img = np.zeros(out_shape, dtype=np.float32)
     out_ctx = np.zeros(out_shape, dtype=np.int32)
     out_wht = np.zeros(out_shape, dtype=np.float32)
 
-    cdrizzle.tdriz(
-        in_sci,
-        in_wht,
-        pixmap,
-        out_sci,
-        out_wht,
-        out_ctx,
-        pixfrac=1.0,
-        scale=1.0,
-        kernel=kernel,
-        in_units="cps",
-        expscale=1.0,
-        wtscale=1.0,
-    )
+    if fc:
+        cdrizzle.tdriz(
+            in_sci,
+            in_wht,
+            pixmap,
+            out_img,
+            out_wht,
+            out_ctx,
+            pixfrac=1.0,
+            scale=1.0,
+            kernel=kernel,
+            in_units="cps",
+            expscale=1.0,
+            wtscale=1.0,
+        )
+    else:
+        with pytest.warns(Warning):
+            cdrizzle.tdriz(
+                in_sci,
+                in_wht,
+                pixmap,
+                out_img,
+                out_wht,
+                out_ctx,
+                pixfrac=1.0,
+                scale=1.0,
+                kernel=kernel,
+                in_units="cps",
+                expscale=1.0,
+                wtscale=1.0,
+            )
+        pytest.xfail("Not a flux-conserving kernel")
 
     assert np.allclose(
-        np.sum(out_sci * out_wht),
+        np.sum(out_img * out_wht),
         np.sum(in_sci),
         atol=0.0,
         rtol=0.0001,
     )
 
+
 @pytest.mark.parametrize(
-    'kernel',
+    'kernel,fc',
     [
-        'square',
-        'point',
-        'turbo',
-        pytest.param(
-            'lanczos2',
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
-        ),
-        pytest.param(
-            'lanczos3',
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
-        ),
-        pytest.param(
-            'gaussian',
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
-        ),
+        ('square', True),
+        ('point', True),
+        ('turbo', True),
+        ('lanczos2', False),
+        ('lanczos3', False),
+        ('gaussian', False),
     ],
 )
-def test_flux_conservation_distorted(kernel):
+def test_flux_conservation_distorted(kernel, fc):
     n = 200
     in_shape = (n, n)
 
@@ -771,27 +1020,45 @@ def test_flux_conservation_distorted(kernel):
     # account for output image size):
     assert np.min(xp) > -0.5 and np.min(yp) > -0.5
 
-    out_sci = np.zeros(out_shape, dtype=np.float32)
+    out_img = np.zeros(out_shape, dtype=np.float32)
     out_ctx = np.zeros(out_shape, dtype=np.int32)
     out_wht = np.zeros(out_shape, dtype=np.float32)
 
-    cdrizzle.tdriz(
-        in_sci,
-        in_wht,
-        pixmap,
-        out_sci,
-        out_wht,
-        out_ctx,
-        pixfrac=1.0,
-        scale=1.0,
-        kernel=kernel,
-        in_units="cps",
-        expscale=1.0,
-        wtscale=1.0,
-    )
+    if fc:
+        cdrizzle.tdriz(
+            in_sci,
+            in_wht,
+            pixmap,
+            out_img,
+            out_wht,
+            out_ctx,
+            pixfrac=1.0,
+            scale=1.0,
+            kernel=kernel,
+            in_units="cps",
+            expscale=1.0,
+            wtscale=1.0,
+        )
+    else:
+        with pytest.warns(Warning):
+            cdrizzle.tdriz(
+                in_sci,
+                in_wht,
+                pixmap,
+                out_img,
+                out_wht,
+                out_ctx,
+                pixfrac=1.0,
+                scale=1.0,
+                kernel=kernel,
+                in_units="cps",
+                expscale=1.0,
+                wtscale=1.0,
+            )
+        pytest.xfail("Not a flux-conserving kernel")
 
     assert np.allclose(
-        np.sum(out_sci * out_wht),
+        np.sum(out_img * out_wht),
         np.sum(in_sci),
         atol=0.0,
         rtol=0.0001,

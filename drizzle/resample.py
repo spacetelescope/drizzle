@@ -20,48 +20,188 @@ SUPPORTED_DRIZZLE_KERNELS = [
 CTX_PLANE_BITS = 32
 
 
-class Drizzle():
-    def __init__(self, n_images=1, kernel="square",
-                 fillval=None, out_shape=None, out_sci=None, out_wht=None,
-                 out_ctx=None):
-        """
-        n_images : int, optional
-            The number of images expected to be added to the resampled
-            output. When it is a positive number and ``out_ctx`` is `None`,
-            it allows to pre-allocate the necessary array for the output context
-            image. If the actual number of input images that will be resampled
-            will exceed initial allocation for the context image, additional
-            context planes will be added as needed (context array will "grow"
-            in the third dimention as new input images are added.)
-            This parameter is ignored when ``out_ctx`` is provided.
+class Drizzle:
+    """
+    A class for managing resampling and co-adding of multiple images onto a
+    common output grid. The main method of this class is :py:meth:`add_image`.
+    The main functionality of this class is to resample and co-add multiple
+    images onto one output image. In the simplest terms, it redistributes flux
+    from input pixels to one or more output pixels based on the chosen kernel,
+    supplied weights, and input-to-output coordinate transformations as defined
+    by the ``pixmap`` argument. For more details, see :ref:`main-user-doc`.
 
+    This class keeps track of the total exposure time of all co-added images
+    and also of which input images have contributed to an output (resampled)
+    pixel. This is accomplished via *context image*.
+
+    Main outputs of :py:meth:`add_image` can be accessed as class properties
+    ``out_img``, ``out_wht``, ``out_ctx``, and ``exptime``.
+
+    .. warning::
+        Output arrays (``out_img``, ``out_wht``, and ``out_ctx``) can be
+        pre-allocated by the caller and be passed to the initializer or the
+        class initializer can allocate these arrays based on other input
+        parameters such as ``output_shape``. If caller-supplied output arrays
+        have the correct type (`numpy.float32` for ``out_img`` and ``out_wht``
+        and `numpy.int32` for the ``out_ctx`` array) and if ``out_ctx`` is
+        large enough not to need to be resized, these arrays will be used as is
+        and may be modified by the :py:meth:`add_image` method. If not,
+        a copy of these arrays will be made when converting to the expected
+        type (or expanding the context array).
+
+    Output Science Image
+    --------------------
+
+    Output science image is obtained by adding input pixel fluxes according to
+    equations (4) and (5) in
+    `Fruchter and Hook, PASP 2002 <https://doi.org/10.1086/338393>`_.
+    The weights and coefficients in those equations will depend on the chosen
+    kernel, input image weights, and pixel overlaps computed from ``pixmap``.
+
+    Output Weight Image
+    -------------------
+
+    Output weight image stores the total weight of output science pixels
+    according to equation (4) in
+    `Fruchter and Hook, PASP 2002 <https://doi.org/10.1086/338393>`_.
+    It depends on the chosen kernel, input image weights, and pixel overlaps
+    computed from ``pixmap``.
+
+    Output Context Image
+    --------------------
+
+    Each pixel in the context image is a bit field that encodes
+    information about which input image has contributed to the corresponding
+    pixel in the resampled data array. Context image uses 32 bit integers to
+    encode this information and hence it can keep track of only 32 input images.
+    First bit corresponds to the first input image, second bit corrsponds to the
+    second input image, and so on. We call this (0-indexed) order "context ID"
+    which is represented by the ``ctx_id`` parameter/property. If the number of
+    input images exceeds 32, then it is necessary to have multiple context
+    images ("planes") to hold information about all input images with the first
+    plane encoding which of the first 32 images contributed to the output data
+    pixel, second plane representing next 32 input images (number 33-64), etc.
+    For this reason, context array is either a 2D array (if the total number
+    of resampled images is less than 33) of the type `numpy.int32` and shape
+    ``(ny, nx)`` or a a 3D array of shape ``(np, ny, nx)`` where ``nx`` and
+    ``ny`` are dimensions of image's data. ``np`` is the number of "planes"
+    equal to ``(number of input images - 1) // 32 + 1``. If a bit at position
+    ``k`` in a pixel with coordinates ``(p, y, x)`` is 0 then input image number
+    ``32 * p + k`` (0-indexed) did not contribute to the output data pixel
+    with array coordinates ``(y, x)`` and if that bit is 1 then input image
+    number ``32 * p + k`` did contribute to the pixel ``(y, x)`` in the
+    resampled image.
+
+    As an example, let's assume we have 8 input images. Then, when ``out_ctx``
+    pixel values are displayed using binary representation (and decimal in
+    parenthesis), one could see values like this::
+
+        00000001 (1) - only first input image contributed to this output pixel;
+        00000010 (2) - 2nd input image contributed;
+        00000100 (4) - 3rd input image contributed;
+        10000000 (128) - 8th input image contributed;
+        10000100 (132=128+4) - 3rd and 8th input images contributed;
+        11001101 (205=1+4+8+64+128) - input images 1, 3, 4, 7, 8 have contributed
+        to this output pixel.
+
+    In order to test if a specific input image contributed to an output pixel,
+    one needs to use bitwise operations. Using the example above, to test
+    whether input images number 4 and 5 have contributed to the output pixel
+    whose corresponding ``out_ctx`` value is 205 (11001101 in binary form) we
+    can do the following:
+
+    >>> bool(205 & (1 << (5 - 1)))  # (205 & 16) = 0 (== 0 => False): did NOT contribute
+    False
+    >>> bool(205 & (1 << (4 - 1)))  # (205 & 8) = 8 (!= 0 => True): did contribute
+    True
+
+    In general, to get a list of all input images that have contributed to an
+    output resampled pixel with image coordinates ``(x, y)``, and given a
+    context array ``ctx``, one can do something like this:
+
+    .. doctest-skip::
+
+        >>> import numpy as np
+        >>> np.flatnonzero([v & (1 << k) for v in ctx[:, y, x] for k in range(32)])
+
+    For convenience, this functionality was implemented in the
+    :py:func:`~drizzle.utils.decode_context` function.
+
+    References
+    ----------
+
+    A full description of the drizzling algorithm can be found in
+    `Fruchter and Hook, PASP 2002 <https://doi.org/10.1086/338393>`_.
+
+    Examples
+    --------
+
+    .. highlight:: python
+    .. code-block:: python
+
+        # wcs1 - WCS of the input image usually with distortions (to be resampled)
+        # wcs2 - WCS of the output image without distortions
+
+        import numpy as np
+        from drizzle.resample import Drizzle
+        from drizzle.utils import calc_pixmap
+
+        # simulate some data and a pixel map:
+        data = np.ones((240, 570))
+        pixmap = calc_pixmap(wcs1, wcs2)
+        # or simulate a mapping from input image to output image frame:
+        # y, x = np.indices((240, 570), dtype=np.float64)
+        # pixmap = np.dstack([x, y])
+
+        # initialize Drizzle object
+        d = Drizzle(out_shape=(240, 570))
+        d.add_image(data, exptime=15, pixmap=pixmap)
+
+        # access outputs:
+        d.out_img
+        d.out_ctx
+        d.out_wht
+
+    """
+    def __init__(self, kernel="square", fillval=None, out_shape=None,
+                 out_img=None, out_wht=None, out_ctx=None, exptime=0.0,
+                 begin_ctx_id=0, max_ctx_id=None):
+        """
         kernel: str, optional
             The name of the kernel used to combine the input. The choice of
             kernel controls the distribution of flux over the kernel. The kernel
-            names are: "square", "gaussian", "point", "tophat", "turbo",
+            names are: "square", "gaussian", "point", "turbo",
             "lanczos2", and "lanczos3". The square kernel is the default.
+
+            .. warning::
+               The "gaussian", "tophat", and "lanczos2/3" kernels **DO NOT**
+               conserve flux.
+
+            .. warning::
+               The "tophat" kernel was deprecated and it will be removed in a
+               future release.
 
         out_shape : tuple, None, optional
             Shape (`numpy` order ``(Ny, Nx)``) of the output images (context
             image will have a third dimension of size proportional to the number
             of input images). This parameter is helpful when neither
-            ``out_sci``, ``out_wht``, nor ``out_ctx`` images are provided.
+            ``out_img``, ``out_wht``, nor ``out_ctx`` images are provided.
 
         fillval: float, None, str, optional
             The value of output pixels that did not have contributions from
             input images' pixels. When ``fillval`` is either `None` or
-            ``"INDEF"`` and ``out_sci`` is provided, the values of ``out_sci``
+            ``"INDEF"`` and ``out_img`` is provided, the values of ``out_img``
             will not be modified. When ``fillval`` is either `None` or
-            ``"INDEF"`` and ``out_sci`` is **not provided**, the values of
-            ``out_sci`` will be initialized to `numpy.nan`. If ``fillval``
+            ``"INDEF"`` and ``out_img`` is **not provided**, the values of
+            ``out_img`` will be initialized to `numpy.nan`. If ``fillval``
             is a string that can be converted to a number, then the output
             pixels with no contributions from input images will be set to this
             ``fillval`` value.
 
-        out_sci : 2d array of float32, optional
+        out_img : 2d array of float32, optional
             A 2D numpy array containing the output image produced by
-            drizzling. On the first call it should be set to zero.
-            Subsequent calls it will hold the intermediate results
+            drizzling. On the first call the array values should be set to zero.
+            Subsequent calls it will hold the intermediate results.
 
         out_wht : 2D array of float32, optional
             A 2D numpy array containing the output counts. On the first
@@ -73,18 +213,63 @@ class Drizzle():
             for each output pixel. Should be integer zero on first call.
             Subsequent calls hold intermediate results.
 
+        exptime : float, optional
+            Exposure time of previously resampled images when provided via
+            parameters ``out_img``, ``out_wht``, ``out_ctx``.
+
+        begin_ctx_id : int, optional
+            The context ID number (0-based) of the first image that will be
+            resampled (using `add_image`). Subsequent images will be asigned
+            consecutively increasing ID numbers.
+
+        max_ctx_id : int, None, optional
+            The largest integer context ID that is *expected* to be used for
+            an input image. When it is a non-negative number and ``out_ctx`` is
+            `None`, it allows to pre-allocate the necessary array for the output
+            context image. If the actual number of input images that will be
+            resampled will exceed initial allocation for the context image,
+            additional context planes will be added as needed (context array
+            will "grow" in the third dimention as new input images are added.)
+            The default value of `None` is equivalent to setting ``max_ctx_id``
+            equal to ``begin_ctx_id``. This parameter is ignored when
+            ``out_ctx`` is provided.
+
         """
-        self.ctx_id = -1  # the ID of the *last* image to be resampled
-        self.exptime = 0.0
+        self._ctx_id = begin_ctx_id  # the ID of the *last* image to be resampled
+        if max_ctx_id is None:
+            max_ctx_id = begin_ctx_id
+        self._max_ctx_id = max_ctx_id
+
+        if exptime < 0.0:
+            raise ValueError("Exposure time must be non-negative.")
+        elif (exptime > 0.0 and out_img is None and out_ctx is None and
+              out_wht is None):
+            raise ValueError(
+                "Exposure time must be 0.0 for the first resampling "
+                "(when no ouput resampled images have been provided)."
+            )
+        elif (exptime == 0.0 and
+                (
+                    (out_ctx is not None and np.sum(out_ctx) > 0) or
+                    (out_wht is not None and np.sum(out_wht) > 0)
+                )
+              ):
+            raise ValueError(
+                "Inconsistent exposure time and context and/or weight images: "
+                "Exposure time cannot be 0 when context and/or weight arrays "
+                "are non-zero."
+            )
+
+        self._texptime = exptime
 
         if kernel.lower() not in SUPPORTED_DRIZZLE_KERNELS:
             raise ValueError(f"Kernel '{kernel}' is not supported.")
-        self.kernel = kernel
+        self._kernel = kernel
 
         if fillval is None:
             fillval = "INDEF"
 
-        elif isinstance(str, fillval):
+        elif isinstance(fillval, str):
             fillval = fillval.strip()
             if fillval == "":
                 fillval = "INDEF"
@@ -94,12 +279,15 @@ class Drizzle():
                 float(fillval)
                 fillval = str(fillval)
 
-        if out_sci is None and fillval == "INDEF":
+        else:
+            fillval = str(fillval)
+
+        if out_img is None and fillval == "INDEF":
             fillval = "NaN"
 
-        self.fillval = fillval
+        self._fillval = fillval
 
-        if (out_shape is None and out_sci is None and out_wht is None and
+        if (out_shape is None and out_img is None and out_wht is None and
                 out_ctx is None):
             raise ValueError(
                 "'out_shape' cannot be None when all output arrays are None."
@@ -109,9 +297,9 @@ class Drizzle():
         # out_* arrays (if provided) in order to check all shapes are the same.
         shapes = set()
 
-        if out_sci is not None:
-            out_sci = np.asarray(out_sci, dtype=np.float32)
-            shapes.add(out_sci.shape)
+        if out_img is not None:
+            out_img = np.asarray(out_img, dtype=np.float32)
+            shapes.add(out_img.shape)
 
         if out_wht is not None:
             out_wht = np.asarray(out_wht, dtype=np.float32)
@@ -119,85 +307,128 @@ class Drizzle():
 
         if out_ctx is not None:
             out_ctx = np.asarray(out_ctx, dtype=np.int32)
-            if len(out_ctx.shape) == 3:
-                shapes.add(out_ctx.shape[1:])
-            else:
-                shapes.add(out_ctx.shape)
+            if out_ctx.ndim == 2:
+                out_ctx = out_ctx[None, :, :]
+            shapes.add(out_ctx.shape[1:])
 
         if out_shape is None:
-            if not shapes:
-                raise ValueError(
-                    "'out_shape' cannot be None when all output arrays are "
-                    "None."
-                )
-            out_shape = shapes.pop()
+            if shapes:
+                out_shape = shapes.pop()
         else:
             shapes.add(out_shape)
 
         if len(shapes) == 1:
-            self.out_shape = shapes.pop()
+            self._out_shape = shapes.pop()
         elif len(shapes) > 1:
             raise ValueError(
                 "Inconsistent data shapes specified: 'out_shape' and/or "
-                "out_sci, out_wht, out_ctx have different shapes."
+                "out_img, out_wht, out_ctx have different shapes."
             )
         else:
             raise ValueError(
-                "Either 'out_shape' and/or out_sci, out_wht, out_ctx must be "
+                "Either 'out_shape' and/or out_img, out_wht, out_ctx must be "
                 "provided."
             )
 
         self._alloc_output_arrays(
-            out_shape=self.out_shape,
-            n_images=n_images,
-            out_sci=out_sci,
+            out_shape=self._out_shape,
+            max_ctx_id=max_ctx_id,
+            out_img=out_img,
             out_wht=out_wht,
             out_ctx=out_ctx,
         )
 
-    def _alloc_output_arrays(self, out_shape, n_images, out_sci, out_wht,
-                             out_ctx):
-        # allocate arrays as needed:
-        if out_sci is None:
-            self.out_sci = np.empty(out_shape, dtype=np.float32)
-            self.out_sci.fill(self.fillval)
+    @property
+    def fillval(self):
+        """ Fill value for output pixels without contributions from input images. """
+        return self._fillval
 
+    @property
+    def kernel(self):
+        """ Resampling kernel. """
+        return self._kernel
+
+    @property
+    def ctx_id(self):
+        """ Context image "ID" (0-based ) of the next image to be resampled. """
+        return self._ctx_id
+
+    @property
+    def out_img(self):
+        """ Output resampled image. """
+        return self._out_img
+
+    @property
+    def out_wht(self):
+        """ Output weight image.  """
+
+    @property
+    def out_ctx(self):
+        """ Output "context" image. """
+        return self._out_ctx
+
+    @property
+    def total_exptime(self):
+        """ Total exposure time of all resampled images. """
+        return self._texptime
+
+    def _alloc_output_arrays(self, out_shape, max_ctx_id, out_img, out_wht,
+                             out_ctx):
+        if out_shape is None:
+            return
+
+        # allocate arrays as needed:
         if out_wht is None:
-            self.out_wht = np.zeros(out_shape, dtype=np.float32)
+            self._out_wht = np.zeros(out_shape, dtype=np.float32)
 
         if out_ctx is None:
-            n_ctx_planes = (n_images - 1) // CTX_PLANE_BITS + 1
-            if n_ctx_planes == 1:
-                ctx_shape = out_shape
-            else:
-                ctx_shape = (n_ctx_planes, ) + out_shape
-            self.out_ctx = np.zeros(ctx_shape, dtype=np.int32)
+            n_ctx_planes = max_ctx_id // CTX_PLANE_BITS + 1
+            ctx_shape = (n_ctx_planes, ) + out_shape
+            self._out_ctx = np.zeros(ctx_shape, dtype=np.int32)
+
+        if not (out_wht is None and out_ctx is None):
+            # check that input data make sense: weight of pixels with non-zero
+            # context values must be different from zero:
+            if np.any(
+                np.bitwise_xor(
+                    self._out_wht > 0.0,
+                    np.sum(self._out_ctx, axis=0) > 0
+                )
+            ):
+                raise ValueError(
+                    "Inconsistent values of supplied 'out_wht' and 'out_ctx' "
+                    "arrays. Pixels with non-zero context values must have "
+                    "positive weights and vice-versa."
+                )
+
+        if out_img is None:
+            self._out_img = np.empty(out_shape, dtype=np.float32)
+            self._out_img.fill(self._fillval)
 
     def _increment_ctx_id(self):
-        self.ctx_id += 1
-        if self.ctx_id < 0:
+        if self._ctx_id < 0:
             ValueError("Invalid context image ID")
 
-        self._plane_no = self.ctx_id // CTX_PLANE_BITS
-        depth = 1 if len(self.out_ctx.shape) == 2 else self.out_ctx.shape[0]
+        self._plane_no = self._ctx_id // CTX_PLANE_BITS
+        depth = self._out_ctx.shape[0]
 
         if self._plane_no >= depth:
             # Add a new plane to the context image if planeid overflows
-            plane = np.zeros_like(self.out_shape, np.int32)
-            self.outcon = np.append(self.out_ctx, [plane], axis=0)
+            plane = np.zeros((1, ) + self._out_shape, np.int32)
+            self._out_ctx = np.append(self._out_ctx, plane, axis=0)
 
-        return (self._plane_no, self.ctx_id % CTX_PLANE_BITS)
+        plane_info = (self._plane_no, self._ctx_id % CTX_PLANE_BITS)
+        # increment ID for the *next* image to be added:
+        self._ctx_id += 1
+
+        return plane_info
 
     def add_image(self, data, exptime, pixmap, scale=1.0,
                   weight_map=None, wht_scale=1.0, pixfrac=1.0, in_units='cps',
                   xmin=None, xmax=None, ymin=None, ymax=None):
         """
-
         Resample and add an image to the cumulative output image. Also, update
         output total weight image and context images.
-
-        TODO: significantly expand this with examples, especially for
-        exptime, expsq, and ivm weightings.
 
         Parameters
         ----------
@@ -210,8 +441,13 @@ class Drizzle():
             The exposure time of the input image, a positive number. The
             exposure time is used to scale the image if the units are counts.
 
-        pixmap : array
-            TODO: add description.
+        pixmap : 3D array
+            A mapping from input image (``data``) coordinates to resampled
+            (``out_img``) coordinates. ``pixmap`` must be an array of shape
+            ``(Ny, Nx, 2)`` where ``(Ny, Nx)`` is the shape of the input image.
+            ``pixmap[..., 0]`` forms a 2D array of X-coordinates of input
+            pixels in the ouput frame and ``pixmap[..., 1]`` forms a 2D array of
+            Y-coordinates of input pixels in the ouput coordinate frame.
 
         scale : float, optional
             The pixel scale of the input image. Conceptually, this is the
@@ -219,11 +455,12 @@ class Drizzle():
             is not limited to this and can be set to change how the drizzling
             algorithm operates.
 
-        weight_map : 2d array
-            A 2d numpy array containing the pixel by pixel weighting.
+        weight_map : 2D array, None, optional
+            A 2D numpy array containing the pixel by pixel weighting.
             Must have the same dimensions as ``data``.
 
-            TODO: I think this is wrong: If none is supplied, the weghting is set to one.
+            When ``weight_map`` is `None`, the weight of input data pixels will
+            be assumed to be 1.
 
         wht_scale : float
             A scaling factor applied to the pixel by pixel weighting.
@@ -266,6 +503,30 @@ class Drizzle():
             of the output image is the bounding box.
 
         """
+        # this enables initializer to not need output image shape at all and
+        # set output image shape based on output coordinates from the pixmap.
+        #
+        if self._out_shape is None:
+            pmap_xmin = int(np.floor(np.nanmin(pixmap[:, :, 0])))
+            pmap_xmax = int(np.ceil(np.nanmax(pixmap[:, :, 0])))
+            pmap_ymin = int(np.floor(np.nanmin(pixmap[:, :, 1])))
+            pmap_ymax = int(np.ceil(np.nanmax(pixmap[:, :, 1])))
+            pixmap = pixmap.copy()
+            pixmap[:, :, 0] -= pmap_xmin
+            pixmap[:, :, 1] -= pmap_ymin
+            self._out_shape = (
+                pmap_xmax - pmap_xmin + 1,
+                pmap_ymax - pmap_ymin + 1
+            )
+
+            self._alloc_output_arrays(
+                out_shape=self._out_shape,
+                max_ctx_id=max(self._max_ctx_id, self._ctx_id),
+                out_img=None,
+                out_wht=None,
+                out_ctx=None,
+            )
+
         plane_no, id_in_plane = self._increment_ctx_id()
 
         # Ensure that the fillval parameter gets properly interpreted
@@ -275,7 +536,7 @@ class Drizzle():
         else:
             expscale = exptime
 
-        self.exptime += exptime
+        self._texptime += exptime
 
         data = np.asarray(data, dtype=np.float32)
         pixmap = np.asarray(pixmap, dtype=np.float64)
@@ -285,34 +546,17 @@ class Drizzle():
                 "'pixmap' shape is not consistent with 'data' shape."
             )
 
-        # TODO: this is code that would enable initializer to not need output
-        #       image shape at all and set output image shape based on
-        #       output coordinates from the pixmap. If this is enabled, then
-        #       some checks in __init__ may be removed:
-        # if self.out_shape is None:
-        #     pmap_xmin = int(np.floor(np.min(pixmap[:, :, 0])))
-        #     pmap_xmax = int(np.ceil(np.max(pixmap[:, :, 0])))
-        #     pmap_ymin = int(np.floor(np.min(pixmap[:, :, 1])))
-        #     pmap_ymax = int(np.ceil(np.max(pixmap[:, :, 1])))
-        #     pixmap = pixmap.copy()
-        #     pixmap[:, :, 0] -= pmap_xmin
-        #     pixmap[:, :, 1] -= pmap_ymin
-        #     self.out_shape = (
-        #         pmap_xmax - pmap_xmin + 1,
-        #         pmap_ymax - pmap_ymin + 1
-        #     )
-
         if xmin is None or xmin < 0:
             xmin = 0
 
         if ymin is None or ymin < 0:
             ymin = 0
 
-        if xmax is None or xmax > self.out_shape[1] - 1:
-            xmax = self.out_shape[1] - 1
+        if xmax is None or xmax > self._out_shape[1] - 1:
+            xmax = self._out_shape[1] - 1
 
-        if ymax is None or ymax > self.out_shape[0] - 1:
-            ymax = self.out_shape[0] - 1
+        if ymax is None or ymax > self._out_shape[0] - 1:
+            ymax = self._out_shape[0] - 1
 
         if weight_map is not None:
             weight_map = np.asarray(weight_map, dtype=np.float32)
@@ -327,31 +571,31 @@ class Drizzle():
         # TODO: While drizzle code in cdrizzlebox.c supports weight_map=None,
         #       cdrizzleapi.c does not. It should be modified to support this
         #       for performance reasons.
-        if len(self.out_ctx.shape) == 2:
+        if self._out_ctx.ndim == 2:
             assert plane_no == 0
-            ctx_plane = self.out_ctx
+            ctx_plane = self._out_ctx
         else:
-            ctx_plane = self.out_ctx[plane_no]
+            ctx_plane = self._out_ctx[plane_no]
 
         _vers, nmiss, nskip = cdrizzle.tdriz(
             data,
             weight_map,
             pixmap,
-            self.out_sci,
-            self.out_wht,
+            self._out_img,
+            self._out_wht,
             ctx_plane,
             uniqid=id_in_plane + 1,
             xmin=xmin,
             xmax=xmax,
             ymin=ymin,
             ymax=ymax,
-            scale=scale, # scales image intensity. usually equal to pixel scale
+            scale=scale,  # scales image intensity. usually equal to pixel scale
             pixfrac=pixfrac,
-            kernel=self.kernel,
+            kernel=self._kernel,
             in_units=in_units,
             expscale=expscale,
             wtscale=wht_scale,
-            fillstr=self.fillval
+            fillstr=self._fillval
         )
         self._cversion = _vers  # TODO: probably not needed
 
@@ -398,9 +642,9 @@ def blot_image(data, pixmap, pix_ratio, exptime, output_pixel_shape,
         The scaling factor for sinc interpolation.
     """
 
-    out_sci = np.zeros(output_pixel_shape[::-1], dtype=np.float32)
+    out_img = np.zeros(output_pixel_shape[::-1], dtype=np.float32)
 
-    cdrizzle.tblot(data, pixmap, out_sci, scale=pix_ratio, kscale=1.0,
+    cdrizzle.tblot(data, pixmap, out_img, scale=pix_ratio, kscale=1.0,
                    interp=interp, exptime=exptime, misval=0.0, sinscl=sinscl)
 
-    return out_sci
+    return out_img
