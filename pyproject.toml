@@ -39,6 +39,7 @@ docs = [
     "sphinx-automodapi",
     "sphinx-rtd-theme",
     "matplotlib",
+    "pytest-doctestplus",
 ]
 
 [build-system]
