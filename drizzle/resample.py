@@ -379,11 +379,15 @@ class Drizzle:
         # allocate arrays as needed:
         if out_wht is None:
             self._out_wht = np.zeros(out_shape, dtype=np.float32)
+        else:
+            self._out_wht = out_wht
 
         if out_ctx is None:
             n_ctx_planes = max_ctx_id // CTX_PLANE_BITS + 1
             ctx_shape = (n_ctx_planes, ) + out_shape
             self._out_ctx = np.zeros(ctx_shape, dtype=np.int32)
+        else:
+            self._out_ctx = out_ctx
 
         if not (out_wht is None and out_ctx is None):
             # check that input data make sense: weight of pixels with non-zero
@@ -403,6 +407,8 @@ class Drizzle:
         if out_img is None:
             self._out_img = np.empty(out_shape, dtype=np.float32)
             self._out_img.fill(self._fillval)
+        else:
+            self._out_img = out_img
 
     def _increment_ctx_id(self):
         """
@@ -531,6 +537,9 @@ class Drizzle:
             )
 
         plane_no, id_in_plane = self._increment_ctx_id()
+
+        if exptime <= 0.0:
+            raise ValueError("'exptime' *must* be a strictly positive number.")
 
         # Ensure that the fillval parameter gets properly interpreted
         # for use with tdriz

@@ -1073,37 +1073,140 @@ def test_flux_conservation_distorted(kernel, fc):
     )
 
 
-def test_no_context_array():
-    """
-    Test that providing None for "outctx" is supported.
-    """
-    # initialize input:
-    insci = np.ones((200, 400), dtype=np.float32)
-    inwht = np.ones((200, 400), dtype=np.float32)
-    inwht[:, 150:155] = 0
+def test_drizzle_exptime():
+    n = 200
+    in_shape = (n, n)
 
-    # initialize output:
-    outsci = np.zeros((210, 410), dtype=np.float32)
-    outwht = np.zeros((210, 410), dtype=np.float32)
-    outctx = None
+    # input coordinate grid:
+    y, x = np.indices(in_shape, dtype=np.float64)
 
-    # define coordinate mapping:
-    pixmap = np.moveaxis(np.mgrid[1:201, 1:401][::-1], 0, -1)
+    # simulate data:
+    in_sci = np.ones(in_shape, dtype=np.float32)
+    in_wht = np.ones(in_shape, dtype=np.float32)
 
-    # resample:
-    cdrizzle.tdriz(
-        insci, inwht, pixmap,
-        outsci, outwht, outctx,
-        uniqid=1,
-        xmin=0, xmax=400,
-        ymin=0, ymax=200,
-        pixfrac=1,
+    pixmap = np.dstack([x, y])
+
+    # allocate output arrays:
+    out_shape = (int(y.max()) + 1, int(x.max()) + 1)
+    out_img = np.zeros(out_shape, dtype=np.float32)
+    out_ctx = np.zeros(out_shape, dtype=np.int32)
+    out_wht = np.zeros(out_shape, dtype=np.float32)
+
+    # starting exposure time must be non-negative:
+    with pytest.raises(ValueError):
+        driz = resample.Drizzle(
+            kernel='square',
+            out_shape=out_shape,
+            fillval="indef",
+            exptime=-1.0,
+        )
+
+    driz = resample.Drizzle(
         kernel='square',
-        in_units='cps',
-        expscale=1,
-        wtscale=1,
-        fillstr='INDEF',
+        out_shape=out_shape,
+        fillval="",
+        out_img=out_img,
+        out_ctx=out_ctx,
+        out_wht=out_wht,
+        exptime=1.0,
     )
 
-    # check that no pixel with 0 weight has any counts:
-    assert np.sum(np.abs(outsci[(outwht == 0)])) == 0.0
+    driz.add_image(in_sci, weight_map=in_wht, exptime=1.03456, pixmap=pixmap)
+    assert np.allclose(driz.total_exptime, 2.03456, rtol=0, atol=1.0e-14)
+
+    driz.add_image(in_sci, weight_map=in_wht, exptime=3.1415926, pixmap=pixmap)
+    assert np.allclose(driz.total_exptime, 5.1761526, rtol=0, atol=1.0e-14)
+
+    with pytest.raises(ValueError):
+        driz.add_image(in_sci, weight_map=in_wht, exptime=-1, pixmap=pixmap)
+
+
+def test_drizzle_unsupported_kernel():
+    with pytest.raises(ValueError):
+        resample.Drizzle(
+            kernel='magic_image_improver',
+            out_shape=(10, 10),
+            exptime=-1.0,
+        )
+
+
+def test_drizzle_fillval():
+    n = 200
+    in_shape = (n, n)
+
+    # input coordinate grid:
+    y, x = np.indices(in_shape, dtype=np.float64)
+
+    # simulate a gaussian "star":
+    fwhm = 2.9
+    x0 = 50.0
+    y0 = 68.0
+    sig = fwhm / (2.0 * np.sqrt(2.0 * np.log(2.0 * fwhm)))
+    sig2 = sig * sig
+    star = np.exp(-0.5 / sig2 * ((x.astype(np.float32) - x0)**2 + (y.astype(np.float32) - y0)**2))
+    in_sci = (star / np.sum(star)).astype(np.float32)  # normalize to 1
+    in_wht = np.zeros(in_shape, dtype=np.float32)
+    mask = np.where((x.astype(np.float32) - x0)**2 + (y.astype(np.float32) - y0)**2 <= 10)
+    in_wht[mask] = 1.0
+
+    # linear shift:
+    xp = x + 50
+    yp = y + 50
+
+    pixmap = np.dstack([xp, yp])
+
+    out_shape = (int(yp.max()) + 1, int(xp.max()) + 1)
+    # make sure distorion is not moving flux out of the image towards negative
+    # coordinates (just because of the simple way of how we account for output
+    # image size)
+    assert np.min(xp) > -0.5 and np.min(yp) > -0.5
+
+    out_img = np.zeros(out_shape, dtype=np.float32) - 1.11
+    out_ctx = np.zeros((1, ) + out_shape, dtype=np.int32)
+    out_wht = np.zeros(out_shape, dtype=np.float32)
+
+    driz = resample.Drizzle(
+        kernel='square',
+        out_shape=out_shape,
+        fillval="",
+        exptime=0.0,
+    )
+
+    driz.add_image(in_sci, weight_map=in_wht, exptime=1.0, pixmap=pixmap)
+    assert np.isnan(driz.out_img[0, 0])
+    assert driz.out_img[int(y0) + 50, int(x0) + 50] > 0.0
+
+    driz = resample.Drizzle(
+        kernel='square',
+        out_shape=out_shape,
+        fillval="-1.11",
+        out_img=out_img.copy(),
+        out_ctx=out_ctx.copy(),
+        out_wht=out_wht.copy(),
+        exptime=0.0,
+    )
+    driz.add_image(in_sci, weight_map=in_wht, exptime=1.0, pixmap=pixmap)
+    assert np.allclose(driz.out_img[0, 0], -1.11, rtol=0.0, atol=1.0e-7)
+    assert driz.out_img[int(y0) + 50, int(x0) + 50] > 0.0
+
+    # test same with numeric fillval:
+    driz = resample.Drizzle(
+        kernel='square',
+        out_shape=out_shape,
+        fillval=-1.11,
+        out_img=out_img.copy(),
+        out_ctx=out_ctx.copy(),
+        out_wht=out_wht.copy(),
+        exptime=0.0,
+    )
+    driz.add_image(in_sci, weight_map=in_wht, exptime=1.0, pixmap=pixmap)
+    assert np.allclose(driz.out_img[0, 0], -1.11, rtol=0.0, atol=1.0e-7)
+
+    # make sure code raises exception for unsuported fillval:
+    with pytest.raises(ValueError):
+        resample.Drizzle(
+            kernel='square',
+            out_shape=out_shape,
+            fillval="interesting",
+            exptime=1.0,
+        )
