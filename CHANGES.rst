@@ -18,6 +18,16 @@ Release Notes
 - build wheels with Numpy 2.0 release candidate [#149]
 
 
+2.0.0 (Unreleased)
+==================
+
+- Backward incompatible major re-design of API. [#134]
+
+- Bug fix: exposure time was undefined when in_units were not cps. [#134]
+
+- BUG FIX: ``cdrizzle.tdriz`` signature was out of date. [#134]
+
+
 1.15.1 (2024-03-05)
 ===================
 
