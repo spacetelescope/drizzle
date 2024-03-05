@@ -208,7 +208,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
 
   /* If the input image is not in CPS we need to divide by the exposure */
   if (inun != unit_cps) {
-    inv_exposure_time = 1.0f / p.exposure_time;
+    inv_exposure_time = 1.0f / expin;
     scale_image(img, inv_exposure_time);
   }
 
@@ -577,7 +577,7 @@ clip_polygon_wrap(PyObject *self, PyObject *args)
 
 static struct PyMethodDef cdrizzle_methods[] = {
     {"tdriz",  (PyCFunction)tdriz, METH_VARARGS|METH_KEYWORDS,
-    "tdriz(image, weight, output, outweight, context, uniqid,  xmin, ymin, scale, pfract, kernel, inun, expin, wtscl, fill, nmiss, nskip, pixmap)"},
+    "tdriz(image, weights, pixmap, output, counts, context, uniqid,  xmin, xmax, ymin, ymax, scale, pixfrac, kernel, in_units, expscale, wtscale, fillstr)"},
     {"tblot",  (PyCFunction)tblot, METH_VARARGS|METH_KEYWORDS,
     "tblot(image, output, xmin, xmax, ymin, ymax, scale, kscale, interp, ef, misval, sinscl, pixmap)"},
     {"test_cdrizzle", test_cdrizzle, METH_VARARGS,

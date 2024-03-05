@@ -421,9 +421,6 @@ def test_turbo_with_grid(tmpdir):
     inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    # driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='turbo')
-    # driz.add_image(insci, inwcs, inwht=inwht)
-
     pixmap, pscale = utils.calc_pixmap(
         inwcs,
         output_wcs,
@@ -939,6 +936,33 @@ def test_init_ctx_id():
     )
 
 
+def test_context_agrees_with_weight():
+    n = 200
+    out_shape = (n, n)
+
+    # allocate output arrays:
+    out_img = np.zeros(out_shape, dtype=np.float32)
+    out_ctx = np.zeros(out_shape, dtype=np.int32)
+    out_wht = np.zeros(out_shape, dtype=np.float32)
+
+    # previous data in weight and context must agree:
+    with pytest.raises(ValueError) as err_info:
+        out_ctx[0, 0] = 1
+        out_ctx[0, 1] = 1
+        out_wht[0, 0] = 0.1
+        resample.Drizzle(
+            kernel='square',
+            out_shape=out_shape,
+            out_img=out_img,
+            out_ctx=out_ctx,
+            out_wht=out_wht,
+            exptime=1.0,
+        )
+    assert str(err_info.value).startswith(
+        "Inconsistent values of supplied 'out_wht' and 'out_ctx' "
+    )
+
+
 @pytest.mark.parametrize(
     'kernel,fc',
     [
@@ -1200,6 +1224,36 @@ def test_drizzle_unsupported_kernel():
     assert str(err_info.value) == "Kernel 'magic_image_improver' is not supported."
 
 
+def test_pixmap_shape_matches_image():
+    n = 200
+    in_shape = (n, n)
+
+    # input coordinate grid:
+    y, x = np.indices((n + 1, n), dtype=np.float64)
+
+    # simulate data:
+    in_sci = np.ones(in_shape, dtype=np.float32)
+    in_wht = np.ones(in_shape, dtype=np.float32)
+
+    pixmap = np.dstack([x, y])
+
+    driz = resample.Drizzle(
+        kernel='square',
+        fillval=0.0,
+        exptime=0.0,
+    )
+
+    # last two sizes of the pixelmap must match those of input images:
+    with pytest.raises(ValueError) as err_info:
+        driz.add_image(
+            in_sci,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=in_wht,
+        )
+    assert str(err_info.value) == "'pixmap' shape is not consistent with 'data' shape."
+
+
 def test_drizzle_fillval():
     n = 200
     in_shape = (n, n)
@@ -1294,7 +1348,7 @@ def test_resample_get_shape_from_pixmap():
 
     # simulate constant data:
     in_sci = np.ones(in_shape, dtype=np.float32)
-    in_wht = np.zeros(in_shape, dtype=np.float32)
+    in_wht = np.ones(in_shape, dtype=np.float32)
 
     pixmap = np.dstack([x, y])
 
@@ -1305,6 +1359,29 @@ def test_resample_get_shape_from_pixmap():
 
     driz.add_image(in_sci, weight_map=in_wht, exptime=1.0, pixmap=pixmap)
     assert driz.out_img.shape == in_shape
+
+
+def test_resample_counts_units():
+    n = 200
+    in_shape = (n, n)
+
+    # input coordinate grid:
+    y, x = np.indices(in_shape, dtype=np.float64)
+    pixmap = np.dstack([x, y])
+
+    # simulate constant data:
+    in_sci = np.ones(in_shape, dtype=np.float32)
+    in_wht = np.ones(in_shape, dtype=np.float32)
+
+    driz = resample.Drizzle()
+    driz.add_image(in_sci, weight_map=in_wht, exptime=1.0, pixmap=pixmap, in_units='cps')
+    cps_max_val = driz.out_img.max()
+
+    driz = resample.Drizzle()
+    driz.add_image(in_sci, weight_map=in_wht, exptime=2.0, pixmap=pixmap, in_units='counts')
+    counts_max_val = driz.out_img.max()
+
+    assert abs(counts_max_val - cps_max_val / 2.0) < 1.0e-14
 
 
 def test_resample_inconsistent_output():

@@ -566,24 +566,24 @@ class Drizzle:
 
         pixmap = np.asarray(pixmap, dtype=np.float64)
 
+        if self._out_ctx.ndim == 2:
+            raise AssertionError("Context image is expected to be 3D")
+        ctx_plane = self._out_ctx[plane_no]
+
         # TODO: probably tdriz should be modified to not return version.
         #       we should not have git, Python, C, ... versions
 
         # TODO: While drizzle code in cdrizzlebox.c supports weight_map=None,
         #       cdrizzleapi.c does not. It should be modified to support this
         #       for performance reasons.
-        if self._out_ctx.ndim == 2:
-            ctx_plane = self._out_ctx
-        else:
-            ctx_plane = self._out_ctx[plane_no]
 
         _vers, nmiss, nskip = cdrizzle.tdriz(
-            data,
-            weight_map,
-            pixmap,
-            self._out_img,
-            self._out_wht,
-            ctx_plane,
+            input=data,
+            weights=weight_map,
+            pixmap=pixmap,
+            output=self._out_img,
+            counts=self._out_wht,
+            context=ctx_plane,
             uniqid=id_in_plane + 1,
             xmin=xmin,
             xmax=xmax,
