@@ -893,6 +893,7 @@ def test_context_planes():
     )
 
     for i in range(32):
+        assert driz.ctx_id == i
         driz.add_image(image, exptime=1.0, pixmap=pixmap)
     assert driz.out_ctx.shape == (1, 10, 10)
 
@@ -1093,16 +1094,17 @@ def test_drizzle_exptime():
     out_wht = np.zeros(out_shape, dtype=np.float32)
 
     # starting exposure time must be non-negative:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as err_info:
         driz = resample.Drizzle(
             kernel='square',
             out_shape=out_shape,
             fillval="indef",
             exptime=-1.0,
         )
+    assert str(err_info.value) == "Exposure time must be non-negative."
 
     driz = resample.Drizzle(
-        kernel='square',
+        kernel='turbo',
         out_shape=out_shape,
         fillval="",
         out_img=out_img,
@@ -1110,6 +1112,7 @@ def test_drizzle_exptime():
         out_wht=out_wht,
         exptime=1.0,
     )
+    assert driz.kernel == 'turbo'
 
     driz.add_image(in_sci, weight_map=in_wht, exptime=1.03456, pixmap=pixmap)
     assert np.allclose(driz.total_exptime, 2.03456, rtol=0, atol=1.0e-14)
@@ -1117,17 +1120,46 @@ def test_drizzle_exptime():
     driz.add_image(in_sci, weight_map=in_wht, exptime=3.1415926, pixmap=pixmap)
     assert np.allclose(driz.total_exptime, 5.1761526, rtol=0, atol=1.0e-14)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as err_info:
         driz.add_image(in_sci, weight_map=in_wht, exptime=-1, pixmap=pixmap)
+    assert str(err_info.value) == "'exptime' *must* be a strictly positive number."
+
+    # exptime cannot be 0 when output data has data:
+    with pytest.raises(ValueError) as err_info:
+        out_ctx[0, 0] = 1
+        driz = resample.Drizzle(
+            kernel='square',
+            out_shape=out_shape,
+            fillval="indef",
+            out_img=out_img,
+            out_ctx=out_ctx,
+            out_wht=out_wht,
+            exptime=0.0,
+        )
+    assert str(err_info.value).startswith(
+        "Inconsistent exposure time and context and/or weight images:"
+    )
+
+    # exptime must be 0 when output arrays are not provided:
+    with pytest.raises(ValueError) as err_info:
+        driz = resample.Drizzle(
+            kernel='square',
+            out_shape=out_shape,
+            exptime=1.0,
+        )
+    assert str(err_info.value).startswith(
+        "Exposure time must be 0.0 for the first resampling"
+    )
 
 
 def test_drizzle_unsupported_kernel():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as err_info:
         resample.Drizzle(
             kernel='magic_image_improver',
             out_shape=(10, 10),
-            exptime=-1.0,
+            exptime=0.0,
         )
+    assert str(err_info.value) == "Kernel 'magic_image_improver' is not supported."
 
 
 def test_drizzle_fillval():
@@ -1168,7 +1200,7 @@ def test_drizzle_fillval():
     driz = resample.Drizzle(
         kernel='square',
         out_shape=out_shape,
-        fillval="",
+        fillval="indef",
         exptime=0.0,
     )
 
@@ -1188,6 +1220,7 @@ def test_drizzle_fillval():
     driz.add_image(in_sci, weight_map=in_wht, exptime=1.0, pixmap=pixmap)
     assert np.allclose(driz.out_img[0, 0], -1.11, rtol=0.0, atol=1.0e-7)
     assert driz.out_img[int(y0) + 50, int(x0) + 50] > 0.0
+    assert set(driz.out_ctx.ravel().tolist()) == {0, 1}
 
     # test same with numeric fillval:
     driz = resample.Drizzle(
@@ -1201,12 +1234,76 @@ def test_drizzle_fillval():
     )
     driz.add_image(in_sci, weight_map=in_wht, exptime=1.0, pixmap=pixmap)
     assert np.allclose(driz.out_img[0, 0], -1.11, rtol=0.0, atol=1.0e-7)
+    assert np.allclose(float(driz.fillval), -1.11, rtol=0.0, atol=np.finfo(float).eps)
 
     # make sure code raises exception for unsuported fillval:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as err_info:
         resample.Drizzle(
             kernel='square',
             out_shape=out_shape,
-            fillval="interesting",
-            exptime=1.0,
+            fillval="fillval",
+            exptime=0.0,
         )
+    assert str(err_info.value) == "could not convert string to float: 'fillval'"
+
+
+def test_resample_get_shape_from_pixmap():
+    n = 200
+    in_shape = (n, n)
+
+    # input coordinate grid:
+    y, x = np.indices(in_shape, dtype=np.float64)
+
+    # simulate constant data:
+    in_sci = np.ones(in_shape, dtype=np.float32)
+    in_wht = np.zeros(in_shape, dtype=np.float32)
+
+    pixmap = np.dstack([x, y])
+
+    driz = resample.Drizzle(
+        kernel='point',
+        exptime=0.0,
+    )
+
+    driz.add_image(in_sci, weight_map=in_wht, exptime=1.0, pixmap=pixmap)
+    assert driz.out_img.shape == in_shape
+
+
+def test_resample_inconsistent_output():
+    n = 200
+    out_shape = (n, n)
+
+    # different shapes:
+    out_img = np.zeros((n, n), dtype=np.float32)
+    out_ctx = np.zeros((1, n, n + 1), dtype=np.int32)
+    out_wht = np.zeros((n + 1, n + 1), dtype=np.float32)
+
+    # shape from out_img:
+    driz = resample.Drizzle(
+        kernel='point',
+        exptime=0.0,
+        out_img=out_img,
+    )
+    assert driz.out_img.shape == out_shape
+
+    # inconsistent shapes:
+    with pytest.raises(ValueError) as err_info:
+        resample.Drizzle(
+            kernel='point',
+            exptime=0.0,
+            out_img=out_img,
+            out_ctx=out_ctx,
+            out_wht=out_wht,
+        )
+    assert str(err_info.value).startswith("Inconsistent data shapes specified")
+
+
+    # # make sure code raises exception for unsuported fillval:
+    # with pytest.raises(ValueError) as err_info:
+    #     resample.Drizzle(
+    #         kernel='square',
+    #         out_shape=out_shape,
+    #         fillval="fillval",
+    #         exptime=0.0,
+    #     )
+    # assert str(err_info.value) == "could not convert string to float: 'fillval'"

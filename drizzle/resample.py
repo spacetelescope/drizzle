@@ -270,10 +270,8 @@ class Drizzle:
 
         elif isinstance(fillval, str):
             fillval = fillval.strip()
-            if fillval == "":
+            if fillval.upper() in ["", "INDEF"]:
                 fillval = "INDEF"
-            elif fillval.upper() == "INDEF":
-                pass
             else:
                 float(fillval)
                 fillval = str(fillval)
@@ -285,12 +283,6 @@ class Drizzle:
             fillval = "NaN"
 
         self._fillval = fillval
-
-        if (out_shape is None and out_img is None and out_wht is None and
-                out_ctx is None):
-            raise ValueError(
-                "'out_shape' cannot be None when all output arrays are None."
-            )
 
         # shapes will collect user specified 'out_shape' and shapes of
         # out_* arrays (if provided) in order to check all shapes are the same.
@@ -308,6 +300,8 @@ class Drizzle:
             out_ctx = np.asarray(out_ctx, dtype=np.int32)
             if out_ctx.ndim == 2:
                 out_ctx = out_ctx[None, :, :]
+            elif out_ctx.ndim != 3:
+                raise ValueError("'out_ctx' must be either a 2D or 3D array.")
             shapes.add(out_ctx.shape[1:])
 
         if out_shape is None:
@@ -324,10 +318,7 @@ class Drizzle:
                 "out_img, out_wht, out_ctx have different shapes."
             )
         else:
-            raise ValueError(
-                "Either 'out_shape' and/or out_img, out_wht, out_ctx must be "
-                "provided."
-            )
+            self._out_shape = None
 
         self._alloc_output_arrays(
             out_shape=self._out_shape,
