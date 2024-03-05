@@ -871,7 +871,7 @@ def test_blot_with_lan5(tmpdir):
 
 def test_context_planes():
     """Reproduce error seen in issue #50"""
-    shape = [10, 10]
+    shape = (10, 10)
     output_wcs = wcs.WCS()
     output_wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
     output_wcs.wcs.pc = [[1, 0], [0, 1]]
@@ -886,6 +886,18 @@ def test_context_planes():
 
     pixmap = utils.calc_pixmap(inwcs, output_wcs)
 
+    # context image must be 2D or 3D:
+    with pytest.raises(ValueError) as err_info:
+        resample.Drizzle(
+            kernel='point',
+            exptime=0.0,
+            out_shape=shape,
+            out_ctx=[0, 0, 0],
+        )
+    assert str(err_info.value).startswith(
+        "'out_ctx' must be either a 2D or 3D array."
+    )
+
     driz = resample.Drizzle(
         kernel='square',
         out_shape=output_wcs.array_shape,
@@ -899,6 +911,32 @@ def test_context_planes():
 
     driz.add_image(image, exptime=1.0, pixmap=pixmap)
     assert driz.out_ctx.shape == (2, 10, 10)
+
+
+def test_init_ctx_id():
+    # starting context ID must be positive
+    with pytest.raises(ValueError) as err_info:
+        resample.Drizzle(
+            kernel='square',
+            exptime=0.0,
+            begin_ctx_id=-1,
+            out_shape=(10, 10),
+        )
+    assert str(err_info.value).startswith(
+        "Invalid context image ID"
+    )
+
+    with pytest.raises(ValueError) as err_info:
+        resample.Drizzle(
+            kernel='square',
+            exptime=0.0,
+            out_shape=(10, 10),
+            begin_ctx_id=1,
+            max_ctx_id=0,
+        )
+    assert str(err_info.value).startswith(
+        "'max_ctx_id' cannot be smaller than 'begin_ctx_id'."
+    )
 
 
 @pytest.mark.parametrize(
@@ -1287,23 +1325,14 @@ def test_resample_inconsistent_output():
     assert driz.out_img.shape == out_shape
 
     # inconsistent shapes:
+    out_shape = (n + 1, n)
     with pytest.raises(ValueError) as err_info:
         resample.Drizzle(
             kernel='point',
             exptime=0.0,
+            out_shape=out_shape,
             out_img=out_img,
             out_ctx=out_ctx,
             out_wht=out_wht,
         )
     assert str(err_info.value).startswith("Inconsistent data shapes specified")
-
-
-    # # make sure code raises exception for unsuported fillval:
-    # with pytest.raises(ValueError) as err_info:
-    #     resample.Drizzle(
-    #         kernel='square',
-    #         out_shape=out_shape,
-    #         fillval="fillval",
-    #         exptime=0.0,
-    #     )
-    # assert str(err_info.value) == "could not convert string to float: 'fillval'"

@@ -233,9 +233,13 @@ class Drizzle:
             ``out_ctx`` is provided.
 
         """
+        if begin_ctx_id < 0:
+            raise ValueError("Invalid context image ID")
         self._ctx_id = begin_ctx_id  # the ID of the *last* image to be resampled
         if max_ctx_id is None:
             max_ctx_id = begin_ctx_id
+        elif max_ctx_id < begin_ctx_id:
+            raise ValueError("'max_ctx_id' cannot be smaller than 'begin_ctx_id'.")
         self._max_ctx_id = max_ctx_id
 
         if exptime < 0.0:
@@ -304,11 +308,8 @@ class Drizzle:
                 raise ValueError("'out_ctx' must be either a 2D or 3D array.")
             shapes.add(out_ctx.shape[1:])
 
-        if out_shape is None:
-            if shapes:
-                out_shape = shapes.pop()
-        else:
-            shapes.add(out_shape)
+        if out_shape is not None:
+            shapes.add(tuple(out_shape))
 
         if len(shapes) == 1:
             self._out_shape = shapes.pop()
@@ -407,9 +408,6 @@ class Drizzle:
         plane and increments context image ID
         (after computing the return value).
         """
-        if self._ctx_id < 0:
-            ValueError("Invalid context image ID")
-
         self._plane_no = self._ctx_id // CTX_PLANE_BITS
         depth = self._out_ctx.shape[0]
 
