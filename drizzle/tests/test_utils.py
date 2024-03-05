@@ -147,14 +147,14 @@ def test_decode_context():
 
     # pixel coordinates must be integer:
     with pytest.raises(ValueError):
-        decode_context(ctx[0], [3.0, 2], [1, 4])
+        decode_context(ctx, [3.0, 2], [1, 4])
 
     # coordinate lists must be equal in length:
     with pytest.raises(ValueError):
-        decode_context(ctx[0], [3, 2], [1, 4, 5])
+        decode_context(ctx, [3, 2], [1, 4, 5])
 
     # coordinate lists must be 1D:
     with pytest.raises(ValueError):
-        decode_context(ctx[0], [[3, 2]], [[1, 4]])
+        decode_context(ctx, [[3, 2]], [[1, 4]])
 
 
