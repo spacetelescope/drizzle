@@ -6,7 +6,13 @@ from numpy.testing import assert_almost_equal, assert_equal
 
 from astropy import wcs
 from astropy.io import fits
-from drizzle.utils import _estimate_pixel_scale, calc_pixmap, decode_context
+from drizzle.utils import (
+    calc_pixmap,
+    decode_context,
+    _estimate_pixel_scale,
+    estimate_pixel_scale_ratio,
+)
+
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
@@ -81,6 +87,17 @@ def test_translated_map():
     assert_equal(pixmap.shape, ok_pixmap.shape)
     # Mapping an array to a translated array
     assert_almost_equal(pixmap, ok_pixmap, decimal=5)
+
+
+def test_estimate_pixel_scale_ratio():
+    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
+
+    with fits.open(input_file) as h:
+        w = wcs.WCS(h[1].header)
+
+    pscale = estimate_pixel_scale_ratio(w, w, w.wcs.crpix, (0, 0))
+
+    assert abs(pscale - 0.9999999916967218) < 1e-14
 
 
 def test_estimate_pixel_scale_no_refpix():
