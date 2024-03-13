@@ -81,7 +81,6 @@ enum e_kernel_t {
   kernel_square,
   kernel_gaussian,
   kernel_point,
-  kernel_tophat,
   kernel_turbo,
   kernel_lanczos2,
   kernel_lanczos3,

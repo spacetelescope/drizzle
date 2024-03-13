@@ -10,7 +10,6 @@ SUPPORTED_DRIZZLE_KERNELS = [
     "square",
     "gaussian",
     "point",
-    "tophat",
     "turbo",
     "lanczos2",
     "lanczos3",
@@ -24,7 +23,9 @@ class Drizzle:
     A class for managing resampling and co-adding of multiple images onto a
     common output grid. The main method of this class is :py:meth:`add_image`.
     The main functionality of this class is to resample and co-add multiple
-    images onto one output image. In the simplest terms, it redistributes flux
+    images onto one output image using the "drizzle" algorithm described in
+    `Fruchter and Hook, PASP 2002 <https://doi.org/10.1086/338393>`_.
+    In the simplest terms, it redistributes flux
     from input pixels to one or more output pixels based on the chosen kernel,
     supplied weights, and input-to-output coordinate transformations as defined
     by the ``pixmap`` argument. For more details, see :ref:`main-user-doc`.
@@ -172,12 +173,8 @@ class Drizzle:
             "lanczos2", and "lanczos3". The square kernel is the default.
 
             .. warning::
-               The "gaussian", "tophat", and "lanczos2/3" kernels **DO NOT**
+               The "gaussian" and "lanczos2/3" kernels **DO NOT**
                conserve flux.
-
-            .. warning::
-               The "tophat" kernel was deprecated and it will be removed in a
-               future release.
 
         out_shape : tuple, None, optional
             Shape (`numpy` order ``(Ny, Nx)``) of the output images (context
@@ -313,6 +310,13 @@ class Drizzle:
 
         if len(shapes) == 1:
             self._out_shape = shapes.pop()
+            self._alloc_output_arrays(
+                out_shape=self._out_shape,
+                max_ctx_id=max_ctx_id,
+                out_img=out_img,
+                out_wht=out_wht,
+                out_ctx=out_ctx,
+            )
         elif len(shapes) > 1:
             raise ValueError(
                 "Inconsistent data shapes specified: 'out_shape' and/or "
@@ -320,14 +324,9 @@ class Drizzle:
             )
         else:
             self._out_shape = None
-
-        self._alloc_output_arrays(
-            out_shape=self._out_shape,
-            max_ctx_id=max_ctx_id,
-            out_img=out_img,
-            out_wht=out_wht,
-            out_ctx=out_ctx,
-        )
+            self._out_img = None
+            self._out_wht = None
+            self._out_ctx = None
 
     @property
     def fillval(self):
@@ -352,6 +351,7 @@ class Drizzle:
     @property
     def out_wht(self):
         """Output weight image."""
+        return self._out_wht
 
     @property
     def out_ctx(self):
@@ -365,9 +365,6 @@ class Drizzle:
 
     def _alloc_output_arrays(self, out_shape, max_ctx_id, out_img, out_wht,
                              out_ctx):
-        if out_shape is None:
-            return
-
         # allocate arrays as needed:
         if out_wht is None:
             self._out_wht = np.zeros(out_shape, dtype=np.float32)
@@ -431,9 +428,8 @@ class Drizzle:
 
         Parameters
         ----------
-        data : 2d array
-            A 2d numpy array containing the input image to be drizzled.
-            it is an error to not supply an image.
+        data : 2D numpy.ndarray
+            A 2D numpy array containing the input image to be drizzled.
 
         exptime : float
             The exposure time of the input image, a positive number. The
@@ -499,6 +495,18 @@ class Drizzle:
             Sets the maximum value in the y dimension. If the value is zero, no
             maximum will be set in the y dimension,  the full x dimension
             of the output image is the bounding box.
+
+        Returns
+        -------
+        nskip : float
+            The number of lines from the box defined by
+            ``((xmin, xmax), (ymin, ymax))`` in the input image that were
+            ignored and did not contribute to the output image.
+
+        nmiss : float
+            The number of pixels from the box defined by
+            ``((xmin, xmax), (ymin, ymax))`` in the input image that were
+            ignored and did not contribute to the output image.
 
         """
         # this enables initializer to not need output image shape at all and
@@ -605,11 +613,17 @@ class Drizzle:
 def blot_image(data, pixmap, pix_ratio, exptime, output_pixel_shape,
                interp='poly5', sinscl=1.0):
     """
-    Resample input image using interpolation to an output grid.
-    Typically, this is used to resample the resampled image that is the
-    result of multiple applications of ``Drizzle.add_image`` **if it is well
-    sampled** back to the pixel coordinate system of input (with distorted
-    WCS) images of ``Drizzle.add_image``.
+    Resample the ``data`` input image onto an output grid defined by
+    the ``pixmap`` array. ``blot_image`` performs resampling using one of
+    the several interpolation algorithms and, unlike the "drizzle" algorithm
+    with 'square', 'turbo', and 'point' kernels, this resampling is not
+    flux-conserving.
+
+    This method works best for with well sampled images and thus it is
+    typically used to resample the output of :py:class:`Drizzle` back to the
+    coordinate grids of input images of :py:meth:`Drizzle.add_image`.
+    The output of :py:class:`Drizzle` are usually well sampled images especially
+    if it was created from a set of dithered images.
 
     Parameters
     ----------
@@ -617,7 +631,13 @@ def blot_image(data, pixmap, pix_ratio, exptime, output_pixel_shape,
         Input numpy array of the source image in units of 'cps'.
 
     pixmap : 3D array
-        The world coordinate system to resample on.
+        A mapping from input image (``data``) coordinates to resampled
+        (``out_img``) coordinates. ``pixmap`` must be an array of shape
+        ``(Ny, Nx, 2)`` where ``(Ny, Nx)`` is the shape of the input image.
+        ``pixmap[..., 0]`` forms a 2D array of X-coordinates of input
+        pixels in the ouput frame and ``pixmap[..., 1]`` forms a 2D array of
+        Y-coordinates of input pixels in the ouput coordinate frame.
+
 
     output_pixel_shape : tuple of int
         A tuple of two integer numbers indicating the dimensions of the output
@@ -631,14 +651,23 @@ def blot_image(data, pixmap, pix_ratio, exptime, output_pixel_shape,
 
     interp : str, optional
         The type of interpolation used in the resampling. The
-        possible values are "nearest" (nearest neighbor interpolation),
-        "linear" (bilinear interpolation), "poly3" (cubic polynomial
-        interpolation), "poly5" (quintic polynomial interpolation),
-        "sinc" (sinc interpolation), "lan3" (3rd order Lanczos
-        interpolation), and "lan5" (5th order Lanczos interpolation).
+        possible values are:
+            - "nearest" (nearest neighbor interpolation);
+            - "linear" (bilinear interpolation);
+            - "poly3" (cubic polynomial interpolation);
+            - "poly5" (quintic polynomial interpolation);
+            - "sinc" (sinc interpolation);
+            - "lan3" (3rd order Lanczos interpolation); and
+            - "lan5" (5th order Lanczos interpolation).
 
     sincscl : float, optional
-        The scaling factor for sinc interpolation.
+        The scaling factor for "sinc" interpolation.
+
+    Returns
+    -------
+    out_img : 2D numpy.ndarray
+        A 2D numpy array containing the resampled image data.
+
     """
     out_img = np.zeros(output_pixel_shape[::-1], dtype=np.float32)
 

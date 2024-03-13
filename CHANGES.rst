@@ -27,6 +27,8 @@ Release Notes
 
 - BUG FIX: ``cdrizzle.tdriz`` signature was out of date. [#134]
 
+- Removed support for the ``'tophat'`` kernel. [#134]
+
 
 1.15.1 (2024-03-05)
 ===================

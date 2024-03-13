@@ -150,7 +150,6 @@ static const char* kernel_string_table[] = {
   "square",
   "gaussian",
   "point",
-  "tophat",
   "turbo",
   "lanczos2",
   "lanczos3",

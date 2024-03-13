@@ -213,6 +213,50 @@ def read_wcs(filename):
     return the_wcs
 
 
+def test_drizzle_defaults():
+    n = 200
+    in_shape = (n, n)
+
+    # input coordinate grid:
+    y, x = np.indices(in_shape, dtype=np.float64)
+
+    # simulate data:
+    in_sci = np.ones(in_shape, dtype=np.float32)
+    in_wht = np.ones(in_shape, dtype=np.float32)
+
+    # create a Drizzle object using all default parameters (except for 'kernel')
+    driz = resample.Drizzle(
+        kernel='square',
+    )
+
+    assert driz.out_img is None
+    assert driz.out_wht is None
+    assert driz.out_ctx is None
+    assert driz.total_exptime == 0.0
+
+    driz.add_image(
+        in_sci,
+        exptime=1.0,
+        pixmap=np.dstack([x, y]),
+        weight_map=in_wht,
+    )
+
+    pixmap = np.dstack([x + 1, y + 2])
+    driz.add_image(
+        3 * in_sci,
+        exptime=1.0,
+        pixmap=pixmap,
+        weight_map=in_wht,
+    )
+
+    assert driz.out_img[0, 0] == 1
+    assert driz.out_img[1, 0] == 1
+    assert driz.out_img[2, 0] == 1
+    assert driz.out_img[1, 1] == 1
+    assert driz.out_img[1, 2] == 1
+    assert (driz.out_img[2, 1] - 2.0) < 1.0e-14
+
+
 def test_square_with_point(tmpdir):
     """
     Test do_driz square kernel with point
@@ -228,17 +272,14 @@ def test_square_with_point(tmpdir):
     inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    pixmap, pscale = utils.calc_pixmap(
+    pixmap = utils.calc_pixmap(
         inwcs,
         output_wcs,
-        estimate_pixel_scale_ratio=True,
-        refpix_from=inwcs.wcs.crpix,
-        refpix_to=output_wcs.wcs.crpix
     )
 
     # ignore previous pscale and compute it the old way (only to make
     # tests work with old truth files and thus to show that new API gives
-    # same results when equal definitions of the pixel scale is ised):
+    # same results when equal definitions of the pixel scale is used):
     pscale = np.sqrt(
         np.sum(output_wcs.wcs.pc**2, axis=0)[0] /
         np.sum(inwcs.wcs.cd**2, axis=0)[0]
@@ -364,17 +405,19 @@ def test_square_with_grid(tmpdir):
     inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    pixmap, pscale = utils.calc_pixmap(
+    pixmap = utils.calc_pixmap(
         inwcs,
         output_wcs,
-        estimate_pixel_scale_ratio=True,
+    )
+    pscale = utils.estimate_pixel_scale_ratio(
+        inwcs,
+        output_wcs,
         refpix_from=inwcs.wcs.crpix,
         refpix_to=output_wcs.wcs.crpix,
     )
-
     # ignore previous pscale and compute it the old way (only to make
     # tests work with old truth files and thus to show that new API gives
-    # same results when equal definitions of the pixel scale is ised):
+    # same results when equal definitions of the pixel scale is used):
     pscale = np.sqrt(
         np.sum(output_wcs.wcs.pc**2, axis=0)[0] /
         np.sum(inwcs.wcs.cd**2, axis=0)[0]
@@ -421,17 +464,20 @@ def test_turbo_with_grid(tmpdir):
     inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    pixmap, pscale = utils.calc_pixmap(
+    pixmap = utils.calc_pixmap(
         inwcs,
         output_wcs,
-        estimate_pixel_scale_ratio=True,
+    )
+    pscale = utils.estimate_pixel_scale_ratio(
+        inwcs,
+        output_wcs,
         refpix_from=inwcs.wcs.crpix,
         refpix_to=output_wcs.wcs.crpix,
     )
 
     # ignore previous pscale and compute it the old way (only to make
     # tests work with old truth files and thus to show that new API gives
-    # same results when equal definitions of the pixel scale is ised):
+    # same results when equal definitions of the pixel scale is used):
     pscale = np.sqrt(
         np.sum(output_wcs.wcs.pc**2, axis=0)[0] /
         np.sum(inwcs.wcs.cd**2, axis=0)[0]
@@ -480,17 +526,20 @@ def test_gaussian_with_grid(tmpdir):
     inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    pixmap, pscale = utils.calc_pixmap(
+    pixmap = utils.calc_pixmap(
         inwcs,
         output_wcs,
-        estimate_pixel_scale_ratio=True,
+    )
+    pscale = utils.estimate_pixel_scale_ratio(
+        inwcs,
+        output_wcs,
         refpix_from=inwcs.wcs.crpix,
         refpix_to=output_wcs.wcs.crpix,
     )
 
     # ignore previous pscale and compute it the old way (only to make
     # tests work with old truth files and thus to show that new API gives
-    # same results when equal definitions of the pixel scale is ised):
+    # same results when equal definitions of the pixel scale is used):
     pscale = np.sqrt(
         np.sum(output_wcs.wcs.pc**2, axis=0)[0] /
         np.sum(inwcs.wcs.cd**2, axis=0)[0]
@@ -540,17 +589,20 @@ def test_lanczos_with_grid(tmpdir):
     inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    pixmap, pscale = utils.calc_pixmap(
+    pixmap = utils.calc_pixmap(
         inwcs,
         output_wcs,
-        estimate_pixel_scale_ratio=True,
+    )
+    pscale = utils.estimate_pixel_scale_ratio(
+        inwcs,
+        output_wcs,
         refpix_from=inwcs.wcs.crpix,
         refpix_to=output_wcs.wcs.crpix,
     )
 
     # ignore previous pscale and compute it the old way (only to make
     # tests work with old truth files and thus to show that new API gives
-    # same results when equal definitions of the pixel scale is ised):
+    # same results when equal definitions of the pixel scale is used):
     pscale = np.sqrt(
         np.sum(output_wcs.wcs.pc**2, axis=0)[0] /
         np.sum(inwcs.wcs.cd**2, axis=0)[0]
@@ -574,65 +626,6 @@ def test_lanczos_with_grid(tmpdir):
 
     _, med_diff, max_diff = centroid_statistics(
         "lanczos with grid",
-        output_difference,
-        driz.out_img,
-        template_data,
-        20.0,
-        8,
-    )
-    assert med_diff < 1.0e-6
-    assert max_diff < 1.0e-5
-
-
-def test_tophat_with_grid(tmpdir):
-    """
-    Test do_driz tophat kernel with grid
-    """
-    output_difference = str(tmpdir.join('difference_tophat_grid.txt'))
-
-    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output_template = os.path.join(DATA_DIR, 'reference_tophat_grid.fits')
-
-    insci = read_image(input_file)
-    inwcs = read_wcs(input_file)
-    insci = make_grid_image(insci, 64, 100.0)
-    inwht = np.ones(insci.shape, dtype=insci.dtype)
-    output_wcs = read_wcs(output_template)
-
-    pixmap, pscale = utils.calc_pixmap(
-        inwcs,
-        output_wcs,
-        estimate_pixel_scale_ratio=True,
-        refpix_from=inwcs.wcs.crpix,
-        refpix_to=output_wcs.wcs.crpix,
-    )
-
-    # ignore previous pscale and compute it the old way (only to make
-    # tests work with old truth files and thus to show that new API gives
-    # same results when equal definitions of the pixel scale is ised):
-    pscale = np.sqrt(
-        np.sum(output_wcs.wcs.pc**2, axis=0)[0] /
-        np.sum(inwcs.wcs.cd**2, axis=0)[0]
-    )
-
-    driz = resample.Drizzle(
-        kernel='tophat',
-        out_shape=output_wcs.array_shape,
-        fillval=0.0,
-    )
-    with pytest.warns(DeprecationWarning):
-        driz.add_image(
-            insci,
-            exptime=1.0,
-            pixmap=pixmap,
-            weight_map=inwht,
-            scale=pscale,
-        )
-
-    template_data = read_image(output_template)
-
-    _, med_diff, max_diff = centroid_statistics(
-        "tophat with grid",
         output_difference,
         driz.out_img,
         template_data,
@@ -695,7 +688,7 @@ def test_blot_with_point(tmpdir):
 
     # compute pscale the old way (only to make
     # tests work with old truth files and thus to show that new API gives
-    # same results when equal definitions of the pixel scale is ised):
+    # same results when equal definitions of the pixel scale is used):
     pscale = np.sqrt(
         np.sum(inwcs.wcs.pc**2, axis=0)[0] /
         np.sum(outwcs.wcs.cd**2, axis=0)[0]
@@ -741,7 +734,7 @@ def test_blot_with_default(tmpdir):
 
     # compute pscale the old way (only to make
     # tests work with old truth files and thus to show that new API gives
-    # same results when equal definitions of the pixel scale is ised):
+    # same results when equal definitions of the pixel scale is used):
     pscale = np.sqrt(
         np.sum(inwcs.wcs.pc**2, axis=0)[0] /
         np.sum(outwcs.wcs.cd**2, axis=0)[0]
@@ -788,7 +781,7 @@ def test_blot_with_lan3(tmpdir):
 
     # compute pscale the old way (only to make
     # tests work with old truth files and thus to show that new API gives
-    # same results when equal definitions of the pixel scale is ised):
+    # same results when equal definitions of the pixel scale is used):
     pscale = np.sqrt(
         np.sum(inwcs.wcs.pc**2, axis=0)[0] /
         np.sum(outwcs.wcs.cd**2, axis=0)[0]
@@ -836,7 +829,7 @@ def test_blot_with_lan5(tmpdir):
 
     # compute pscale the old way (only to make
     # tests work with old truth files and thus to show that new API gives
-    # same results when equal definitions of the pixel scale is ised):
+    # same results when equal definitions of the pixel scale is used):
     pscale = np.sqrt(
         np.sum(inwcs.wcs.pc**2, axis=0)[0] /
         np.sum(outwcs.wcs.cd**2, axis=0)[0]

@@ -1,15 +1,13 @@
 import numpy as np
 
-__all__ = ["calc_pixmap", "decode_context"]
+__all__ = ["calc_pixmap", "decode_context", "estimate_pixel_scale_ratio"]
 
 
-def calc_pixmap(wcs_from, wcs_to, estimate_pixel_scale_ratio=False,
-                refpix_from=None, refpix_to=None):
+def calc_pixmap(wcs_from, wcs_to):
     """
-    Calculate a mapping between the pixels of two images. Pixel scale ratio,
-    when requested, is computed near the centers of the bounding box
-    (a property of the WCS object) or near ``refpix_*`` coordinates
-    if supplied.
+    Calculate a discretized on a grid mapping between the pixels of two images
+    using provided WCS of the original ("from") image and the destination ("to")
+    image.
 
     Parameters
     ----------
@@ -22,17 +20,51 @@ def calc_pixmap(wcs_from, wcs_to, estimate_pixel_scale_ratio=False,
         A WCS object representing the coordinate system you are
         converting to.
 
-    estimate_pixel_scale_ratio : bool, optional
-        Estimate the ratio of "to" to "from" WCS pixel scales.
+    Returns
+    -------
+    pixmap : numpy.ndarray
+        A three dimensional array representing the transformation between
+        the two. The last dimension is of length two and contains the x and
+        y coordinates of a pixel center, repectively. The other two coordinates
+        correspond to the two coordinates of the image the first WCS is from.
 
-        .. note::
-            Pixel scale is estimated as the square root of pixel's area
-            (i.e., pixels are assumed to have a square shape) at the reference
-            pixel position which is taken as the center of the bounding box
-            if ``wcs_*`` has a bounding box defined, or as the center of the box
-            defined by the ``pixel_shape`` attribute of the input WCS if
-            ``pixel_shape`` is defined (not `None`), or at pixel coordinates
-            ``(0, 0)``.
+    """
+    if wcs_from.pixel_shape is None:
+        raise ValueError('The "from" WCS must have pixel_shape property set.')
+    y, x = np.indices(wcs_from.pixel_shape, dtype=np.float64)
+    x, y = wcs_to.world_to_pixel(wcs_from.pixel_to_world(x, y))
+    pixmap = np.dstack([x, y])
+    return pixmap
+
+
+def estimate_pixel_scale_ratio(wcs_from, wcs_to, refpix_from=None, refpix_to=None):
+    """
+    Compute the ratio of the pixel scale of the "to" WCS at the ``refpix_to``
+    position to the pixel scale of the "from" WCS at the ``refpix_from``
+    position. Pixel scale ratio,
+    when requested, is computed near the centers of the bounding box
+    (a property of the WCS object) or near ``refpix_*`` coordinates
+    if supplied.
+
+    Pixel scale is estimated as the square root of pixel's area, i.e.,
+    pixels are assumed to have a square shape at the reference
+    pixel position. If input reference pixel position for a WCS is `None`,
+    it will be taken as the center of the bounding box
+    if ``wcs_*`` has a bounding box defined, or as the center of the box
+    defined by the ``pixel_shape`` attribute of the input WCS if
+    ``pixel_shape`` is defined (not `None`), or at pixel coordinates
+    ``(0, 0)``.
+
+    Parameters
+    ----------
+    wcs_from : wcs
+        A WCS object representing the coordinate system you are
+        converting from. This object *must* have ``pixel_shape`` property
+        defined.
+
+    wcs_to : wcs
+        A WCS object representing the coordinate system you are
+        converting to.
 
     refpix_from : numpy.ndarray, tuple, list
         Image coordinates of the reference pixel near which pixel scale should
@@ -46,49 +78,29 @@ def calc_pixmap(wcs_from, wcs_to, estimate_pixel_scale_ratio=False,
 
     Returns
     -------
-    pixmap : numpy.ndarray
-        A three dimensional array representing the transformation between
-        the two. The last dimension is of length two and contains the x and
-        y coordinates of a pixel center, repectively. The other two coordinates
-        correspond to the two coordinates of the image the first WCS is from.
 
     pixel_scale_ratio : float
         Estimate the ratio of "to" to "from" WCS pixel scales. This value is
         returned only when ``estimate_pixel_scale_ratio`` is `True`.
 
     """
-    # We add one to the pixel co-ordinates before the transformation and subtract
-    # it afterwards because wcs co-ordinates are one based, while pixel co-ordinates
-    # are zero based, The result is the final values in pixmap give a tranformation
-    # between the pixel co-ordinates in the first image to pixel co-ordinates in the
-    # co-ordinate system of the second.
-
-    if wcs_from.pixel_shape is None:
-        raise ValueError('The "from" WCS must have pixel_shape property set.')
-    y, x = np.indices(wcs_from.pixel_shape, dtype=np.float64)
-    x, y = wcs_to.world_to_pixel(wcs_from.pixel_to_world(x, y))
-
-    pixmap = np.dstack([x, y])
-
-    if estimate_pixel_scale_ratio:
-        pscale_ratio = (_estimate_pixel_scale(wcs_to, refpix_to) /
-                        _estimate_pixel_scale(wcs_from, refpix_from))
-        return pixmap, pscale_ratio
-
-    return pixmap
+    pscale_ratio = (_estimate_pixel_scale(wcs_to, refpix_to) /
+                    _estimate_pixel_scale(wcs_from, refpix_from))
+    return pscale_ratio
 
 
 def _estimate_pixel_scale(wcs, refpix):
     # estimate pixel scale (in rad) using approximate algorithm
     # from https://trs.jpl.nasa.gov/handle/2014/40409
     if refpix is None:
-        if not hasattr(wcs, 'bounding_box') or wcs.bounding_box is None:
+        if hasattr(wcs, 'bounding_box') and wcs.bounding_box is not None:
+            refpix = np.mean(wcs.bounding_box, axis=-1)
+        else:
             if wcs.pixel_shape:
                 refpix = np.array([(i - 1) // 2 for i in wcs.pixel_shape])
             else:
                 refpix = np.zeros(wcs.pixel_n_dim)
-        else:
-            refpix = np.mean(wcs.bounding_box, axis=-1)
+
     else:
         refpix = np.asarray(refpix)
 
