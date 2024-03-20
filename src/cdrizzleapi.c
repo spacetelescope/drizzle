@@ -572,7 +572,7 @@ static struct PyMethodDef cdrizzle_methods[] = {
     {"tdriz",  (PyCFunction)tdriz, METH_VARARGS|METH_KEYWORDS,
     "tdriz(image, weights, pixmap, output, counts, context, uniqid,  xmin, xmax, ymin, ymax, scale, pixfrac, kernel, in_units, expscale, wtscale, fillstr)"},
     {"tblot",  (PyCFunction)tblot, METH_VARARGS|METH_KEYWORDS,
-    "tblot(image, output, xmin, xmax, ymin, ymax, scale, kscale, interp, ef, misval, sinscl, pixmap)"},
+    "tblot(image, pixmap, output, xmin, xmax, ymin, ymax, scale, kscale, interp, exptime, misval, sinscl)"},
     {"test_cdrizzle", test_cdrizzle, METH_VARARGS,
     "test_cdrizzle(data, weights, pixmap, output_data, output_counts)"},
     {"invert_pixmap", invert_pixmap_wrap, METH_VARARGS, "invert_pixmap(pixmap, xyout, bbox)"},
