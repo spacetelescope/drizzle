@@ -2,9 +2,12 @@
 max-line-length = 100
 select = F, W, E, C
 ignore =
-    E231, # Missing whitespace after ',', ';', or ':'
-    W503, # Line break occurred before a binary operator
-    W504, # Line break occurred after a binary operator
+    # Line break occurred before a binary operator
+    W503,
+    # Line break occurred after a binary operator
+    W504,
 exclude =
     docs,
-    .eggs
+    build
+    .eggs,
+    .tox,

@@ -3,9 +3,9 @@
 
 import os
 import sys
-from setuptools import setup, Extension
 
 import numpy
+from setuptools import Extension, setup
 
 
 def get_extensions():

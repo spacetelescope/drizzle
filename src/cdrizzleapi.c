@@ -183,14 +183,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
     goto _exit;
   }
 
-  if (kernel == kernel_tophat) {
-      if (sprintf(warn_msg,
-            "Kernel '%s' has been deprecated and it will be removed in a future release.",
-            kernel_str) < 1) {
-          strcpy(warn_msg, "Selected kernel has been deprecated and it will be removed in a future release.");
-      }
-      PyErr_WarnEx(PyExc_DeprecationWarning, warn_msg, 1);
-  } else if (kernel == kernel_gaussian || kernel == kernel_lanczos2 || kernel == kernel_lanczos3) {
+  if (kernel == kernel_gaussian || kernel == kernel_lanczos2 || kernel == kernel_lanczos3) {
       if (sprintf(warn_msg,
             "Kernel '%s' is not a flux-conserving kernel.",
             kernel_str) < 1) {
@@ -206,7 +199,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
 
   /* If the input image is not in CPS we need to divide by the exposure */
   if (inun != unit_cps) {
-    inv_exposure_time = 1.0f / p.exposure_time;
+    inv_exposure_time = 1.0f / expin;
     scale_image(img, inv_exposure_time);
   }
 
@@ -575,9 +568,9 @@ clip_polygon_wrap(PyObject *self, PyObject *args)
 
 static struct PyMethodDef cdrizzle_methods[] = {
     {"tdriz",  (PyCFunction)tdriz, METH_VARARGS|METH_KEYWORDS,
-    "tdriz(image, weight, output, outweight, context, uniqid,  xmin, ymin, scale, pfract, kernel, inun, expin, wtscl, fill, nmiss, nskip, pixmap)"},
+    "tdriz(image, weights, pixmap, output, counts, context, uniqid,  xmin, xmax, ymin, ymax, scale, pixfrac, kernel, in_units, expscale, wtscale, fillstr)"},
     {"tblot",  (PyCFunction)tblot, METH_VARARGS|METH_KEYWORDS,
-    "tblot(image, output, xmin, xmax, ymin, ymax, scale, kscale, interp, ef, misval, sinscl, pixmap)"},
+    "tblot(image, pixmap, output, xmin, xmax, ymin, ymax, scale, kscale, interp, exptime, misval, sinscl)"},
     {"test_cdrizzle", test_cdrizzle, METH_VARARGS,
     "test_cdrizzle(data, weights, pixmap, output_data, output_counts)"},
     {"invert_pixmap", invert_pixmap_wrap, METH_VARARGS, "invert_pixmap(pixmap, xyout, bbox)"},
