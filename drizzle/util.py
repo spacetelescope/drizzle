@@ -46,7 +46,7 @@ def find_keyword_extn(fimg, keyword, value=None):
     return extnum
 
 
-def get_extn(fimg, extn=''):
+def get_extn(fimg, extn=""):
     """
     Returns the FITS extension corresponding to extension specified in
     filename. Defaults to returning the first extension with data or the
@@ -153,7 +153,7 @@ def is_blank(value):
     return value.strip() == ""
 
 
-def parse_extn(extn=''):
+def parse_extn(extn=""):
     """
     Parse a string representing a qualified fits extension name as in the
     output of parse_filename and return a tuple (str(extname), int(extver)),
@@ -179,12 +179,12 @@ def parse_extn(extn=''):
     A tuple of the extension name and value
     """
     if not extn:
-        return ('', 0)
+        return ("", 0)
 
     try:
-        lext = extn.split(',')
+        lext = extn.split(",")
     except Exception:
-        return ('', 1)
+        return ("", 1)
 
     if len(lext) == 1 and lext[0].isdigit():
         return ("", int(lext[0]))
@@ -211,14 +211,14 @@ def parse_filename(filename):
     A tuple with the filename root and extension
     """
     # Parse out any extension specified in filename
-    _indx = filename.find('[')
+    _indx = filename.find("[")
     if _indx > 0:
         # Read extension name provided
         _fname = filename[:_indx]
-        _extn = filename[_indx + 1:-1]
+        _extn = filename[_indx + 1 : -1]
     else:
         _fname = filename
-        _extn = ''
+        _extn = ""
 
     return _fname, _extn
 
@@ -252,5 +252,5 @@ def set_pscale(the_wcs):
             pc = 1
 
     pccd = np.array(cdelt * pc)
-    scales = np.sqrt((pccd ** 2).sum(axis=0, dtype=float))
+    scales = np.sqrt((pccd**2).sum(axis=0, dtype=float))
     the_wcs.pscale = scales[0]

@@ -1,6 +1,7 @@
 """
 STScI Python compatable drizzle module
 """
+
 import numpy as np
 
 from . import util
@@ -8,12 +9,27 @@ from . import calc_pixmap
 from . import cdrizzle
 
 
-def dodrizzle(insci, input_wcs, inwht,
-              output_wcs, outsci, outwht, outcon,
-              expin, in_units, wt_scl,
-              wcslin_pscale=1.0, uniqid=1,
-              xmin=0, xmax=0, ymin=0, ymax=0,
-              pixfrac=1.0, kernel='square', fillval="INDEF"):
+def dodrizzle(
+    insci,
+    input_wcs,
+    inwht,
+    output_wcs,
+    outsci,
+    outwht,
+    outcon,
+    expin,
+    in_units,
+    wt_scl,
+    wcslin_pscale=1.0,
+    uniqid=1,
+    xmin=0,
+    xmax=0,
+    ymin=0,
+    ymax=0,
+    pixfrac=1.0,
+    kernel="square",
+    fillval="INDEF",
+):
     """
     Low level routine for performing 'drizzle' operation.on one image.
 
@@ -134,18 +150,18 @@ def dodrizzle(insci, input_wcs, inwht,
     # Ensure that the fillval parameter gets properly interpreted
     # for use with tdriz
     if util.is_blank(fillval):
-        fillval = 'INDEF'
+        fillval = "INDEF"
     else:
         fillval = str(fillval)
 
-    if in_units == 'cps':
+    if in_units == "cps":
         expscale = 1.0
     else:
         expscale = expin
 
     # Add input weight image if it was not passed in
 
-    if (insci.dtype > np.float32):
+    if insci.dtype > np.float32:
         insci = insci.astype(np.float32)
 
     if inwht is None:
@@ -180,10 +196,24 @@ def dodrizzle(insci, input_wcs, inwht,
     # This call to 'cdriz.tdriz' uses the new C syntax
     #
     _vers, nmiss, nskip = cdrizzle.tdriz(
-        insci, inwht, pixmap, outsci, outwht, outcon,
-        uniqid=uniqid, xmin=xmin, xmax=xmax,
-        ymin=ymin, ymax=ymax, scale=pix_ratio, pixfrac=pixfrac,
-        kernel=kernel, in_units=in_units, expscale=expscale,
-        wtscale=wt_scl, fillstr=fillval)
+        insci,
+        inwht,
+        pixmap,
+        outsci,
+        outwht,
+        outcon,
+        uniqid=uniqid,
+        xmin=xmin,
+        xmax=xmax,
+        ymin=ymin,
+        ymax=ymax,
+        scale=pix_ratio,
+        pixfrac=pixfrac,
+        kernel=kernel,
+        in_units=in_units,
+        expscale=expscale,
+        wtscale=wt_scl,
+        fillstr=fillval,
+    )
 
     return _vers, nmiss, nskip

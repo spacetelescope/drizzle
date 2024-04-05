@@ -1,14 +1,24 @@
 """
 STScI Python compatable blot module
 """
+
 import numpy as np
 
 from drizzle import calc_pixmap
 from drizzle import cdrizzle
 
 
-def doblot(source, source_wcs, blot_wcs, exptime, coeffs=True,
-           interp='poly5', sinscl=1.0, stepsize=10, wcsmap=None):
+def doblot(
+    source,
+    source_wcs,
+    blot_wcs,
+    exptime,
+    coeffs=True,
+    interp="poly5",
+    sinscl=1.0,
+    stepsize=10,
+    wcsmap=None,
+):
     """
     Low level routine for performing the 'blot' operation.
 
@@ -74,7 +84,16 @@ def doblot(source, source_wcs, blot_wcs, exptime, coeffs=True,
     pixmap = calc_pixmap.calc_pixmap(blot_wcs, source_wcs)
     pix_ratio = source_wcs.pscale / blot_wcs.pscale
 
-    cdrizzle.tblot(source, pixmap, _outsci, scale=pix_ratio, kscale=1.0,
-                   interp=interp, exptime=exptime, misval=0.0, sinscl=sinscl)
+    cdrizzle.tblot(
+        source,
+        pixmap,
+        _outsci,
+        scale=pix_ratio,
+        kscale=1.0,
+        interp=interp,
+        exptime=exptime,
+        misval=0.0,
+        sinscl=sinscl,
+    )
 
     return _outsci

@@ -2,6 +2,7 @@
 The `drizzle` module defines the `Drizzle` class, for combining input
 images into a single output image using the drizzle algorithm.
 """
+
 import os
 import os.path
 
@@ -18,9 +19,16 @@ class Drizzle(object):
     """
     Combine images using the drizzle algorithm
     """
-    def __init__(self, infile="", outwcs=None,
-                 wt_scl="exptime", pixfrac=1.0, kernel="square",
-                 fillval="INDEF"):
+
+    def __init__(
+        self,
+        infile="",
+        outwcs=None,
+        wt_scl="exptime",
+        pixfrac=1.0,
+        kernel="square",
+        fillval="INDEF",
+    ):
         """
         Create a new Drizzle output object and set the drizzle parameters.
 
@@ -107,8 +115,7 @@ class Drizzle(object):
                 self.wt_scl = util.get_keyword(handle, "DRIZWTSC", default=wt_scl)
                 self.kernel = util.get_keyword(handle, "DRIZKERN", default=kernel)
                 self.fillval = util.get_keyword(handle, "DRIZFVAL", default=fillval)
-                self.pixfrac = float(util.get_keyword(handle,
-                                     "DRIZPIXF", default=pixfrac))
+                self.pixfrac = float(util.get_keyword(handle, "DRIZPIXF", default=pixfrac))
 
                 out_units = util.get_keyword(handle, "DRIZOUUN", default="cps")
 
@@ -129,16 +136,15 @@ class Drizzle(object):
                     hdu = handle[self.ctxext]
                     self.outcon = hdu.data.copy().astype(np.int32)
                     if self.outcon.ndim == 2:
-                        self.outcon = np.reshape(self.outcon, (1,
-                                                 self.outcon.shape[0],
-                                                 self.outcon.shape[1]))
+                        self.outcon = np.reshape(
+                            self.outcon, (1, self.outcon.shape[0], self.outcon.shape[1])
+                        )
 
                     elif self.outcon.ndim == 3:
                         pass
 
                     else:
-                        msg = ("Drizzle context image has wrong dimensions: " +
-                               infile)
+                        msg = "Drizzle context image has wrong dimensions: " + infile
                         raise ValueError(msg)
 
                 except KeyError:
@@ -154,7 +160,7 @@ class Drizzle(object):
             raise ValueError("Either an existing file or wcs must be supplied to Drizzle")
 
         if util.is_blank(self.wt_scl):
-            self.wt_scl = ''
+            self.wt_scl = ""
         elif self.wt_scl != "exptime" and self.wt_scl != "expsq":
             raise ValueError("Illegal value for wt_scl: %s" % out_units)
 
@@ -166,19 +172,16 @@ class Drizzle(object):
         # Initialize images if not read from a file
         outwcs_naxis1, outwcs_naxis2 = self.outwcs.pixel_shape
         if self.outsci is None:
-            self.outsci = np.zeros(self.outwcs.pixel_shape[::-1],
-                                   dtype=np.float32)
+            self.outsci = np.zeros(self.outwcs.pixel_shape[::-1], dtype=np.float32)
 
         if self.outwht is None:
-            self.outwht = np.zeros(self.outwcs.pixel_shape[::-1],
-                                   dtype=np.float32)
+            self.outwht = np.zeros(self.outwcs.pixel_shape[::-1], dtype=np.float32)
         if self.outcon is None:
-            self.outcon = np.zeros((1, outwcs_naxis2, outwcs_naxis1),
-                                   dtype=np.int32)
+            self.outcon = np.zeros((1, outwcs_naxis2, outwcs_naxis1), dtype=np.int32)
 
-    def add_fits_file(self, infile, inweight="",
-                      xmin=0, xmax=0, ymin=0, ymax=0,
-                      unitkey="", expkey="", wt_scl=1.0):
+    def add_fits_file(
+        self, infile, inweight="", xmin=0, xmax=0, ymin=0, ymax=0, unitkey="", expkey="", wt_scl=1.0
+    ):
         """
         Combine a fits file with the output drizzled image.
 
@@ -272,13 +275,32 @@ class Drizzle(object):
         in_units = util.get_keyword(fileroot, unitkey, "cps")
         expin = util.get_keyword(fileroot, expkey, 1.0)
 
-        self.add_image(insci, inwcs, inwht=inwht,
-                       xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax,
-                       expin=expin, in_units=in_units, wt_scl=wt_scl)
+        self.add_image(
+            insci,
+            inwcs,
+            inwht=inwht,
+            xmin=xmin,
+            xmax=xmax,
+            ymin=ymin,
+            ymax=ymax,
+            expin=expin,
+            in_units=in_units,
+            wt_scl=wt_scl,
+        )
 
-    def add_image(self, insci, inwcs, inwht=None,
-                  xmin=0, xmax=0, ymin=0, ymax=0,
-                  expin=1.0, in_units="cps", wt_scl=1.0):
+    def add_image(
+        self,
+        insci,
+        inwcs,
+        inwht=None,
+        xmin=0,
+        xmax=0,
+        ymin=0,
+        ymax=0,
+        expin=1.0,
+        in_units="cps",
+        wt_scl=1.0,
+    ):
         """
         Combine an input image with the output drizzled image.
 
@@ -361,15 +383,29 @@ class Drizzle(object):
         self.increment_id()
         self.outexptime += expin
 
-        dodrizzle.dodrizzle(insci, inwcs, inwht, self.outwcs,
-                            self.outsci, self.outwht, self.outcon,
-                            expin, in_units, wt_scl,
-                            wcslin_pscale=inwcs.pscale, uniqid=self.uniqid,
-                            xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax,
-                            pixfrac=self.pixfrac, kernel=self.kernel,
-                            fillval=self.fillval)
+        dodrizzle.dodrizzle(
+            insci,
+            inwcs,
+            inwht,
+            self.outwcs,
+            self.outsci,
+            self.outwht,
+            self.outcon,
+            expin,
+            in_units,
+            wt_scl,
+            wcslin_pscale=inwcs.pscale,
+            uniqid=self.uniqid,
+            xmin=xmin,
+            xmax=xmax,
+            ymin=ymin,
+            ymax=ymax,
+            pixfrac=self.pixfrac,
+            kernel=self.kernel,
+            fillval=self.fillval,
+        )
 
-    def blot_fits_file(self, infile, interp='poly5', sinscl=1.0):
+    def blot_fits_file(self, infile, interp="poly5", sinscl=1.0):
         """
         Resample the output using another image's world coordinate system.
 
@@ -409,7 +445,7 @@ class Drizzle(object):
 
         self.blot_image(blotwcs, interp=interp, sinscl=sinscl)
 
-    def blot_image(self, blotwcs, interp='poly5', sinscl=1.0):
+    def blot_image(self, blotwcs, interp="poly5", sinscl=1.0):
         """
         Resample the output image using an input world coordinate system.
 
@@ -432,8 +468,9 @@ class Drizzle(object):
         """
 
         util.set_pscale(blotwcs)
-        self.outsci = doblot.doblot(self.outsci, self.outwcs, blotwcs,
-                                    1.0, interp=interp, sinscl=sinscl)
+        self.outsci = doblot.doblot(
+            self.outsci, self.outwcs, blotwcs, 1.0, interp=interp, sinscl=sinscl
+        )
 
         self.outwcs = blotwcs
 
@@ -499,40 +536,31 @@ class Drizzle(object):
         phdu = handle[0]
 
         # Write the class fields to the primary header
-        phdu.header['DRIZOUDA'] = \
-            (self.sciext, 'Drizzle, output data image')
-        phdu.header['DRIZOUWE'] = \
-            (self.whtext, 'Drizzle, output weighting image')
-        phdu.header['DRIZOUCO'] = \
-            (self.ctxext, 'Drizzle, output context image')
-        phdu.header['DRIZWTSC'] = \
-            (self.wt_scl, 'Drizzle, weighting factor for input image')
-        phdu.header['DRIZKERN'] = \
-            (self.kernel, 'Drizzle, form of weight distribution kernel')
-        phdu.header['DRIZPIXF'] = \
-            (self.pixfrac, 'Drizzle, linear size of drop')
-        phdu.header['DRIZFVAL'] = \
-            (self.fillval, 'Drizzle, fill value for zero weight output pix')
-        phdu.header['DRIZOUUN'] = \
-            (out_units, 'Drizzle, units of output image - counts or cps')
+        phdu.header["DRIZOUDA"] = (self.sciext, "Drizzle, output data image")
+        phdu.header["DRIZOUWE"] = (self.whtext, "Drizzle, output weighting image")
+        phdu.header["DRIZOUCO"] = (self.ctxext, "Drizzle, output context image")
+        phdu.header["DRIZWTSC"] = (self.wt_scl, "Drizzle, weighting factor for input image")
+        phdu.header["DRIZKERN"] = (self.kernel, "Drizzle, form of weight distribution kernel")
+        phdu.header["DRIZPIXF"] = (self.pixfrac, "Drizzle, linear size of drop")
+        phdu.header["DRIZFVAL"] = (self.fillval, "Drizzle, fill value for zero weight output pix")
+        phdu.header["DRIZOUUN"] = (out_units, "Drizzle, units of output image - counts or cps")
 
         # Update header keyword NDRIZIM to keep track of how many images have
         # been combined in this product so far
-        phdu.header['NDRIZIM'] = (self.uniqid, 'Drizzle, number of images')
+        phdu.header["NDRIZIM"] = (self.uniqid, "Drizzle, number of images")
 
         # Update header of output image with exptime used to scale the output data
         # if out_units is not counts, this will simply be a value of 1.0
         # the keyword 'exptime' will always contain the total exposure time
         # of all input image regardless of the output units
 
-        phdu.header['EXPTIME'] = \
-            (self.outexptime, 'Drizzle, total exposure time')
+        phdu.header["EXPTIME"] = (self.outexptime, "Drizzle, total exposure time")
 
         outexptime = 1.0
-        if out_units == 'counts':
+        if out_units == "counts":
             np.multiply(self.outsci, self.outexptime, self.outsci)
             outexptime = self.outexptime
-        phdu.header['DRIZEXPT'] = (outexptime, 'Drizzle, exposure time scaling factor')
+        phdu.header["DRIZEXPT"] = (outexptime, "Drizzle, exposure time scaling factor")
 
         # Copy the optional header to the primary header
 
@@ -546,22 +574,22 @@ class Drizzle(object):
 
         ehdu = fits.ImageHDU()
         ehdu.data = self.outsci
-        ehdu.header['EXTNAME'] = (self.sciext, 'Extension name')
-        ehdu.header['EXTVER'] = (1, 'Extension version')
+        ehdu.header["EXTNAME"] = (self.sciext, "Extension name")
+        ehdu.header["EXTVER"] = (1, "Extension version")
         ehdu.header.extend(extheader, unique=True)
         handle.append(ehdu)
 
         whdu = fits.ImageHDU()
         whdu.data = self.outwht
-        whdu.header['EXTNAME'] = (self.whtext, 'Extension name')
-        whdu.header['EXTVER'] = (1, 'Extension version')
+        whdu.header["EXTNAME"] = (self.whtext, "Extension name")
+        whdu.header["EXTVER"] = (1, "Extension version")
         whdu.header.extend(extheader, unique=True)
         handle.append(whdu)
 
         xhdu = fits.ImageHDU()
         xhdu.data = self.outcon
-        xhdu.header['EXTNAME'] = (self.ctxext, 'Extension name')
-        xhdu.header['EXTVER'] = (1, 'Extension version')
+        xhdu.header["EXTNAME"] = (self.ctxext, "Extension name")
+        xhdu.header["EXTVER"] = (1, "Extension version")
         xhdu.header.extend(extheader, unique=True)
         handle.append(xhdu)
 
