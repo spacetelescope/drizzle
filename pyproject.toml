@@ -6,7 +6,7 @@ authors = [
     { name = "STScI", email = "help@stsci.edu" },
 ]
 dependencies = [
-    "numpy",
+    "numpy>=2.0.0rc1",
     "astropy",
 ]
 dynamic = [
@@ -43,7 +43,7 @@ docs = [
 requires = [
     "setuptools>=61.2",
     "setuptools_scm[toml]>=3.4",
-    "numpy>=1.25",
+    "numpy>=2.0.0rc1",
 ]
 build-backend = "setuptools.build_meta"
 
