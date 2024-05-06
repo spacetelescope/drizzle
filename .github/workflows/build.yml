@@ -22,6 +22,7 @@ jobs:
         - cp3*-win32
         - cp3*-win_amd64
       sdist: true
+      test_command: python -c "from drizzle import cdrizzle"
     secrets:
       pypi_token: ${{ secrets.PYPI_PASSWORD_STSCI_MAINTAINER }}
 
