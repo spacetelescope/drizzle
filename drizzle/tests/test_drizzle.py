@@ -9,7 +9,7 @@ from astropy.io import fits
 from drizzle import drizzle, cdrizzle
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
-DATA_DIR = os.path.join(TEST_DIR, 'data')
+DATA_DIR = os.path.join(TEST_DIR, "data")
 ok = False
 
 
@@ -53,8 +53,9 @@ def centroid_close(list_of_centroids, size, point):
     Find if any centroid is close to a point
     """
     for i in range(len(list_of_centroids) - 1, -1, -1):
-        if (abs(list_of_centroids[i][0] - point[0]) < int(size / 2) and
-                abs(list_of_centroids[i][1] - point[1]) < int(size / 2)):
+        if abs(list_of_centroids[i][0] - point[0]) < int(size / 2) and abs(
+            list_of_centroids[i][1] - point[1]
+        ) < int(size / 2):
             return 1
 
     return 0
@@ -110,7 +111,7 @@ def centroid_statistics(title, fname, image1, image2, amp, size):
     diff = []
     distances = centroid_distances(image1, image2, amp, size)
     indexes = (0, int(len(distances) / 2), len(distances) - 1)
-    fd = open(fname, 'w')
+    fd = open(fname, "w")
     fd.write("*** %s ***\n" % title)
 
     if len(distances) == 0:
@@ -121,38 +122,47 @@ def centroid_statistics(title, fname, image1, image2, amp, size):
         diff = [distances[0][0], distances[0][0], distances[0][0]]
 
         fd.write("1 match\n")
-        fd.write("distance = %f flux difference = %f\n" %
-                 (distances[0][0], distances[0][1]))
+        fd.write("distance = %f flux difference = %f\n" % (distances[0][0], distances[0][1]))
 
         for j in range(2, 4):
             ylo = int(distances[0][j][0]) - 1
             yhi = int(distances[0][j][0]) + 2
             xlo = int(distances[0][j][1]) - 1
             xhi = int(distances[0][j][1]) + 2
-            subimage = images[j][ylo:yhi,xlo:xhi]
-            fd.write("\n%s image centroid = (%f,%f) image flux = %f\n" %
-                     (im_type[j], distances[0][j][0], distances[0][j][1],
-                      distances[0][j][2]))
+            subimage = images[j][ylo:yhi, xlo:xhi]
+            fd.write(
+                "\n%s image centroid = (%f,%f) image flux = %f\n"
+                % (im_type[j], distances[0][j][0], distances[0][j][1], distances[0][j][2])
+            )
             fd.write(str(subimage) + "\n")
 
     else:
         fd.write("%d matches\n" % len(distances))
 
-        for k in range(0,3):
+        for k in range(0, 3):
             i = indexes[k]
             diff.append(distances[i][0])
-            fd.write("\n%s distance = %f flux difference = %f\n" %
-                     (stats[k],distances[i][0], distances[i][1]))
+            fd.write(
+                "\n%s distance = %f flux difference = %f\n"
+                % (stats[k], distances[i][0], distances[i][1])
+            )
 
             for j in range(2, 4):
                 ylo = int(distances[i][j][0]) - 1
                 yhi = int(distances[i][j][0]) + 2
                 xlo = int(distances[i][j][1]) - 1
                 xhi = int(distances[i][j][1]) + 2
-                subimage = images[j][ylo:yhi,xlo:xhi]
-                fd.write("\n%s %s image centroid = (%f,%f) image flux = %f\n" %
-                         (stats[k], im_type[j], distances[i][j][0],
-                          distances[i][j][1], distances[i][j][2]))
+                subimage = images[j][ylo:yhi, xlo:xhi]
+                fd.write(
+                    "\n%s %s image centroid = (%f,%f) image flux = %f\n"
+                    % (
+                        stats[k],
+                        im_type[j],
+                        distances[i][j][0],
+                        distances[i][j][1],
+                        distances[i][j][2],
+                    )
+                )
                 fd.write(str(subimage) + "\n")
 
     fd.close()
@@ -178,7 +188,7 @@ def make_grid_image(input_image, spacing, value):
     half_space = int(spacing / 2)
     for y in range(half_space, shape[0], spacing):
         for x in range(half_space, shape[1], spacing):
-            output_image[y,x] = value
+            output_image[y, x] = value
 
     return output_image
 
@@ -218,16 +228,16 @@ def test_square_with_point(tmpdir):
     """
     Test do_driz square kernel with point
     """
-    output = str(tmpdir.join('output_square_point.fits'))
-    output_difference = str(tmpdir.join('difference_square_point.txt'))
+    output = str(tmpdir.join("output_square_point.fits"))
+    output_difference = str(tmpdir.join("difference_square_point.txt"))
 
-    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output_template = os.path.join(DATA_DIR, 'reference_square_point.fits')
+    input_file = os.path.join(DATA_DIR, "j8bt06nyq_flt.fits")
+    output_template = os.path.join(DATA_DIR, "reference_square_point.fits")
 
     insci = read_image(input_file)
     inwcs = read_wcs(input_file)
     insci = make_point_image(insci, (500, 200), 100.0)
-    inwht = np.ones(insci.shape,dtype=insci.dtype)
+    inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
     driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="")
@@ -239,17 +249,17 @@ def test_square_with_point(tmpdir):
         driz.write(output)
         template_data = read_image(output_template)
 
-        min_diff, med_diff, max_diff = centroid_statistics("square with point",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 8)
+        min_diff, med_diff, max_diff = centroid_statistics(
+            "square with point", output_difference, driz.outsci, template_data, 20.0, 8
+        )
 
         assert med_diff < 1.0e-6
         assert max_diff < 1.0e-5
 
 
 @pytest.mark.parametrize(
-    'kernel', ['square', 'point', 'turbo', 'gaussian', 'lanczos3'],
+    "kernel",
+    ["square", "point", "turbo", "gaussian", "lanczos3"],
 )
 def test_zero_input_weight(kernel):
     """
@@ -270,17 +280,23 @@ def test_zero_input_weight(kernel):
 
     # resample:
     cdrizzle.tdriz(
-        insci, inwht, pixmap,
-        outsci, outwht, outctx,
+        insci,
+        inwht,
+        pixmap,
+        outsci,
+        outwht,
+        outctx,
         uniqid=1,
-        xmin=0, xmax=400,
-        ymin=0, ymax=200,
+        xmin=0,
+        xmax=400,
+        ymin=0,
+        ymax=200,
         pixfrac=1,
         kernel=kernel,
-        in_units='cps',
+        in_units="cps",
         expscale=1,
         wtscale=1,
-        fillstr='INDEF',
+        fillstr="INDEF",
     )
 
     # check that no pixel with 0 weight has any counts:
@@ -291,17 +307,17 @@ def test_square_with_grid(tmpdir):
     """
     Test do_driz square kernel with grid
     """
-    output = str(tmpdir.join('output_square_grid.fits'))
-    output_difference = str(tmpdir.join('difference_square_grid.txt'))
+    output = str(tmpdir.join("output_square_grid.fits"))
+    output_difference = str(tmpdir.join("difference_square_grid.txt"))
 
-    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output_template = os.path.join(DATA_DIR, 'reference_square_grid.fits')
+    input_file = os.path.join(DATA_DIR, "j8bt06nyq_flt.fits")
+    output_template = os.path.join(DATA_DIR, "reference_square_grid.fits")
 
     insci = read_image(input_file)
     inwcs = read_wcs(input_file)
     insci = make_grid_image(insci, 64, 100.0)
 
-    inwht = np.ones(insci.shape,dtype=insci.dtype)
+    inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
     driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="")
@@ -313,10 +329,9 @@ def test_square_with_grid(tmpdir):
         driz.write(output)
         template_data = read_image(output_template)
 
-        min_diff, med_diff, max_diff = centroid_statistics("square with grid",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 8)
+        min_diff, med_diff, max_diff = centroid_statistics(
+            "square with grid", output_difference, driz.outsci, template_data, 20.0, 8
+        )
         assert med_diff < 1.0e-6
         assert max_diff < 1.0e-5
 
@@ -325,19 +340,19 @@ def test_turbo_with_grid(tmpdir):
     """
     Test do_driz turbo kernel with grid
     """
-    output = str(tmpdir.join('output_turbo_grid.fits'))
-    output_difference = str(tmpdir.join('difference_turbo_grid.txt'))
+    output = str(tmpdir.join("output_turbo_grid.fits"))
+    output_difference = str(tmpdir.join("difference_turbo_grid.txt"))
 
-    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output_template = os.path.join(DATA_DIR, 'reference_turbo_grid.fits')
+    input_file = os.path.join(DATA_DIR, "j8bt06nyq_flt.fits")
+    output_template = os.path.join(DATA_DIR, "reference_turbo_grid.fits")
 
     insci = read_image(input_file)
     inwcs = read_wcs(input_file)
     insci = make_grid_image(insci, 64, 100.0)
-    inwht = np.ones(insci.shape,dtype=insci.dtype)
+    inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='turbo')
+    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel="turbo")
     driz.add_image(insci, inwcs, inwht=inwht)
 
     if ok:
@@ -346,10 +361,9 @@ def test_turbo_with_grid(tmpdir):
         driz.write(output)
         template_data = read_image(output_template)
 
-        min_diff, med_diff, max_diff = centroid_statistics("turbo with grid",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 8)
+        min_diff, med_diff, max_diff = centroid_statistics(
+            "turbo with grid", output_difference, driz.outsci, template_data, 20.0, 8
+        )
 
         assert med_diff < 1.0e-6
         assert max_diff < 1.0e-5
@@ -359,19 +373,19 @@ def test_gaussian_with_grid(tmpdir):
     """
     Test do_driz gaussian kernel with grid
     """
-    output = str(tmpdir.join('output_gaussian_grid.fits'))
-    output_difference = str(tmpdir.join('difference_gaussian_grid.txt'))
+    output = str(tmpdir.join("output_gaussian_grid.fits"))
+    output_difference = str(tmpdir.join("difference_gaussian_grid.txt"))
 
-    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output_template = os.path.join(DATA_DIR, 'reference_gaussian_grid.fits')
+    input_file = os.path.join(DATA_DIR, "j8bt06nyq_flt.fits")
+    output_template = os.path.join(DATA_DIR, "reference_gaussian_grid.fits")
 
     insci = read_image(input_file)
     inwcs = read_wcs(input_file)
     insci = make_grid_image(insci, 64, 100.0)
-    inwht = np.ones(insci.shape,dtype=insci.dtype)
+    inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='gaussian')
+    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel="gaussian")
     driz.add_image(insci, inwcs, inwht=inwht)
 
     if ok:
@@ -380,10 +394,9 @@ def test_gaussian_with_grid(tmpdir):
         driz.write(output)
         template_data = read_image(output_template)
 
-        min_diff, med_diff, max_diff = centroid_statistics("gaussian with grid",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 8)
+        min_diff, med_diff, max_diff = centroid_statistics(
+            "gaussian with grid", output_difference, driz.outsci, template_data, 20.0, 8
+        )
 
         assert med_diff < 1.0e-6
         assert max_diff < 2.0e-5
@@ -393,19 +406,19 @@ def test_lanczos_with_grid(tmpdir):
     """
     Test do_driz lanczos kernel with grid
     """
-    output = str(tmpdir.join('output_lanczos_grid.fits'))
-    output_difference = str(tmpdir.join('difference_lanczos_grid.txt'))
+    output = str(tmpdir.join("output_lanczos_grid.fits"))
+    output_difference = str(tmpdir.join("difference_lanczos_grid.txt"))
 
-    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output_template = os.path.join(DATA_DIR, 'reference_lanczos_grid.fits')
+    input_file = os.path.join(DATA_DIR, "j8bt06nyq_flt.fits")
+    output_template = os.path.join(DATA_DIR, "reference_lanczos_grid.fits")
 
     insci = read_image(input_file)
     inwcs = read_wcs(input_file)
     insci = make_grid_image(insci, 64, 100.0)
-    inwht = np.ones(insci.shape,dtype=insci.dtype)
+    inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='lanczos3')
+    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel="lanczos3")
     driz.add_image(insci, inwcs, inwht=inwht)
 
     if ok:
@@ -414,10 +427,9 @@ def test_lanczos_with_grid(tmpdir):
         driz.write(output)
         template_data = read_image(output_template)
 
-        min_diff, med_diff, max_diff = centroid_statistics("lanczos with grid",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 8)
+        min_diff, med_diff, max_diff = centroid_statistics(
+            "lanczos with grid", output_difference, driz.outsci, template_data, 20.0, 8
+        )
         assert med_diff < 1.0e-6
         assert max_diff < 1.0e-5
 
@@ -426,19 +438,19 @@ def test_tophat_with_grid(tmpdir):
     """
     Test do_driz tophat kernel with grid
     """
-    output = str(tmpdir.join('output_tophat_grid.fits'))
-    output_difference = str(tmpdir.join('difference_tophat_grid.txt'))
+    output = str(tmpdir.join("output_tophat_grid.fits"))
+    output_difference = str(tmpdir.join("difference_tophat_grid.txt"))
 
-    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output_template = os.path.join(DATA_DIR, 'reference_tophat_grid.fits')
+    input_file = os.path.join(DATA_DIR, "j8bt06nyq_flt.fits")
+    output_template = os.path.join(DATA_DIR, "reference_tophat_grid.fits")
 
     insci = read_image(input_file)
     inwcs = read_wcs(input_file)
     insci = make_grid_image(insci, 64, 100.0)
-    inwht = np.ones(insci.shape,dtype=insci.dtype)
+    inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='tophat')
+    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel="tophat")
     driz.add_image(insci, inwcs, inwht=inwht)
 
     if ok:
@@ -447,10 +459,9 @@ def test_tophat_with_grid(tmpdir):
         driz.write(output)
         template_data = read_image(output_template)
 
-        min_diff, med_diff, max_diff = centroid_statistics("tophat with grid",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 8)
+        min_diff, med_diff, max_diff = centroid_statistics(
+            "tophat with grid", output_difference, driz.outsci, template_data, 20.0, 8
+        )
         assert med_diff < 1.0e-6
         assert max_diff < 1.0e-5
 
@@ -459,19 +470,19 @@ def test_point_with_grid(tmpdir):
     """
     Test do_driz point kernel with grid
     """
-    output = str(tmpdir.join('output_point_grid.fits'))
-    output_difference = str(tmpdir.join('difference_point_grid.txt'))
+    output = str(tmpdir.join("output_point_grid.fits"))
+    output_difference = str(tmpdir.join("difference_point_grid.txt"))
 
-    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output_template = os.path.join(DATA_DIR, 'reference_point_grid.fits')
+    input_file = os.path.join(DATA_DIR, "j8bt06nyq_flt.fits")
+    output_template = os.path.join(DATA_DIR, "reference_point_grid.fits")
 
     insci = read_image(input_file)
     inwcs = read_wcs(input_file)
     insci = make_grid_image(insci, 64, 100.0)
-    inwht = np.ones(insci.shape,dtype=insci.dtype)
+    inwht = np.ones(insci.shape, dtype=insci.dtype)
     output_wcs = read_wcs(output_template)
 
-    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel='point')
+    driz = drizzle.Drizzle(outwcs=output_wcs, wt_scl="", kernel="point")
     driz.add_image(insci, inwcs, inwht=inwht)
 
     if ok:
@@ -480,10 +491,9 @@ def test_point_with_grid(tmpdir):
         driz.write(output)
         template_data = read_image(output_template)
 
-        min_diff, med_diff, max_diff = centroid_statistics("point with grid",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 8)
+        min_diff, med_diff, max_diff = centroid_statistics(
+            "point with grid", output_difference, driz.outsci, template_data, 20.0, 8
+        )
         assert med_diff < 1.0e-6
         assert max_diff < 1.0e-5
 
@@ -492,11 +502,11 @@ def test_blot_with_point(tmpdir):
     """
     Test do_blot with point image
     """
-    output = str(tmpdir.join('output_blot_point.fits'))
-    output_difference = str(tmpdir.join('difference_blot_point.txt'))
+    output = str(tmpdir.join("output_blot_point.fits"))
+    output_difference = str(tmpdir.join("difference_blot_point.txt"))
 
-    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output_template = os.path.join(DATA_DIR, 'reference_blot_point.fits')
+    input_file = os.path.join(DATA_DIR, "j8bt06nyq_flt.fits")
+    output_template = os.path.join(DATA_DIR, "reference_blot_point.fits")
 
     outsci = read_image(input_file)
     outwcs = read_wcs(input_file)
@@ -514,10 +524,9 @@ def test_blot_with_point(tmpdir):
         driz.write(output)
         template_data = read_image(output_template)
 
-        min_diff, med_diff, max_diff = centroid_statistics("blot with point",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 16)
+        min_diff, med_diff, max_diff = centroid_statistics(
+            "blot with point", output_difference, driz.outsci, template_data, 20.0, 16
+        )
         assert med_diff < 1.0e-6
         assert max_diff < 1.0e-5
 
@@ -526,11 +535,11 @@ def test_blot_with_default(tmpdir):
     """
     Test do_blot with default grid image
     """
-    output = str(tmpdir.join('output_blot_default.fits'))
-    output_difference = str(tmpdir.join('difference_blot_default.txt'))
+    output = str(tmpdir.join("output_blot_default.fits"))
+    output_difference = str(tmpdir.join("difference_blot_default.txt"))
 
-    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output_template = os.path.join(DATA_DIR, 'reference_blot_default.fits')
+    input_file = os.path.join(DATA_DIR, "j8bt06nyq_flt.fits")
+    output_template = os.path.join(DATA_DIR, "reference_blot_default.fits")
 
     outsci = read_image(input_file)
     outsci = make_grid_image(outsci, 64, 100.0)
@@ -548,10 +557,9 @@ def test_blot_with_default(tmpdir):
         driz.write(output)
         template_data = read_image(output_template)
 
-        min_diff, med_diff, max_diff = centroid_statistics("blot with defaults",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 16)
+        min_diff, med_diff, max_diff = centroid_statistics(
+            "blot with defaults", output_difference, driz.outsci, template_data, 20.0, 16
+        )
 
         assert med_diff < 1.0e-6
         assert max_diff < 1.0e-5
@@ -561,11 +569,11 @@ def test_blot_with_lan3(tmpdir):
     """
     Test do_blot with lan3 grid image
     """
-    output = str(tmpdir.join('output_blot_lan3.fits'))
-    output_difference = str(tmpdir.join('difference_blot_lan3.txt'))
+    output = str(tmpdir.join("output_blot_lan3.fits"))
+    output_difference = str(tmpdir.join("difference_blot_lan3.txt"))
 
-    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output_template = os.path.join(DATA_DIR, 'reference_blot_lan3.fits')
+    input_file = os.path.join(DATA_DIR, "j8bt06nyq_flt.fits")
+    output_template = os.path.join(DATA_DIR, "reference_blot_lan3.fits")
 
     outsci = read_image(input_file)
     outsci = make_grid_image(outsci, 64, 100.0)
@@ -583,10 +591,9 @@ def test_blot_with_lan3(tmpdir):
         driz.write(output)
         template_data = read_image(output_template)
 
-        min_diff, med_diff, max_diff = centroid_statistics("blot with lan3",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 16)
+        min_diff, med_diff, max_diff = centroid_statistics(
+            "blot with lan3", output_difference, driz.outsci, template_data, 20.0, 16
+        )
         assert med_diff < 1.0e-6
         assert max_diff < 1.0e-5
 
@@ -595,11 +602,11 @@ def test_blot_with_lan5(tmpdir):
     """
     Test do_blot with lan5 grid image
     """
-    output = str(tmpdir.join('output_blot_lan5.fits'))
-    output_difference = str(tmpdir.join('difference_blot_lan5.txt'))
+    output = str(tmpdir.join("output_blot_lan5.fits"))
+    output_difference = str(tmpdir.join("difference_blot_lan5.txt"))
 
-    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-    output_template = os.path.join(DATA_DIR, 'reference_blot_lan5.fits')
+    input_file = os.path.join(DATA_DIR, "j8bt06nyq_flt.fits")
+    output_template = os.path.join(DATA_DIR, "reference_blot_lan5.fits")
 
     outsci = read_image(input_file)
     outsci = make_grid_image(outsci, 64, 100.0)
@@ -617,10 +624,9 @@ def test_blot_with_lan5(tmpdir):
         driz.write(output)
         template_data = read_image(output_template)
 
-        min_diff, med_diff, max_diff = centroid_statistics("blot with lan5",
-                                                           output_difference,
-                                                           driz.outsci,
-                                                           template_data, 20.0, 16)
+        min_diff, med_diff, max_diff = centroid_statistics(
+            "blot with lan5", output_difference, driz.outsci, template_data, 20.0, 16
+        )
         assert med_diff < 1.0e-6
         assert max_diff < 1.0e-5
 
@@ -645,22 +651,22 @@ def test_context_planes():
 
 
 @pytest.mark.parametrize(
-    'kernel',
+    "kernel",
     [
-        'square',
-        'point',
-        'turbo',
+        "square",
+        "point",
+        "turbo",
         pytest.param(
-            'lanczos2',
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
+            "lanczos2",
+            marks=pytest.mark.xfail(reason="Not a flux-conserving kernel"),
         ),
         pytest.param(
-            'lanczos3',
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
+            "lanczos3",
+            marks=pytest.mark.xfail(reason="Not a flux-conserving kernel"),
         ),
         pytest.param(
-            'gaussian',
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
+            "gaussian",
+            marks=pytest.mark.xfail(reason="Not a flux-conserving kernel"),
         ),
     ],
 )
@@ -677,7 +683,9 @@ def test_flux_conservation_nondistorted(kernel):
     y0 = 68.0
     sig = fwhm / (2.0 * np.sqrt(2.0 * np.log(2.0 * fwhm)))
     sig2 = sig * sig
-    star = np.exp(-0.5 / sig2 * ((x.astype(np.float32) - x0)**2 + (y.astype(np.float32) - y0)**2))
+    star = np.exp(
+        -0.5 / sig2 * ((x.astype(np.float32) - x0) ** 2 + (y.astype(np.float32) - y0) ** 2)
+    )
     in_sci = (star / np.sum(star)).astype(np.float32)  # normalize to 1
     in_wht = np.ones(in_shape, dtype=np.float32)
 
@@ -719,23 +727,24 @@ def test_flux_conservation_nondistorted(kernel):
         rtol=0.0001,
     )
 
+
 @pytest.mark.parametrize(
-    'kernel',
+    "kernel",
     [
-        'square',
-        'point',
-        'turbo',
+        "square",
+        "point",
+        "turbo",
         pytest.param(
-            'lanczos2',
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
+            "lanczos2",
+            marks=pytest.mark.xfail(reason="Not a flux-conserving kernel"),
         ),
         pytest.param(
-            'lanczos3',
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
+            "lanczos3",
+            marks=pytest.mark.xfail(reason="Not a flux-conserving kernel"),
         ),
         pytest.param(
-            'gaussian',
-            marks=pytest.mark.xfail(reason='Not a flux-conserving kernel'),
+            "gaussian",
+            marks=pytest.mark.xfail(reason="Not a flux-conserving kernel"),
         ),
     ],
 )
@@ -752,7 +761,9 @@ def test_flux_conservation_distorted(kernel):
     y0 = 68.0
     sig = fwhm / (2.0 * np.sqrt(2.0 * np.log(2.0 * fwhm)))
     sig2 = sig * sig
-    star = np.exp(-0.5 / sig2 * ((x.astype(np.float32) - x0)**2 + (y.astype(np.float32) - y0)**2))
+    star = np.exp(
+        -0.5 / sig2 * ((x.astype(np.float32) - x0) ** 2 + (y.astype(np.float32) - y0) ** 2)
+    )
     in_sci = (star / np.sum(star)).astype(np.float32)  # normalize to 1
     in_wht = np.ones(in_shape, dtype=np.float32)
 
