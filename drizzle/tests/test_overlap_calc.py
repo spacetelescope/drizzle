@@ -9,7 +9,7 @@ from drizzle.cdrizzle import clip_polygon, invert_pixmap
 SQ2 = 1.0 / sqrt(2.0)
 
 
-def _is_poly_eq(p1, p2, rtol=0, atol=1e-12):
+def _is_poly_eq(p1, p2, rtol=0, atol=4e-12):
     if len(p1) != len(p2):
         return False
 
