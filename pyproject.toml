@@ -1,7 +1,7 @@
 [project]
 name = "drizzle"
 description = "A package for combining dithered images into a single image"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
     { name = "STScI", email = "help@stsci.edu" },
 ]
@@ -74,7 +74,7 @@ extend-select = [
     "C4",
     "COM",
 ]
-extend-exclude = [
+exclude = [
     "docs",
     ".eggs",
     ".tox",
