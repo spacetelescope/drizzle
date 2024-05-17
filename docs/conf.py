@@ -26,7 +26,6 @@
 # be accessible, and the documentation will not build correctly.
 
 import datetime
-import os
 import sys
 from pathlib import Path
 

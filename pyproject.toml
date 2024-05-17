@@ -65,14 +65,16 @@ norecursedirs = [
 
 [tool.ruff]
 line-length = 100
-extend-select = [
+
+[tool.ruff.lint]
+select = [
     "F",
     "W",
     "E",
     "C4",
     "COM",
 ]
-extend-exclude = [
+exclude = [
     "docs",
     ".eggs",
     ".tox",
