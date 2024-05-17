@@ -32,7 +32,7 @@ def get_extensions():
         cfg['define_macros'].append(('__STDC__', 1))
         cfg['define_macros'].append(('_CRT_SECURE_NO_WARNINGS', None))
 
-    # importing these extension modules is tested in `.github/workflows/build.yml`; 
+    # importing these extension modules is tested in `.github/workflows/build.yml`;
     # when adding new modules here, make sure to add them to the `test_command` entry there
     return [Extension(str('drizzle.cdrizzle'), sources, **cfg)]
 
