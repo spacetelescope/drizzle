@@ -614,7 +614,7 @@ static struct PyModuleDef moduledef = {
     NULL
 };
 
-PyMODINIT_FUNC *PyInit_cdrizzle(void)
+PyMODINIT_FUNC PyInit_cdrizzle(void)
 {
     PyObject *m;
     m = PyModule_Create(&moduledef);
