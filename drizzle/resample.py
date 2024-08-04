@@ -164,7 +164,7 @@ class Drizzle:
 
     def __init__(self, kernel="square", fillval=None, out_shape=None,
                  out_img=None, out_wht=None, out_ctx=None, exptime=0.0,
-                 begin_ctx_id=0, max_ctx_id=None):
+                 begin_ctx_id=0, max_ctx_id=None, no_ctx=False):
         """
         kernel: str, optional
             The name of the kernel used to combine the input. The choice of
@@ -193,20 +193,21 @@ class Drizzle:
             pixels with no contributions from input images will be set to this
             ``fillval`` value.
 
-        out_img : 2d array of float32, optional
+        out_img : 2D array of float32, None, optional
             A 2D numpy array containing the output image produced by
             drizzling. On the first call the array values should be set to zero.
             Subsequent calls it will hold the intermediate results.
 
-        out_wht : 2D array of float32, optional
+        out_wht : 2D array of float32, None, optional
             A 2D numpy array containing the output counts. On the first
             call it should be set to zero. On subsequent calls it will
             hold the intermediate results.
 
-        out_ctx : 2D or 3D array of int32, optional
+        out_ctx : 2D or 3D array of int32, None, optional
             A 2D or 3D numpy array holding a bitmap of which image was an input
             for each output pixel. Should be integer zero on first call.
-            Subsequent calls hold intermediate results.
+            Subsequent calls hold intermediate results. This parameter is
+            ignored when ``no_ctx`` is `True`.
 
         exptime : float, optional
             Exposure time of previously resampled images when provided via
@@ -215,7 +216,8 @@ class Drizzle:
         begin_ctx_id : int, optional
             The context ID number (0-based) of the first image that will be
             resampled (using `add_image`). Subsequent images will be asigned
-            consecutively increasing ID numbers.
+            consecutively increasing ID numbers. This parameter is ignored
+            when ``no_ctx`` is `True`.
 
         max_ctx_id : int, None, optional
             The largest integer context ID that is *expected* to be used for
@@ -226,18 +228,29 @@ class Drizzle:
             additional context planes will be added as needed (context array
             will "grow" in the third dimention as new input images are added.)
             The default value of `None` is equivalent to setting ``max_ctx_id``
-            equal to ``begin_ctx_id``. This parameter is ignored when
-            ``out_ctx`` is provided.
+            equal to ``begin_ctx_id``. This parameter is ignored either when
+            ``out_ctx`` is provided or when ``no_ctx`` is `True`.
+
+        no_ctx : bool, optional
+            Indicates to not create context image. If ``no_ctx`` is set to
+            `True`, parameters ``out_ctx``, ``begin_ctx_id``, and ``max_ctx_id``
+            will be ignored.
 
         """
-        if begin_ctx_id < 0:
-            raise ValueError("Invalid context image ID")
-        self._ctx_id = begin_ctx_id  # the ID of the *last* image to be resampled
-        if max_ctx_id is None:
-            max_ctx_id = begin_ctx_id
-        elif max_ctx_id < begin_ctx_id:
-            raise ValueError("'max_ctx_id' cannot be smaller than 'begin_ctx_id'.")
-        self._max_ctx_id = max_ctx_id
+        self._no_ctx = no_ctx
+
+        if no_ctx:
+            self._ctx_id = None
+            self._max_ctx_id = None
+        else:
+            if begin_ctx_id < 0:
+                raise ValueError("Invalid context image ID")
+            self._ctx_id = begin_ctx_id  # the ID of the *last* image to be resampled
+            if max_ctx_id is None:
+                max_ctx_id = begin_ctx_id
+            elif max_ctx_id < begin_ctx_id:
+                raise ValueError("'max_ctx_id' cannot be smaller than 'begin_ctx_id'.")
+            self._max_ctx_id = max_ctx_id
 
         if exptime < 0.0:
             raise ValueError("Exposure time must be non-negative.")
@@ -371,27 +384,31 @@ class Drizzle:
         else:
             self._out_wht = out_wht
 
-        if out_ctx is None:
-            n_ctx_planes = max_ctx_id // CTX_PLANE_BITS + 1
-            ctx_shape = (n_ctx_planes, ) + out_shape
-            self._out_ctx = np.zeros(ctx_shape, dtype=np.int32)
+        if self._no_ctx:
+            self._tmp_out_ctx = np.zeros(out_shape, dtype=np.int32)
+            self._out_ctx = None
         else:
-            self._out_ctx = out_ctx
+            if out_ctx is None:
+                n_ctx_planes = max_ctx_id // CTX_PLANE_BITS + 1
+                ctx_shape = (n_ctx_planes, ) + out_shape
+                self._out_ctx = np.zeros(ctx_shape, dtype=np.int32)
+            else:
+                self._out_ctx = out_ctx
 
-        if not (out_wht is None and out_ctx is None):
-            # check that input data make sense: weight of pixels with non-zero
-            # context values must be different from zero:
-            if np.any(
-                np.bitwise_xor(
-                    self._out_wht > 0.0,
-                    np.sum(self._out_ctx, axis=0) > 0
-                )
-            ):
-                raise ValueError(
-                    "Inconsistent values of supplied 'out_wht' and 'out_ctx' "
-                    "arrays. Pixels with non-zero context values must have "
-                    "positive weights and vice-versa."
-                )
+            if not (out_wht is None and out_ctx is None):
+                # check that input data make sense: weight of pixels with
+                # non-zero context values must be different from zero:
+                if np.any(
+                    np.bitwise_xor(
+                        self._out_wht > 0.0,
+                        np.sum(self._out_ctx, axis=0) > 0
+                    )
+                ):
+                    raise ValueError(
+                        "Inconsistent values of supplied 'out_wht' and "
+                        "'out_ctx' arrays. Pixels with non-zero context "
+                        "values must have positive weights and vice-versa."
+                    )
 
         if out_img is None:
             self._out_img = np.empty(out_shape, dtype=np.float32)
@@ -405,6 +422,9 @@ class Drizzle:
         plane and increments context image ID
         (after computing the return value).
         """
+        if self._no_ctx:
+            return None, 0
+
         self._plane_no = self._ctx_id // CTX_PLANE_BITS
         depth = self._out_ctx.shape[0]
 
@@ -574,9 +594,12 @@ class Drizzle:
 
         pixmap = np.asarray(pixmap, dtype=np.float64)
 
-        if self._out_ctx.ndim == 2:
-            raise AssertionError("Context image is expected to be 3D")
-        ctx_plane = self._out_ctx[plane_no]
+        if self._no_ctx:
+            ctx_plane = self._tmp_out_ctx
+        else:
+            if self._out_ctx.ndim == 2:
+                raise AssertionError("Context image is expected to be 3D")
+            ctx_plane = self._out_ctx[plane_no]
 
         # TODO: probably tdriz should be modified to not return version.
         #       we should not have git, Python, C, ... versions
