@@ -903,6 +903,35 @@ def test_context_planes():
     assert driz.out_ctx.shape == (2, 10, 10)
 
 
+def test_no_context_image():
+    """Reproduce error seen in issue #50"""
+    shape = (10, 10)
+    output_wcs = wcs.WCS()
+    output_wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    output_wcs.wcs.pc = [[1, 0], [0, 1]]
+    output_wcs.pixel_shape = shape
+    driz = resample.Drizzle(
+        out_shape=tuple(shape),
+        begin_ctx_id=-1,
+        no_ctx=True
+    )
+    assert driz.out_ctx is None
+    assert driz.ctx_id is None
+
+    image = np.ones(shape)
+    inwcs = wcs.WCS()
+    inwcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    inwcs.wcs.cd = [[1, 0], [0, 1]]
+    inwcs.pixel_shape = shape
+
+    pixmap = utils.calc_pixmap(inwcs, output_wcs)
+
+    for i in range(33):
+        driz.add_image(image, exptime=1.0, pixmap=pixmap)
+        assert driz.out_ctx is None
+        assert driz.ctx_id is None
+
+
 def test_init_ctx_id():
     # starting context ID must be positive
     with pytest.raises(ValueError) as err_info:
