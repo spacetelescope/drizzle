@@ -796,3 +796,39 @@ def test_flux_conservation_distorted(kernel):
         atol=0.0,
         rtol=0.0001,
     )
+
+
+def test_no_context_array():
+    """
+    Test that providing None for "outctx" is supported.
+    """
+    # initialize input:
+    insci = np.ones((200, 400), dtype=np.float32)
+    inwht = np.ones((200, 400), dtype=np.float32)
+    inwht[:, 150:155] = 0
+
+    # initialize output:
+    outsci = np.zeros((210, 410), dtype=np.float32)
+    outwht = np.zeros((210, 410), dtype=np.float32)
+    outctx = None
+
+    # define coordinate mapping:
+    pixmap = np.moveaxis(np.mgrid[1:201, 1:401][::-1], 0, -1)
+
+    # resample:
+    cdrizzle.tdriz(
+        insci, inwht, pixmap,
+        outsci, outwht, outctx,
+        uniqid=1,
+        xmin=0, xmax=400,
+        ymin=0, ymax=200,
+        pixfrac=1,
+        kernel='square',
+        in_units='cps',
+        expscale=1,
+        wtscale=1,
+        fillstr='INDEF',
+    )
+
+    # check that no pixel with 0 weight has any counts:
+    assert np.sum(np.abs(outsci[(outwht == 0)])) == 0.0
