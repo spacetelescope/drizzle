@@ -4,7 +4,12 @@
 Release Notes
 =============
 
-1.15.2 (2025-06-17)
+1.15.3 (unreleased)
+===================
+
+- allow ``context`` to be ``None`` in ``tdriz`` [#151]
+
+1.15.2 (2024-06-17)
 ===================
 
 - build wheels with Numpy 2.0 release candidate [#149]
