@@ -4,10 +4,13 @@
 Release Notes
 =============
 
-1.15.3 (unreleased)
+1.15.3 (2024-08-19)
 ===================
 
-- allow ``context`` to be ``None`` in ``tdriz`` [#151]
+- Fixed return type of ``PyInit_cdrizzle``. [#150]
+
+- Allow ``context`` to be ``None`` in ``tdriz``. [#151]
+
 
 1.15.2 (2024-06-17)
 ===================
