@@ -33,8 +33,8 @@ def calc_pixmap(first_wcs, second_wcs):
     # between the pixel co-ordinates in the first image to pixel co-ordinates in the
     # co-ordinate system of the second.
 
-    one = np.ones(2, dtype='float64')
-    idxmap = np.indices((first_naxis1, first_naxis2), dtype='float64')
+    one = np.ones(2, dtype="float64")
+    idxmap = np.indices((first_naxis1, first_naxis2), dtype="float64")
     idxmap = idxmap.transpose() + one
 
     idxmap = idxmap.reshape(first_naxis2 * first_naxis1, 2)

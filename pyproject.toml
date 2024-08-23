@@ -67,7 +67,7 @@ norecursedirs = [
 line-length = 100
 
 [tool.ruff.lint]
-select = [
+extend-select = [
     "F",
     "W",
     "E",
