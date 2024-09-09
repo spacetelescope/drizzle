@@ -7,12 +7,11 @@ from numpy.testing import assert_almost_equal, assert_equal
 from astropy import wcs
 from astropy.io import fits
 from drizzle.utils import (
+    _estimate_pixel_scale,
     calc_pixmap,
     decode_context,
-    _estimate_pixel_scale,
     estimate_pixel_scale_ratio,
 )
-
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, 'data')
@@ -173,5 +172,3 @@ def test_decode_context():
     # coordinate lists must be 1D:
     with pytest.raises(ValueError):
         decode_context(ctx, [[3, 2]], [[1, 4]])
-
-

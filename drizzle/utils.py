@@ -78,7 +78,6 @@ def estimate_pixel_scale_ratio(wcs_from, wcs_to, refpix_from=None, refpix_to=Non
 
     Returns
     -------
-
     pixel_scale_ratio : float
         Estimate the ratio of "to" to "from" WCS pixel scales. This value is
         returned only when ``estimate_pixel_scale_ratio`` is `True`.

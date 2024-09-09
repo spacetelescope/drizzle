@@ -261,12 +261,13 @@ class Drizzle:
                 "(when no ouput resampled images have been provided)."
             )
 
-        if (exptime == 0.0 and
+        if (
+            exptime == 0.0 and
                 (
                     (out_ctx is not None and np.sum(out_ctx) > 0) or
                     (out_wht is not None and np.sum(out_wht) > 0)
                 )
-              ):
+        ):
             raise ValueError(
                 "Inconsistent exposure time and context and/or weight images: "
                 "Exposure time cannot be 0 when context and/or weight arrays "
