@@ -913,7 +913,7 @@ def test_no_context_image():
     driz = resample.Drizzle(
         out_shape=tuple(shape),
         begin_ctx_id=-1,
-        no_ctx=True
+        disable_ctx=True
     )
     assert driz.out_ctx is None
     assert driz.ctx_id is None

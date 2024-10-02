@@ -164,7 +164,7 @@ class Drizzle:
 
     def __init__(self, kernel="square", fillval=None, out_shape=None,
                  out_img=None, out_wht=None, out_ctx=None, exptime=0.0,
-                 begin_ctx_id=0, max_ctx_id=None, no_ctx=False):
+                 begin_ctx_id=0, max_ctx_id=None, disable_ctx=False):
         """
         kernel: str, optional
             The name of the kernel used to combine the input. The choice of
@@ -207,7 +207,7 @@ class Drizzle:
             A 2D or 3D numpy array holding a bitmap of which image was an input
             for each output pixel. Should be integer zero on first call.
             Subsequent calls hold intermediate results. This parameter is
-            ignored when ``no_ctx`` is `True`.
+            ignored when ``disable_ctx`` is `True`.
 
         exptime : float, optional
             Exposure time of previously resampled images when provided via
@@ -217,7 +217,7 @@ class Drizzle:
             The context ID number (0-based) of the first image that will be
             resampled (using `add_image`). Subsequent images will be asigned
             consecutively increasing ID numbers. This parameter is ignored
-            when ``no_ctx`` is `True`.
+            when ``disable_ctx`` is `True`.
 
         max_ctx_id : int, None, optional
             The largest integer context ID that is *expected* to be used for
@@ -229,17 +229,17 @@ class Drizzle:
             will "grow" in the third dimention as new input images are added.)
             The default value of `None` is equivalent to setting ``max_ctx_id``
             equal to ``begin_ctx_id``. This parameter is ignored either when
-            ``out_ctx`` is provided or when ``no_ctx`` is `True`.
+            ``out_ctx`` is provided or when ``disable_ctx`` is `True`.
 
-        no_ctx : bool, optional
-            Indicates to not create context image. If ``no_ctx`` is set to
-            `True`, parameters ``out_ctx``, ``begin_ctx_id``, and ``max_ctx_id``
-            will be ignored.
+        disable_ctx : bool, optional
+            Indicates to not create a context image. If ``disable_ctx`` is set
+            to `True`, parameters ``out_ctx``, ``begin_ctx_id``, and
+            ``max_ctx_id`` will be ignored.
 
         """
-        self._no_ctx = no_ctx
+        self._disable_ctx = disable_ctx
 
-        if no_ctx:
+        if disable_ctx:
             self._ctx_id = None
             self._max_ctx_id = None
         else:
@@ -385,7 +385,7 @@ class Drizzle:
         else:
             self._out_wht = out_wht
 
-        if self._no_ctx:
+        if self._disable_ctx:
             self._tmp_out_ctx = np.zeros(out_shape, dtype=np.int32)
             self._out_ctx = None
         else:
@@ -423,7 +423,7 @@ class Drizzle:
         plane and increments context image ID
         (after computing the return value).
         """
-        if self._no_ctx:
+        if self._disable_ctx:
             return None, 0
 
         self._plane_no = self._ctx_id // CTX_PLANE_BITS
@@ -595,7 +595,7 @@ class Drizzle:
 
         pixmap = np.asarray(pixmap, dtype=np.float64)
 
-        if self._no_ctx:
+        if self._disable_ctx:
             ctx_plane = self._tmp_out_ctx
         else:
             if self._out_ctx.ndim == 2:
