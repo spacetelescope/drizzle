@@ -130,7 +130,9 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
     goto _exit;
   }
 
-  if (ocon != Py_None) {
+  if (ocon == Py_None) {
+    con = NULL;
+  } else {
     con = (PyArrayObject *)PyArray_ContiguousFromAny(ocon, NPY_INT32, 2, 2);
     if (!con) {
       driz_error_set_message(&error, "Invalid context array");

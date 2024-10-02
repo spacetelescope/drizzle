@@ -386,7 +386,6 @@ class Drizzle:
             self._out_wht = out_wht
 
         if self._disable_ctx:
-            self._tmp_out_ctx = np.zeros(out_shape, dtype=np.int32)
             self._out_ctx = None
         else:
             if out_ctx is None:
@@ -596,7 +595,7 @@ class Drizzle:
         pixmap = np.asarray(pixmap, dtype=np.float64)
 
         if self._disable_ctx:
-            ctx_plane = self._tmp_out_ctx
+            ctx_plane = None
         else:
             if self._out_ctx.ndim == 2:
                 raise AssertionError("Context image is expected to be 3D")
