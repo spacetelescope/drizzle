@@ -330,123 +330,6 @@ do_kernel_point(struct driz_param_t* p) {
     return 0;
 }
 
-/** --------------------------------------------------------------------------------------------------
- * This kernel assumes flux is distrubuted evenly across a circle around the center of a pixel
- *
- * p: structure containing options, input, and output
- */
-
-static int
-do_kernel_tophat(struct driz_param_t* p) {
-    struct scanner s;
-    integer_t bv, i, j, ii, jj, nhit, nxi, nxa, nyi, nya;
-    integer_t ybounds[2], osize[2];
-    float scale2, pfo, pfo2, vc, d, dow;
-    double xxi, xxa, yyi, yya, ddx, ddy, r2;
-    int xmin, xmax, ymin, ymax, n;
-
-    scale2 = p->scale * p->scale;
-    pfo = p->pixel_fraction / p->scale / 2.0;
-    pfo2 = pfo * pfo;
-    bv = compute_bit_value(p->uuid);
-
-    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
-
-    p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
-    p->nmiss = p->nskip * (p->xmax - p->xmin);
-
-    /* This is the outer loop over all the lines in the input image */
-
-    get_dimensions(p->output_data, osize);
-    for (j = ymin; j <= ymax; ++j) {
-        /* Check the overlap with the output */
-        n = get_scanline_limits(&s, j, &xmin, &xmax);
-        if (n == 1) {
-            // scan ended (y reached the top vertex/edge)
-            p->nskip += (ymax + 1 - j);
-            p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
-            break;
-        } else if (n == 2 || n == 3) {
-            // pixel centered on y is outside of scanner's limits or image [0, height - 1]
-            // OR: limits (x1, x2) are equal (line width is 0)
-            p->nmiss += (p->xmax - p->xmin);
-            ++p->nskip;
-            continue;
-        } else {
-            // limits (x1, x2) are equal (line width is 0)
-            p->nmiss += (p->xmax - p->xmin) - (xmax + 1 - xmin);
-        }
-
-        for (i = xmin; i <= xmax; ++i) {
-            double ox, oy;
-
-            if (map_pixel(p->pixmap, i, j, &ox, &oy)) {
-                nhit = 0;
-
-            } else {
-                /* Offset within the subset */
-                xxi = ox - pfo;
-                xxa = ox + pfo;
-                yyi = oy - pfo;
-                yya = oy + pfo;
-
-                nxi = MAX(fortran_round(xxi), 0);
-                nxa = MIN(fortran_round(xxa), osize[0]-1);
-                nyi = MAX(fortran_round(yyi), 0);
-                nya = MIN(fortran_round(yya), osize[1]-1);
-
-                nhit = 0;
-
-                /* Allow for stretching because of scale change */
-                d = get_pixel(p->data, i, j) * scale2;
-
-                /* Scale the weighting mask by the scale factor and inversely by
-                   the Jacobian to ensure conservation of weight in the output */
-                if (p->weights) {
-                    dow = get_pixel(p->weights, i, j) * p->weight_scale;
-                } else {
-                    dow = 1.0;
-                }
-
-                /* Loop over output pixels which could be affected */
-                for (jj = nyi; jj <= nya; ++jj) {
-                    ddy = oy - (double)jj;
-
-                    /* Check it is on the output image */
-                    for (ii = nxi; ii <= nxa; ++ii) {
-                        ddx = ox - (double)ii;
-
-                        /* Radial distance */
-                        r2 = ddx*ddx + ddy*ddy;
-
-                        /* Weight is one within the specified radius and zero outside.
-                           Note: weight isn't conserved in this case */
-                        if (r2 <= pfo2) {
-                            /* Count the hits */
-                            nhit++;
-                            vc = get_pixel(p->output_counts, ii, jj);
-
-                            /* If we are create or modifying the context image,
-                               we do so here. */
-                            if (p->output_context && dow > 0.0) {
-                              set_bit(p->output_context, ii, jj, bv);
-                            }
-
-                            if (update_data(p, ii, jj, d, vc, dow)) {
-                              return 1;
-                            }
-                        }
-                    }
-                }
-            }
-
-            /* Count cases where the pixel is off the output image */
-            if (nhit == 0) ++ p->nmiss;
-        }
-    }
-
-    return 0;
-}
 
 /** --------------------------------------------------------------------------------------------------
  * This kernel assumes the flux is distributed acrass a gaussian around the center of an input pixel
@@ -987,7 +870,6 @@ kernel_handler_map[] = {
     do_kernel_square,
     do_kernel_gaussian,
     do_kernel_point,
-    do_kernel_tophat,
     do_kernel_turbo,
     do_kernel_lanczos,
     do_kernel_lanczos
