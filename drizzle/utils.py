@@ -9,6 +9,10 @@ def calc_pixmap(wcs_from, wcs_to):
     using provided WCS of the original ("from") image and the destination ("to")
     image.
 
+    .. note::
+       This function assumes that output frames of ``wcs_from`` and ``wcs_to``
+       WCS have the same units.
+
     Parameters
     ----------
     wcs_from : wcs
@@ -29,10 +33,11 @@ def calc_pixmap(wcs_from, wcs_to):
         correspond to the two coordinates of the image the first WCS is from.
 
     """
-    if wcs_from.pixel_shape is None:
+    pix_shape = wcs_from.pixel_shape
+    if pix_shape is None:
         raise ValueError('The "from" WCS must have pixel_shape property set.')
-    y, x = np.indices(wcs_from.pixel_shape, dtype=np.float64)
-    x, y = wcs_to.world_to_pixel(wcs_from.pixel_to_world(x, y))
+    y, x = np.indices(pix_shape[::-1], dtype=np.float64)
+    x, y = wcs_to.world_to_pixel_values(*wcs_from.pixel_to_world_values(x, y))
     pixmap = np.dstack([x, y])
     return pixmap
 

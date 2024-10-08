@@ -84,7 +84,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   struct driz_error_t error;
   struct driz_param_t p;
   integer_t isize[2], psize[2], wsize[2];
-  char warn_msg[96];
+  char warn_msg[128];
 
   driz_log_handle = driz_log_init(driz_log_handle);
   driz_log_message("starting tdriz");
@@ -188,7 +188,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   }
 
   if (kernel == kernel_gaussian || kernel == kernel_lanczos2 || kernel == kernel_lanczos3) {
-      if (sprintf(warn_msg,
+      if (snprintf(warn_msg, 128,
             "Kernel '%s' is not a flux-conserving kernel.",
             kernel_str) < 1) {
           strcpy(warn_msg, "Selected kernel is not a flux-conserving kernel.");
@@ -240,14 +240,24 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
 
   get_dimensions(p.pixmap, psize);
   if (psize[0] != isize[0] || psize[1] != isize[1]) {
-    driz_error_set_message(&error, "Pixel map dimensions != input dimensions");
+    if (snprintf(warn_msg, 128,
+          "Pixel map dimensions (%d, %d) != input dimensions (%d, %d).",
+          psize[0], psize[1], isize[0], isize[1]) < 1) {
+        strcpy(warn_msg, "Pixel map dimensions != input dimensions.");
+    }
+    driz_error_set_message(&error, warn_msg);
     goto _exit;
   }
 
   if (p.weights) {
     get_dimensions(p.weights, wsize);
     if (wsize[0] != isize[0] || wsize[1] != isize[1]) {
-      driz_error_set_message(&error, "Weights array  dimensions != input dimensions");
+      if (snprintf(warn_msg, 128,
+            "Weights array dimensions (%d, %d) != input dimensions (%d, %d).",
+            wsize[0], wsize[1], isize[0], isize[1]) < 1) {
+          strcpy(warn_msg, "Weights array dimensions != input dimensions.");
+      }
+      driz_error_set_message(&error, warn_msg);
       goto _exit;
     }
   }
@@ -310,6 +320,7 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
   struct driz_error_t error;
   struct driz_param_t p;
   integer_t psize[2], osize[2];
+  char warn_msg[128];
 
   driz_log_handle = driz_log_init(driz_log_handle);
   driz_log_message("starting tblot");
@@ -350,7 +361,12 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
   get_dimensions(out, osize);
 
   if (psize[0] != osize[0] || psize[1] != osize[1]) {
-    driz_error_set_message(&error, "Pixel map dimensions != output dimensions");
+    if (snprintf(warn_msg, 128,
+          "Pixel map dimensions (%d, %d) != output dimensions (%d, %d).",
+          psize[0], psize[1], osize[0], osize[1]) < 1) {
+        strcpy(warn_msg, "Pixel map dimensions != output dimensions.");
+    }
+    driz_error_set_message(&error, warn_msg);
     goto _exit;
   }
 

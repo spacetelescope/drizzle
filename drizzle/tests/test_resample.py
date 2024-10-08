@@ -699,7 +699,7 @@ def test_blot_with_point(tmpdir):
         pixmap=pixmap,
         pix_ratio=pscale,
         exptime=1.0,
-        output_pixel_shape=inwcs.array_shape,
+        output_pixel_shape=inwcs.pixel_shape,
     )
 
     template_data = read_image(output_template)
@@ -745,7 +745,7 @@ def test_blot_with_default(tmpdir):
         pixmap=pixmap,
         pix_ratio=pscale,
         exptime=1.0,
-        output_pixel_shape=inwcs.array_shape,
+        output_pixel_shape=inwcs.pixel_shape,
     )
 
     template_data = read_image(output_template)
@@ -792,7 +792,7 @@ def test_blot_with_lan3(tmpdir):
         pixmap=pixmap,
         pix_ratio=pscale,
         exptime=1.0,
-        output_pixel_shape=inwcs.array_shape,
+        output_pixel_shape=inwcs.pixel_shape,
         interp="lan3",
     )
 
@@ -840,7 +840,7 @@ def test_blot_with_lan5(tmpdir):
         pixmap=pixmap,
         pix_ratio=pscale,
         exptime=1.0,
-        output_pixel_shape=inwcs.array_shape,
+        output_pixel_shape=inwcs.pixel_shape,
         interp="lan5",
     )
 
