@@ -52,10 +52,29 @@ def test_map_to_self():
     # Mapping an array to itself
     assert_almost_equal(pixmap, ok_pixmap, decimal=5)
 
-    # Check that an exception is raised for WCS without pixel_shape:
+    # user-provided shape
+    pixmap = calc_pixmap(input_wcs, input_wcs, (12, 34))
+    assert_equal(pixmap.shape, (12, 34, 2))
+
+    # Check that an exception is raised for WCS without pixel_shape or
+    # bounding_box:
     input_wcs.pixel_shape = None
     with pytest.raises(ValueError):
         calc_pixmap(input_wcs, input_wcs)
+
+    # user-provided shape when array_shape is not set:
+    pixmap = calc_pixmap(input_wcs, input_wcs, (12, 34))
+    assert_equal(pixmap.shape, (12, 34, 2))
+
+    # from bounding box:
+    input_wcs.bounding_box = ((5.3, 33.5), (2.8, 11.5))
+    pixmap = calc_pixmap(input_wcs, input_wcs)
+    assert_equal(pixmap.shape, (12, 34, 2))
+
+    # from bounding box and pixel_shape (the later takes precedence):
+    input_wcs.pixel_shape = (naxis1, naxis2)
+    pixmap = calc_pixmap(input_wcs, input_wcs)
+    assert_equal(pixmap.shape, ok_pixmap.shape)
 
 
 def test_translated_map():

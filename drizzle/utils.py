@@ -1,9 +1,10 @@
+import math
 import numpy as np
 
 __all__ = ["calc_pixmap", "decode_context", "estimate_pixel_scale_ratio"]
 
 
-def calc_pixmap(wcs_from, wcs_to):
+def calc_pixmap(wcs_from, wcs_to, shape=None):
     """
     Calculate a discretized on a grid mapping between the pixels of two images
     using provided WCS of the original ("from") image and the destination ("to")
@@ -17,12 +18,19 @@ def calc_pixmap(wcs_from, wcs_to):
     ----------
     wcs_from : wcs
         A WCS object representing the coordinate system you are
-        converting from. This object *must* have ``pixel_shape`` property
-        defined.
+        converting from. This object's ``array_shape`` (or ``pixel_shape``)
+        property will be used to define the shape of the pixel map array.
+        If ``shape`` parameter is provided, it will take precedence
+        over this object's ``array_shape`` value.
 
     wcs_to : wcs
         A WCS object representing the coordinate system you are
         converting to.
+
+    shape : tuple, None, optional
+        A tuple of integers indicating the shape of the output array in the
+        ``numpy.ndarray`` order. When provided, it takes precedence over the
+        ``wcs_from.array_shape`` property.
 
     Returns
     -------
@@ -32,11 +40,37 @@ def calc_pixmap(wcs_from, wcs_to):
         y coordinates of a pixel center, repectively. The other two coordinates
         correspond to the two coordinates of the image the first WCS is from.
 
+    Raises
+    ------
+    ValueError
+        A `ValueError` is raised when output pixel map shape cannot be
+        determined from provided inputs.
+
+    Notes
+    -----
+    When ``shape`` is not provided and ``wcs_from.array_shape`` is not set
+    (i.e., it is `None`), `calc_pixmap` will attempt to determine pixel map
+    shape from the ``bounding_box`` property of the input ``wcs_from`` object.
+    If ``bounding_box`` is not available, a `ValueError` will be raised.
+
     """
-    pix_shape = wcs_from.pixel_shape
-    if pix_shape is None:
-        raise ValueError('The "from" WCS must have pixel_shape property set.')
-    y, x = np.indices(pix_shape[::-1], dtype=np.float64)
+    if shape is None:
+        shape = wcs_from.array_shape
+        if shape is None:
+            if (bbox := getattr(wcs_from, "bounding_box", None)) is not None:
+                if (nd := np.ndim(bbox)) == 1:
+                    bbox = (bbox, )
+                if nd > 1:
+                    shape = tuple(
+                        int(math.ceil(lim[1] + 0.5)) for lim in bbox[::-1]
+                    )
+
+    if shape is None:
+        raise ValueError(
+            'The "from" WCS must have pixel_shape property set.'
+        )
+
+    y, x = np.indices(shape, dtype=np.float64)
     x, y = wcs_to.world_to_pixel_values(*wcs_from.pixel_to_world_values(x, y))
     pixmap = np.dstack([x, y])
     return pixmap
