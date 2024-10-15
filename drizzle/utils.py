@@ -4,6 +4,8 @@ import numpy as np
 
 __all__ = ["calc_pixmap", "decode_context", "estimate_pixel_scale_ratio"]
 
+_DEG2RAD = math.pi / 180.0
+
 
 def calc_pixmap(wcs_from, wcs_to, shape=None):
     """
@@ -125,12 +127,13 @@ def estimate_pixel_scale_ratio(wcs_from, wcs_to, refpix_from=None, refpix_to=Non
     """
     pscale_ratio = (_estimate_pixel_scale(wcs_to, refpix_to) /
                     _estimate_pixel_scale(wcs_from, refpix_from))
-    return pscale_ratio
+    return pscale_ratio.astype("float")
 
 
 def _estimate_pixel_scale(wcs, refpix):
     # estimate pixel scale (in rad) using approximate algorithm
     # from https://trs.jpl.nasa.gov/handle/2014/40409
+
     if refpix is None:
         if hasattr(wcs, 'bounding_box') and wcs.bounding_box is not None:
             refpix = np.mean(wcs.bounding_box, axis=-1)
@@ -143,12 +146,16 @@ def _estimate_pixel_scale(wcs, refpix):
     else:
         refpix = np.asarray(refpix)
 
-    l1, phi1 = np.deg2rad(wcs.pixel_to_world_values(*(refpix - 0.5)))
-    l2, phi2 = np.deg2rad(wcs.pixel_to_world_values(*(refpix + [-0.5, 0.5])))
-    l3, phi3 = np.deg2rad(wcs.pixel_to_world_values(*(refpix + 0.5)))
-    l4, phi4 = np.deg2rad(wcs.pixel_to_world_values(*(refpix + [0.5, -0.5])))
-    area = np.abs(0.5 * ((l4 - l2) * (np.sin(phi1) - np.sin(phi3)) +
-                         (l1 - l3) * (np.sin(phi2) - np.sin(phi4))))
+    l1, phi1 = np.array(wcs.pixel_to_world_values(*(refpix - 0.5)), dtype='longdouble')
+    l2, phi2 = np.array(wcs.pixel_to_world_values(*(refpix + [-0.5, 0.5])), dtype='longdouble')
+    l3, phi3 = np.array(wcs.pixel_to_world_values(*(refpix + 0.5)), dtype='longdouble')
+    l4, phi4 = np.array(wcs.pixel_to_world_values(*(refpix + [0.5, -0.5])), dtype='longdouble')
+    area = _DEG2RAD * abs(
+        0.5 * (
+            (l4 - l2) * (np.sin(_DEG2RAD * phi1) - np.sin(_DEG2RAD * phi3)) +
+            (l1 - l3) * (np.sin(_DEG2RAD * phi2) - np.sin(_DEG2RAD * phi4))
+        )
+    )
     return np.sqrt(area)
 
 

@@ -111,11 +111,65 @@ def test_estimate_pixel_scale_ratio():
     input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
 
     with fits.open(input_file) as h:
+        hdr = h[1].header
+        assert abs(hdr['CRPIX1'] / 512 - 1) < 1e-14
+        assert abs(hdr['CRPIX2'] / 512 - 1) < 1e-14
+        assert abs(hdr['CRVAL1'] / 6.027148333333000000000 - 1) < 1e-14
+        assert abs(hdr['CRVAL2'] / 72.08351111111000000000 + 1) < 1e-14
+        assert abs(hdr['CD1_1'] / 7.360500000000000000000E-06 + 1) < 1e-14
+        assert abs(hdr['CD1_2'] / 1.845600000000000000000E-06 - 1) < 1e-14
+        assert abs(hdr['CD2_1'] / 2.868580000000000000000E-06 - 1) < 1e-14
+        assert abs(hdr['CD2_2'] / 6.649460000000000000000E-06 - 1) < 1e-14
         w = wcs.WCS(h[1].header)
+        assert np.allclose(w.wcs.crval, [6.027148333333000000000, -72.08351111111000000000], rtol=1e-14)
+        assert np.allclose(w.wcs.crpix, [512.0, 512.0], rtol=1e-14)
+        assert np.allclose(
+            w.wcs.cd,
+            [
+                [-7.360500000000000000000E-06, 1.845600000000000000000E-06],
+                [2.868580000000000000000E-06, 6.649460000000000000000E-06]
+            ],
+            rtol=1e-14
+        )
+
+        refpix = np.array([0., 0.])
+        l1, phi1 = w.pixel_to_world_values(*(refpix - 0.5))
+        l2, phi2 = w.pixel_to_world_values(*(refpix + [-0.5, 0.5]))
+        l3, phi3 = w.pixel_to_world_values(*(refpix + 0.5))
+        l4, phi4 = w.pixel_to_world_values(*(refpix + [0.5, -0.5]))
+        assert abs(l1 - 6.0363204188670885) < 1e-14
+        assert abs(l2 - 6.036326416554582) < 1e-14
+        assert abs(l3 - 6.036302482421591) < 1e-14
+        assert abs(l4 - 6.036296484726444) < 1e-14
+        assert abs(phi1 - -72.08837937371479) < 1e-14
+        assert abs(phi2 - -72.08837272397372) < 1e-14
+        assert abs(phi3 - -72.08836985651423) < 1e-14
+        assert abs(phi4 - -72.08837650625458) < 1e-14
+        #pscale1 = _estimate_pixel_scale(w, refpix)
+        #assert abs(pscale1 - 1.285368350331663e-07) < 1.e-21
+
+        refpix = np.array([512., 512.])
+        l1, phi1 = w.pixel_to_world_values(*(refpix - 0.5))
+        l2, phi2 = w.pixel_to_world_values(*(refpix + [-0.5, 0.5]))
+        l3, phi3 = w.pixel_to_world_values(*(refpix + 0.5))
+        l4, phi4 = w.pixel_to_world_values(*(refpix + [0.5, -0.5]))
+        assert abs(l1 - 6.027139369821101) < 1e-14
+        assert abs(l2 - 6.027145369226525) < 1e-14
+        assert abs(l3 - 6.027121442811089) < 1e-14
+        assert abs(l4 - 6.027115443398036) < 1e-14
+        assert abs(phi1 - -72.08350635208977) < 1e-13
+        assert abs(phi2 - -72.08349970262996) < 1e-13
+        assert abs(phi3 - -72.08349683404813) < 1e-13
+        assert abs(phi4 - -72.08350348350724) < 1e-13
+        #pscale2 = _estimate_pixel_scale(w, refpix)
+        #assert abs(pscale2 - 1.285368361004753e-07) < 1.e-21
 
     pscale = estimate_pixel_scale_ratio(w, w, w.wcs.crpix, (0, 0))
 
-    assert abs(pscale - 0.9999999916967218) < 1e-14
+    #assert (pscale1 / pscale2 - 0.9999999916964737) < 1e-14
+
+    # assert abs(pscale - 0.9999999916967218) < 1e-14  # if using numpy in estimate_pixel_scale_ratio
+    assert abs(pscale - 0.9999999916964737) < 1e-14
 
 
 def test_estimate_pixel_scale_no_refpix():
