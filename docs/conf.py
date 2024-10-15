@@ -29,25 +29,12 @@ import datetime
 import sys
 from pathlib import Path
 
-
-# Get configuration information from pyproject.toml
-# try:
-#     import tomllib
-# except ImportError:
-#     import toml as tomllib
-#
-# sys.path.insert(1, '..')
-#
-# setup_cfg = tomllib.load(
-#     path.join(path.dirname(__file__), '..', 'pyproject.toml')
-# )['project']
-
 if sys.version_info < (3, 11):
     import tomli as tomllib
 else:
     import tomllib
 
-sys.path.insert(0, Path("exts/").resolve())
+sys.path.insert(0, str(Path("exts/").resolve()))
 
 
 def find_mod_objs_patched(*args, **kwargs):

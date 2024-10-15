@@ -1,4 +1,5 @@
 import math
+
 import numpy as np
 
 __all__ = ["calc_pixmap", "decode_context", "estimate_pixel_scale_ratio"]

@@ -661,7 +661,6 @@ def blot_image(data, pixmap, pix_ratio, exptime, output_pixel_shape,
         pixels in the ouput frame and ``pixmap[..., 1]`` forms a 2D array of
         Y-coordinates of input pixels in the ouput coordinate frame.
 
-
     output_pixel_shape : tuple of int
         A tuple of two integer numbers indicating the dimensions of the output
         image ``(Nx, Ny)``.
@@ -675,6 +674,7 @@ def blot_image(data, pixmap, pix_ratio, exptime, output_pixel_shape,
     interp : str, optional
         The type of interpolation used in the resampling. The
         possible values are:
+
             - "nearest" (nearest neighbor interpolation);
             - "linear" (bilinear interpolation);
             - "poly3" (cubic polynomial interpolation);
