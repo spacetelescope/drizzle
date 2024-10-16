@@ -569,6 +569,7 @@ class Drizzle:
 
         data = np.asarray(data, dtype=np.float32)
         pixmap = np.asarray(pixmap, dtype=np.float64)
+        in_ymax, in_xmax = data.shape
 
         if pixmap.shape[:2] != data.shape:
             raise ValueError(
@@ -581,11 +582,11 @@ class Drizzle:
         if ymin is None or ymin < 0:
             ymin = 0
 
-        if xmax is None or xmax > self._out_shape[1] - 1:
-            xmax = self._out_shape[1] - 1
+        if xmax is None or xmax > in_xmax - 1:
+            xmax = in_xmax - 1
 
-        if ymax is None or ymax > self._out_shape[0] - 1:
-            ymax = self._out_shape[0] - 1
+        if ymax is None or ymax > in_ymax - 1:
+            ymax = in_ymax - 1
 
         if weight_map is not None:
             weight_map = np.asarray(weight_map, dtype=np.float32)
