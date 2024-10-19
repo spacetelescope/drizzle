@@ -140,7 +140,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
     }
   };
 
-  /* Convert t`he fill value string */
+  /* Convert the fill value string */
 
   if (fillstr == NULL ||
       *fillstr == 0 ||

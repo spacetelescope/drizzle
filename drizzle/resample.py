@@ -411,8 +411,7 @@ class Drizzle:
                     )
 
         if out_img is None:
-            self._out_img = np.empty(out_shape, dtype=np.float32)
-            self._out_img.fill(self._fillval)
+            self._out_img = np.zeros(out_shape, dtype=np.float32)
         else:
             self._out_img = out_img
 
