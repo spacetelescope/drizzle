@@ -1,8 +1,8 @@
 drizzle Documentation
 =====================
 
-.. image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
-    :target: http://www.astropy.org
+.. image:: https://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
+    :target: https://www.astropy.org
     :alt: Powered by Astropy Badge
 
 .. image:: https://codecov.io/github/spacetelescope/drizzle/branch/main/graphs/badge.svg
@@ -20,6 +20,10 @@ drizzle Documentation
 .. image:: https://img.shields.io/pypi/v/drizzle.svg
     :target: https://pypi.org/project/drizzle
     :alt: PyPI Status
+
+.. image:: https://zenodo.org/badge/28100377.svg
+    :target: https://doi.org/10.5281/zenodo.10672889
+    :alt: Zenodo DOI
 
 The ``drizzle`` library is a Python package for combining dithered images into a
 single image. This library is derived from code used in DrizzlePac. Like
