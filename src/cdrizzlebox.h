@@ -19,18 +19,14 @@ In V1.6 this was simplified to use the DRIVAL routine and also to
 include some limited multi-kernel support.
 */
 
-integer_t
-compute_bit_value(integer_t uuid);
+integer_t compute_bit_value(integer_t uuid);
 
-int
-dobox(struct driz_param_t* p);
+int dobox(struct driz_param_t *p);
 
-double
-compute_area(double is, double js, const double x[4], const double y[4]);
+double compute_area(double is, double js, const double x[4], const double y[4]);
 
-double
-boxer(double is, double js, const double x[4], const double y[4]);
+double boxer(double is, double js, const double x[4], const double y[4]);
 
-typedef int (*kernel_handler_t)(struct driz_param_t*);
+typedef int (*kernel_handler_t)(struct driz_param_t *);
 
 #endif /* CDRIZZLEBOX_H */
