@@ -84,7 +84,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
   struct driz_error_t error;
   struct driz_param_t p;
   integer_t isize[2], psize[2], wsize[2];
-  char warn_msg[96];
+  char warn_msg[128];
 
   driz_log_handle = driz_log_init(driz_log_handle);
   driz_log_message("starting tdriz");
@@ -130,7 +130,9 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
     goto _exit;
   }
 
-  if (ocon != Py_None) {
+  if (ocon == Py_None) {
+    con = NULL;
+  } else {
     con = (PyArrayObject *)PyArray_ContiguousFromAny(ocon, NPY_INT32, 2, 2);
     if (!con) {
       driz_error_set_message(&error, "Invalid context array");
@@ -138,7 +140,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
     }
   };
 
-  /* Convert t`he fill value string */
+  /* Convert the fill value string */
 
   if (fillstr == NULL ||
       *fillstr == 0 ||
@@ -185,15 +187,8 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
     goto _exit;
   }
 
-  if (kernel == kernel_tophat) {
-      if (sprintf(warn_msg,
-            "Kernel '%s' has been deprecated and it will be removed in a future release.",
-            kernel_str) < 1) {
-          strcpy(warn_msg, "Selected kernel has been deprecated and it will be removed in a future release.");
-      }
-      PyErr_WarnEx(PyExc_DeprecationWarning, warn_msg, 1);
-  } else if (kernel == kernel_gaussian || kernel == kernel_lanczos2 || kernel == kernel_lanczos3) {
-      if (sprintf(warn_msg,
+  if (kernel == kernel_gaussian || kernel == kernel_lanczos2 || kernel == kernel_lanczos3) {
+      if (snprintf(warn_msg, 128,
             "Kernel '%s' is not a flux-conserving kernel.",
             kernel_str) < 1) {
           strcpy(warn_msg, "Selected kernel is not a flux-conserving kernel.");
@@ -208,7 +203,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
 
   /* If the input image is not in CPS we need to divide by the exposure */
   if (inun != unit_cps) {
-    inv_exposure_time = 1.0f / p.exposure_time;
+    inv_exposure_time = 1.0f / expin;
     scale_image(img, inv_exposure_time);
   }
 
@@ -245,14 +240,24 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords)
 
   get_dimensions(p.pixmap, psize);
   if (psize[0] != isize[0] || psize[1] != isize[1]) {
-    driz_error_set_message(&error, "Pixel map dimensions != input dimensions");
+    if (snprintf(warn_msg, 128,
+          "Pixel map dimensions (%d, %d) != input dimensions (%d, %d).",
+          psize[0], psize[1], isize[0], isize[1]) < 1) {
+        strcpy(warn_msg, "Pixel map dimensions != input dimensions.");
+    }
+    driz_error_set_message(&error, warn_msg);
     goto _exit;
   }
 
   if (p.weights) {
     get_dimensions(p.weights, wsize);
     if (wsize[0] != isize[0] || wsize[1] != isize[1]) {
-      driz_error_set_message(&error, "Weights array  dimensions != input dimensions");
+      if (snprintf(warn_msg, 128,
+            "Weights array dimensions (%d, %d) != input dimensions (%d, %d).",
+            wsize[0], wsize[1], isize[0], isize[1]) < 1) {
+          strcpy(warn_msg, "Weights array dimensions != input dimensions.");
+      }
+      driz_error_set_message(&error, warn_msg);
       goto _exit;
     }
   }
@@ -315,6 +320,7 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
   struct driz_error_t error;
   struct driz_param_t p;
   integer_t psize[2], osize[2];
+  char warn_msg[128];
 
   driz_log_handle = driz_log_init(driz_log_handle);
   driz_log_message("starting tblot");
@@ -355,7 +361,12 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords)
   get_dimensions(out, osize);
 
   if (psize[0] != osize[0] || psize[1] != osize[1]) {
-    driz_error_set_message(&error, "Pixel map dimensions != output dimensions");
+    if (snprintf(warn_msg, 128,
+          "Pixel map dimensions (%d, %d) != output dimensions (%d, %d).",
+          psize[0], psize[1], osize[0], osize[1]) < 1) {
+        strcpy(warn_msg, "Pixel map dimensions != output dimensions.");
+    }
+    driz_error_set_message(&error, warn_msg);
     goto _exit;
   }
 
@@ -470,6 +481,7 @@ invert_pixmap_wrap(PyObject *self, PyObject *args)
     struct driz_param_t par;
     double *xy, *xyin;
     npy_intp *ndim, xyin_dim = 2;
+    const double half = 0.5 - DBL_EPSILON;
 
     xyin = (double *) malloc(2 * sizeof(double));
 
@@ -491,19 +503,19 @@ invert_pixmap_wrap(PyObject *self, PyObject *args)
     ndim = PyArray_DIMS(pixmap_arr);
 
     if (bbox == Py_None) {
-        par.xmin = -0.5;
-        par.xmax = ndim[1] - 0.5;
-        par.ymin = -0.5;
-        par.ymax = ndim[0] - 0.5;
+        par.xmin = 0;
+        par.xmax = ndim[1] - 1;
+        par.ymin = 0;
+        par.ymax = ndim[0] - 1;
     } else {
         bbox_arr = (PyArrayObject *)PyArray_ContiguousFromAny(bbox, NPY_DOUBLE, 2, 2);
         if (!bbox_arr) {
           return PyErr_Format(gl_Error, "Invalid input bounding box.");
         }
-        par.xmin = *(double*) PyArray_GETPTR2(bbox_arr, 0, 0);
-        par.xmax = *(double*) PyArray_GETPTR2(bbox_arr, 0, 1);
-        par.ymin = *(double*) PyArray_GETPTR2(bbox_arr, 1, 0);
-        par.ymax = *(double*) PyArray_GETPTR2(bbox_arr, 1, 1);
+        par.xmin = (integer_t)(*(double*) PyArray_GETPTR2(bbox_arr, 0, 0) - half);
+        par.xmax = (integer_t)(*(double*) PyArray_GETPTR2(bbox_arr, 0, 1) + half);
+        par.ymin = (integer_t)(*(double*) PyArray_GETPTR2(bbox_arr, 1, 0) - half);
+        par.ymax = (integer_t)(*(double*) PyArray_GETPTR2(bbox_arr, 1, 1) + half);
     }
 
     xy = (double *)PyArray_DATA(xyout_arr);
@@ -577,9 +589,9 @@ clip_polygon_wrap(PyObject *self, PyObject *args)
 
 static struct PyMethodDef cdrizzle_methods[] = {
     {"tdriz",  (PyCFunction)tdriz, METH_VARARGS|METH_KEYWORDS,
-    "tdriz(image, weight, output, outweight, context, uniqid,  xmin, ymin, scale, pfract, kernel, inun, expin, wtscl, fill, nmiss, nskip, pixmap)"},
+    "tdriz(image, weights, pixmap, output, counts, context, uniqid, xmin, xmax, ymin, ymax, scale, pixfrac, kernel, in_units, expscale, wtscale, fillstr)"},
     {"tblot",  (PyCFunction)tblot, METH_VARARGS|METH_KEYWORDS,
-    "tblot(image, output, xmin, xmax, ymin, ymax, scale, kscale, interp, ef, misval, sinscl, pixmap)"},
+    "tblot(image, pixmap, output, xmin, xmax, ymin, ymax, scale, kscale, interp, exptime, misval, sinscl)"},
     {"test_cdrizzle", test_cdrizzle, METH_VARARGS,
     "test_cdrizzle(data, weights, pixmap, output_data, output_counts)"},
     {"invert_pixmap", invert_pixmap_wrap, METH_VARARGS, "invert_pixmap(pixmap, xyout, bbox)"},

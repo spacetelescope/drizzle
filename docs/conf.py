@@ -29,25 +29,12 @@ import datetime
 import sys
 from pathlib import Path
 
-
-# Get configuration information from pyproject.toml
-# try:
-#     import tomllib
-# except ImportError:
-#     import toml as tomllib
-#
-# sys.path.insert(1, '..')
-#
-# setup_cfg = tomllib.load(
-#     path.join(path.dirname(__file__), '..', 'pyproject.toml')
-# )['project']
-
 if sys.version_info < (3, 11):
     import tomli as tomllib
 else:
     import tomllib
 
-#sys.path.insert(0, os.path.abspath('../'))
+sys.path.insert(0, str(Path("exts/").resolve()))
 
 
 def find_mod_objs_patched(*args, **kwargs):
@@ -73,12 +60,22 @@ metadata = conf["project"]
 
 
 extensions = [
+    'numfig',
     'sphinx_automodapi.automodapi',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
+    'pytest_doctestplus.sphinx.doctestplus',
+    'sphinx.ext.todo',
+    'sphinx.ext.inheritance_diagram',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.napoleon',
+    'sphinx_automodapi.automodsumm',
+    'sphinx_automodapi.autodoc_enhancements',
+    'sphinx_automodapi.smart_resolver',
 ]
+
 # -- General configuration ----------------------------------------------------
 
 master_doc = 'index'

@@ -105,7 +105,6 @@ shrink_image_section(PyArrayObject *pixmap, int *xmin, int *xmax, int *ymin,
 int
 interpolate_point(struct driz_param_t *par, double xin, double yin,
                   double *xout, double *yout) {
-    int ipix, jpix, npix, idim;
     int i0, j0, nx2, ny2;
     npy_intp *ndim;
     double x, y, x1, y1, f00, f01, f10, f11, g00, g01, g10, g11;
@@ -207,6 +206,7 @@ map_point(struct driz_param_t *par, double xin, double yin, double *xout,
         if (i >= par->xmin && i <= par->xmax && j >= par->ymin &&
             j <= par->ymax) {
             status = map_pixel(par->pixmap, i, j, xout, yout);
+            return status;
         } else {
             return 1;
         }
@@ -492,14 +492,14 @@ clip_polygon_to_window(const struct polygon *p, const struct polygon *wnd,
     int v1_inside, v2_inside;
     struct polygon p1, p2, *ppin, *ppout, *tpp;
     struct vertex *pv, *pv_, *wv, *wv_, dp, dw, vi;
-    double t, u, d, signed_area, app_, aww_;
+    double d, app_, aww_;
 
     if ((p->npv < 3) || (wnd->npv < 3)) {
         return 1;
     }
 
-    orient_ccw(p);
-    orient_ccw(wnd);
+    orient_ccw((struct polygon *)p);
+    orient_ccw((struct polygon *)wnd);
 
     p1 = *p;
 
@@ -906,9 +906,6 @@ int
 init_image_scanner(struct driz_param_t *par, struct scanner *s, int *ymin,
                    int *ymax) {
     struct polygon p, q, pq, inpq;
-    double xyin[2], xyout[2];
-    integer_t isize[2], osize[2];
-    int ipoint;
     int k, n;
     npy_intp *ndim;
 
