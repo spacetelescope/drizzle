@@ -4,7 +4,9 @@ images into a single output image using the drizzle algorithm.
 """
 import numpy as np
 
-from . import cdrizzle
+from drizzle import cdrizzle
+
+__all__ = ["blot_image", "Drizzle"]
 
 SUPPORTED_DRIZZLE_KERNELS = [
     "square",

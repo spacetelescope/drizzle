@@ -3,7 +3,6 @@ Module ``util`` has been deprecated.
 """
 import warnings
 
-
 warnings.warn(
     "Module 'drizzle.util' has been deprecated since version 2.0.0 "
     "and it will be removed in a future release. "

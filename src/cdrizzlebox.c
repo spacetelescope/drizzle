@@ -12,9 +12,6 @@
 #include <stdlib.h>
 
 
-static char buf[1024];
-
-
 /** --------------------------------------------------------------------------------------------------
  * Update the flux and counts in the output image using a weighted average
  *
@@ -251,7 +248,7 @@ static int
 do_kernel_point(struct driz_param_t* p) {
     struct scanner s;
     integer_t i, j, ii, jj;
-    integer_t ybounds[2], osize[2];
+    integer_t osize[2];
     float scale2, vc, d, dow;
     integer_t bv;
     int xmin, xmax, ymin, ymax, n;
@@ -341,7 +338,7 @@ static int
 do_kernel_gaussian(struct driz_param_t* p) {
     struct scanner s;
     integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit;
-    integer_t ybounds[2], osize[2];
+    integer_t osize[2];
     float vc, d, dow;
     double gaussian_efac, gaussian_es;
     double pfo, ac,  scale2, xxi, xxa, yyi, yya, w, ddx, ddy, r2, dover;
@@ -469,7 +466,7 @@ static int
 do_kernel_lanczos(struct driz_param_t* p) {
     struct scanner s;
     integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit, ix, iy;
-    integer_t ybounds[2], osize[2];
+    integer_t osize[2];
     float scale2, vc, d, dow;
     double pfo, xx, yy, xxi, xxa, yyi, yya, w, dx, dy, dover;
     int kernel_order;

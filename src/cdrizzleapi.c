@@ -481,6 +481,7 @@ invert_pixmap_wrap(PyObject *self, PyObject *args)
     struct driz_param_t par;
     double *xy, *xyin;
     npy_intp *ndim, xyin_dim = 2;
+    const double half = 0.5 - DBL_EPSILON;
 
     xyin = (double *) malloc(2 * sizeof(double));
 
@@ -502,19 +503,19 @@ invert_pixmap_wrap(PyObject *self, PyObject *args)
     ndim = PyArray_DIMS(pixmap_arr);
 
     if (bbox == Py_None) {
-        par.xmin = -0.5;
-        par.xmax = ndim[1] - 0.5;
-        par.ymin = -0.5;
-        par.ymax = ndim[0] - 0.5;
+        par.xmin = 0;
+        par.xmax = ndim[1] - 1;
+        par.ymin = 0;
+        par.ymax = ndim[0] - 1;
     } else {
         bbox_arr = (PyArrayObject *)PyArray_ContiguousFromAny(bbox, NPY_DOUBLE, 2, 2);
         if (!bbox_arr) {
           return PyErr_Format(gl_Error, "Invalid input bounding box.");
         }
-        par.xmin = *(double*) PyArray_GETPTR2(bbox_arr, 0, 0);
-        par.xmax = *(double*) PyArray_GETPTR2(bbox_arr, 0, 1);
-        par.ymin = *(double*) PyArray_GETPTR2(bbox_arr, 1, 0);
-        par.ymax = *(double*) PyArray_GETPTR2(bbox_arr, 1, 1);
+        par.xmin = (integer_t)(*(double*) PyArray_GETPTR2(bbox_arr, 0, 0) - half);
+        par.xmax = (integer_t)(*(double*) PyArray_GETPTR2(bbox_arr, 0, 1) + half);
+        par.ymin = (integer_t)(*(double*) PyArray_GETPTR2(bbox_arr, 1, 0) - half);
+        par.ymax = (integer_t)(*(double*) PyArray_GETPTR2(bbox_arr, 1, 1) + half);
     }
 
     xy = (double *)PyArray_DATA(xyout_arr);

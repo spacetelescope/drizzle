@@ -615,7 +615,6 @@ FCT_BGN_FN(utest_cdrizzle)
 
             /* Test for half overlap */
 
-            integer_t ybounds[2];       /* start of in-bounds */
             struct driz_param_t *p;     /* parameter structure */
 
             p = setup_parameters();
@@ -639,7 +638,6 @@ FCT_BGN_FN(utest_cdrizzle)
 
             /* Test for negative half overlap */
 
-            integer_t ybounds[2];       /* start of in-bounds */
             struct driz_param_t *p;     /* parameter structure */
 
             p = setup_parameters();
