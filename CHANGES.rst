@@ -7,7 +7,8 @@ Release Notes
 2.0.0 (2024-10-23)
 ==================
 
-- Backward incompatible major re-design of API. Backward compatibility was
+- Backward incompatible major re-design of API to make the code I/O agnostic.
+  Removed FITS-specific code. Backward compatibility was
   maintained with JWST and Roman pipelines only. [#134]
 
 - Deprecated module ``util``. New software should not import from this
