@@ -4,8 +4,10 @@
 Release Notes
 =============
 
-2.0.1 (Unreleased)
+2.0.1 (unreleased)
 ==================
+
+- Use ``astropy``'s ``pixel_to_pixel()`` in ``utils.calc_pixmap()``. [#161]
 
 - Update ``utils.calc_pixmap`` code to be ready for upcoming changes in GWCS
   due to which inverse WCS transformations will respect bounding box by
