@@ -4,6 +4,13 @@
 Release Notes
 =============
 
+
+2.0.1 (unreleased)
+==================
+
+- Use ``astropy``'s ``pixel_to_pixel()`` in ``utils.calc_pixmap()``. [#161]
+
+
 2.0.0 (2024-10-23)
 ==================
 
