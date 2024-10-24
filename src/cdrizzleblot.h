@@ -10,7 +10,6 @@
  * @return Non-zero if an error occurred.
  */
 
-int
-doblot(struct driz_param_t* p);
+int doblot(struct driz_param_t *p);
 
 #endif /* CDRIZZLEBLOT_H */

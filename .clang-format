@@ -1,0 +1,17 @@
+---
+BasedOnStyle: Google
+Language: Cpp
+AlwaysBreakAfterReturnType: None
+AlwaysBreakAfterDefinitionReturnType: TopLevel
+DerivePointerAlignment: false
+PointerAlignment: Right
+SortIncludes: false
+SortUsingDeclarations: false
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+AlignConsecutiveMacros: true
+ReflowComments: true
+SpaceBeforeParens: ControlStatements
+
+...
