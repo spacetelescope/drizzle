@@ -2,6 +2,8 @@ import math
 
 import numpy as np
 
+from astropy.wcs.utils import pixel_to_pixel
+
 __all__ = ["calc_pixmap", "decode_context", "estimate_pixel_scale_ratio"]
 
 _DEG2RAD = math.pi / 180.0
@@ -74,7 +76,7 @@ def calc_pixmap(wcs_from, wcs_to, shape=None):
         )
 
     y, x = np.indices(shape, dtype=np.float64)
-    x, y = wcs_to.world_to_pixel_values(*wcs_from.pixel_to_world_values(x, y))
+    x, y = pixel_to_pixel(wcs_from, wcs_to, x, y)
     pixmap = np.dstack([x, y])
     return pixmap
 
