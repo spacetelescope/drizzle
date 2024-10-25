@@ -32,3 +32,5 @@ jobs:
           coverage: codecov
 
         - linux: py312-xdist-devdeps
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
