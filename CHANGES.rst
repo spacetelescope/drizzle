@@ -4,6 +4,13 @@
 Release Notes
 =============
 
+2.1.0 (2024-12-09)
+==================
+
+- Added support for resampling and co-adding images using squared weights.
+  This can be helpful when resampling variance arrays for the purpose of
+  performing propagation of uncertainties. [#163]
+
 2.0.0 (2024-10-23)
 ==================
 

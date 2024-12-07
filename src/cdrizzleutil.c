@@ -17,7 +17,7 @@
 void
 driz_error_init(struct driz_error_t *error) {
     assert(error);
-
+    error->type = NULL;
     error->last_message[0] = 0;
 }
 
@@ -52,6 +52,24 @@ driz_error_format_message(struct driz_error_t *error, const char *format, ...) {
     va_start(argp, format);
     (void)vsnprintf(error->last_message, MAX_DRIZ_ERROR_LEN, format, argp);
     va_end(argp);
+}
+
+void
+driz_error_set(struct driz_error_t *error, PyObject *type, const char *format,
+               ...) {
+    /* See http://c-faq.com/varargs/vprintf.html
+       for an explanation of how all this variable length argument list stuff
+       works. */
+    va_list argp;
+
+    assert(error);
+    assert(format);
+
+    va_start(argp, format);
+    (void)vsnprintf(error->last_message, MAX_DRIZ_ERROR_LEN, format, argp);
+    va_end(argp);
+
+    error->type = type;
 }
 
 const char *
@@ -89,13 +107,16 @@ driz_param_dump(struct driz_param_t *p) {
         "exposure_time:        %f\n"
         "weight_scale:         %f\n"
         "fill_value:           %f\n"
+        "fill_value2:          %f\n"
         "do_fill:              %s\n"
+        "do_fill2:             %s\n"
         "in_units:             %s\n"
         "out_units:            %s\n"
         "scale:                %f\n",
         kernel_enum2str(p->kernel), p->pixel_fraction, p->exposure_time,
-        p->weight_scale, p->fill_value, bool2str(p->do_fill),
-        unit_enum2str(p->in_units), unit_enum2str(p->out_units), p->scale);
+        p->weight_scale, p->fill_value, p->fill_value2, bool2str(p->do_fill),
+        bool2str(p->do_fill2), unit_enum2str(p->in_units),
+        unit_enum2str(p->out_units), p->scale);
 }
 
 void
@@ -114,7 +135,9 @@ driz_param_init(struct driz_param_t *p) {
 
     /* Filling */
     p->fill_value = 0.0;
+    p->fill_value2 = 0.0;
     p->do_fill = 0;
+    p->do_fill2 = 0;
 
     /* CPS / Counts */
     p->in_units = unit_counts;
@@ -124,11 +147,20 @@ driz_param_init(struct driz_param_t *p) {
 
     /* Input data */
     p->data = NULL;
+    p->data2 = NULL;
     p->weights = NULL;
     p->pixmap = NULL;
+    p->ndata2 = 0;
+
+    /* Input image dimensions */
+    p->in_nx = -1;
+    p->in_ny = -1;
+    p->out_nx = -1;
+    p->out_ny = -1;
 
     /* Output data */
     p->output_data = NULL;
+    p->output_data2 = NULL;
     p->output_counts = NULL;
     p->output_context = NULL;
 
@@ -259,11 +291,22 @@ create_lanczos_lut(const int kernel_order, const size_t npix, const float del,
 }
 
 void
-put_fill(struct driz_param_t *p, const float fill_value) {
-    integer_t i, j, osize[2];
+put_fill(struct driz_param_t *p) {
+    integer_t i, j, k, osize[2], osize2[2];
 
     assert(p);
     get_dimensions(p->output_data, osize);
+    if (p->output_data2) {
+        for (k = 0; k < p->ndata2; ++k) {
+            get_dimensions(p->output_data2[k], osize2);
+            if ((osize2[0] != osize[0]) || (osize2[1] != osize[1])) {
+                driz_error_set(p->error, PyExc_ValueError,
+                               "Mismatch between output_data and output_data2 "
+                               "array size.");
+                return;
+            }
+        }
+    }
     for (j = 0; j < osize[1]; ++j) {
         for (i = 0; i < osize[0]; ++i) {
             if (oob_pixel(p->output_counts, i, j)) {
@@ -277,7 +320,12 @@ put_fill(struct driz_param_t *p, const float fill_value) {
                 return;
 
             } else if (get_pixel(p->output_counts, i, j) == 0.0) {
-                set_pixel(p->output_data, i, j, fill_value);
+                set_pixel(p->output_data, i, j, p->fill_value);
+                if (p->output_data2) {
+                    for (k = 0; k < p->ndata2; ++k) {
+                        set_pixel(p->output_data2[k], i, j, p->fill_value2);
+                    }
+                }
             }
         }
     }
