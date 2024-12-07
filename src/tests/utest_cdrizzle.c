@@ -199,6 +199,9 @@ void
 print_context(char *title, struct driz_param_t *p, int lo, int hi) {
     int j, i;
     integer_t bv;
+    if (!p->output_context) {
+        return;
+    }
 
     if (logptr) {
         bv = 1;
