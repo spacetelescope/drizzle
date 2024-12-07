@@ -20,46 +20,60 @@
  * d:   new contribution to weighted flux
  * vc:  previous value of counts
  * dow: new contribution to weighted counts
+ * d2:  array of data2 values that need to be co-added using squared weights
+ *      (i.e., variance arrays)
  */
-
 inline_macro static int
 update_data(struct driz_param_t *p, const integer_t ii, const integer_t jj,
-            const float d, const float vc, const float dow) {
-    double vc_plus_dow;
+            const float d, const float dow, float *d2) {
+    double vc_plus_dow, vc_plus_dow2;
+    double v, vc2, dow2;
+    float vc;
+    int i;
 
-    if (dow == 0.0f) return 0;
+    if (oob_output_pixel(p, ii, jj)) {
+        driz_error_format_message(
+            p->error, "OOB in accessing output data [%d,%d]", ii, jj);
+        return 1;
+    }
 
+    if (dow == 0.0f) {
+        return 0;
+    }
+
+    // get previous output image weight:
+    vc = get_pixel(p->output_counts, ii, jj);
+
+    // new output image weight:
     vc_plus_dow = vc + dow;
 
     if (vc == 0.0f) {
-        if (oob_pixel(p->output_data, ii, jj)) {
-            driz_error_format_message(p->error, "OOB in output_data[%d,%d]", ii,
-                                      jj);
-            return 1;
-        } else {
-            set_pixel(p->output_data, ii, jj, d);
+        set_pixel(p->output_data, ii, jj, d);
+        if (d2) {
+            dow2 = dow * dow;
+            vc2 = vc * vc;
+            vc_plus_dow2 = vc_plus_dow * vc_plus_dow;
+            for (i = 0; i < p->ndata2; ++i) {
+                set_pixel(p->output_data2[i], ii, jj, d2[i]);
+            }
         }
-
     } else {
-        if (oob_pixel(p->output_data, ii, jj)) {
-            driz_error_format_message(p->error, "OOB in output_data[%d,%d]", ii,
-                                      jj);
-            return 1;
-        } else {
-            double value;
-            value = (get_pixel(p->output_data, ii, jj) * vc + dow * d) /
-                    (vc_plus_dow);
-            set_pixel(p->output_data, ii, jj, value);
+        v = (get_pixel(p->output_data, ii, jj) * vc + dow * d) / vc_plus_dow;
+        set_pixel(p->output_data, ii, jj, v);
+        if (d2) {
+            dow2 = dow * dow;
+            vc2 = vc * vc;
+            vc_plus_dow2 = vc_plus_dow * vc_plus_dow;
+            for (i = 0; i < p->ndata2; ++i) {
+                v = (get_pixel(p->output_data2[i], ii, jj) * vc2 +
+                     dow2 * d2[i]) /
+                    vc_plus_dow2;
+                set_pixel(p->output_data2[i], ii, jj, v);
+            }
         }
     }
 
-    if (oob_pixel(p->output_counts, ii, jj)) {
-        driz_error_format_message(p->error, "OOB in output_counts[%d,%d]", ii,
-                                  jj);
-        return 1;
-    } else {
-        set_pixel(p->output_counts, ii, jj, vc_plus_dow);
-    }
+    set_pixel(p->output_counts, ii, jj, vc_plus_dow);
 
     return 0;
 }
@@ -257,11 +271,14 @@ over(const integer_t i, const integer_t j, const double xmin, const double xmax,
 static int
 do_kernel_point(struct driz_param_t *p) {
     struct scanner s;
-    integer_t i, j, ii, jj;
+    integer_t i, j, ii, jj, k;
     integer_t osize[2];
-    float scale2, vc, d, dow;
+    float scale2, d, dow, *d2 = NULL;
     integer_t bv;
     int xmin, xmax, ymin, ymax, n;
+    int ndata2;
+
+    ndata2 = p->ndata2;
 
     scale2 = p->scale * p->scale;
     bv = compute_bit_value(p->uuid);
@@ -273,6 +290,15 @@ do_kernel_point(struct driz_param_t *p) {
 
     /* This is the outer loop over all the lines in the input image */
     get_dimensions(p->output_data, osize);
+
+    if (ndata2 > 0) {
+        if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
+            driz_error_set(p->error, PyExc_MemoryError,
+                           "Memory allocation failed.");
+            return 1;
+        }
+    }
+
     for (j = ymin; j <= ymax; ++j) {
         /* Check the overlap with the output */
         n = get_scanline_limits(&s, j, &xmin, &xmax);
@@ -282,8 +308,9 @@ do_kernel_point(struct driz_param_t *p) {
             p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
             break;
         } else if (n == 2 || n == 3) {
-            // pixel centered on y is outside of scanner's limits or image [0,
-            // height - 1] OR: limits (x1, x2) are equal (line width is 0)
+            // pixel centered on y is outside of scanner's limits or image
+            // [0, height - 1] OR: limits (x1, x2) are equal (line width is
+            // 0)
             p->nmiss += (p->xmax - p->xmin);
             ++p->nskip;
             continue;
@@ -307,13 +334,16 @@ do_kernel_point(struct driz_param_t *p) {
                     ++p->nmiss;
 
                 } else {
-                    vc = get_pixel(p->output_counts, ii, jj);
-
                     /* Allow for stretching because of scale change */
                     d = get_pixel(p->data, i, j) * scale2;
+                    if (d2) {
+                        for (k = 0; k < ndata2; ++k) {
+                            d2[k] = get_pixel(p->data2[k], i, j) * scale2;
+                        }
+                    }
 
-                    /* Scale the weighting mask by the scale factor.  Note that
-                       we DON'T scale by the Jacobian as it hasn't been
+                    /* Scale the weighting mask by the scale factor.  Note
+                       that we DON'T scale by the Jacobian as it hasn't been
                        calculated */
                     if (p->weights) {
                         dow = get_pixel(p->weights, i, j) * p->weight_scale;
@@ -327,7 +357,8 @@ do_kernel_point(struct driz_param_t *p) {
                         set_bit(p->output_context, ii, jj, bv);
                     }
 
-                    if (update_data(p, ii, jj, d, vc, dow)) {
+                    if (update_data(p, ii, jj, d, dow, d2)) {
+                        free(d2);
                         return 1;
                     }
                 }
@@ -335,6 +366,7 @@ do_kernel_point(struct driz_param_t *p) {
         }
     }
 
+    free(d2);
     return 0;
 }
 
@@ -348,13 +380,16 @@ do_kernel_point(struct driz_param_t *p) {
 static int
 do_kernel_gaussian(struct driz_param_t *p) {
     struct scanner s;
-    integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit;
+    integer_t bv, i, j, ii, jj, k, nxi, nxa, nyi, nya, nhit;
     integer_t osize[2];
-    float vc, d, dow;
+    float d, dow, *d2 = NULL;
     double gaussian_efac, gaussian_es;
     double pfo, ac, scale2, xxi, xxa, yyi, yya, w, ddx, ddy, r2, dover;
     const double nsig = 2.5;
     int xmin, xmax, ymin, ymax, n;
+    int ndata2;
+
+    ndata2 = p->ndata2;
 
     /* Added in V2.9 - make sure pfo doesn't get less than 1.2
        divided by the scale so that there are never holes in the
@@ -378,6 +413,15 @@ do_kernel_gaussian(struct driz_param_t *p) {
     /* This is the outer loop over all the lines in the input image */
 
     get_dimensions(p->output_data, osize);
+
+    if (ndata2 > 0) {
+        if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
+            driz_error_set(p->error, PyExc_MemoryError,
+                           "Memory allocation failed.");
+            return 1;
+        }
+    }
+
     for (j = ymin; j <= ymax; ++j) {
         /* Check the overlap with the output */
         n = get_scanline_limits(&s, j, &xmin, &xmax);
@@ -419,6 +463,11 @@ do_kernel_gaussian(struct driz_param_t *p) {
 
                 /* Allow for stretching because of scale change */
                 d = get_pixel(p->data, i, j) * scale2;
+                if (d2) {
+                    for (k = 0; k < ndata2; ++k) {
+                        d2[k] = get_pixel(p->data2[k], i, j) * scale2;
+                    }
+                }
 
                 /* Scale the weighting mask by the scale factor and inversely by
                    the Jacobian to ensure conservation of weight in the output
@@ -444,7 +493,6 @@ do_kernel_gaussian(struct driz_param_t *p) {
                         /* Count the hits */
                         ++nhit;
 
-                        vc = get_pixel(p->output_counts, ii, jj);
                         dow = (float)dover * w;
 
                         /* If we are create or modifying the context image, we
@@ -453,7 +501,7 @@ do_kernel_gaussian(struct driz_param_t *p) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
 
-                        if (update_data(p, ii, jj, d, vc, dow)) {
+                        if (update_data(p, ii, jj, d, dow, d2)) {
                             return 1;
                         }
                     }
@@ -478,15 +526,18 @@ do_kernel_gaussian(struct driz_param_t *p) {
 static int
 do_kernel_lanczos(struct driz_param_t *p) {
     struct scanner s;
-    integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit, ix, iy;
+    integer_t bv, i, j, ii, jj, k, nxi, nxa, nyi, nya, nhit, ix, iy;
     integer_t osize[2];
-    float scale2, vc, d, dow;
+    float scale2, d, dow, *d2 = NULL;
     double pfo, xx, yy, xxi, xxa, yyi, yya, w, dx, dy, dover;
     int kernel_order;
     struct lanczos_param_t lanczos;
     const size_t nlut = 512;
     const float del = 0.01;
     int xmin, xmax, ymin, ymax, n;
+    int ndata2;
+
+    ndata2 = p->ndata2;
 
     dx = 1.0;
     dy = 1.0;
@@ -515,6 +566,15 @@ do_kernel_lanczos(struct driz_param_t *p) {
     /* This is the outer loop over all the lines in the input image */
 
     get_dimensions(p->output_data, osize);
+
+    if (ndata2 > 0) {
+        if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
+            driz_error_set(p->error, PyExc_MemoryError,
+                           "Memory allocation failed.");
+            return 1;
+        }
+    }
+
     for (j = ymin; j <= ymax; ++j) {
         /* Check the overlap with the output */
         n = get_scanline_limits(&s, j, &xmin, &xmax);
@@ -553,6 +613,11 @@ do_kernel_lanczos(struct driz_param_t *p) {
 
                 /* Allow for stretching because of scale change */
                 d = get_pixel(p->data, i, j) * scale2;
+                if (d2) {
+                    for (k = 0; k < ndata2; ++k) {
+                        d2[k] = get_pixel(p->data2[k], i, j) * scale2;
+                    }
+                }
 
                 /* Scale the weighting mask by the scale factor and inversely by
                    the Jacobian to ensure conservation of weight in the output
@@ -581,7 +646,6 @@ do_kernel_lanczos(struct driz_param_t *p) {
                         /* Count the hits */
                         ++nhit;
 
-                        vc = get_pixel(p->output_counts, ii, jj);
                         dow = (float)(dover * w);
 
                         /* If we are create or modifying the context image, we
@@ -590,7 +654,7 @@ do_kernel_lanczos(struct driz_param_t *p) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
 
-                        if (update_data(p, ii, jj, d, vc, dow)) {
+                        if (update_data(p, ii, jj, d, dow, d2)) {
                             return 1;
                         }
                     }
@@ -619,12 +683,15 @@ do_kernel_lanczos(struct driz_param_t *p) {
 static int
 do_kernel_turbo(struct driz_param_t *p) {
     struct scanner s;
-    integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit, iis, iie, jjs, jje;
+    integer_t bv, i, j, ii, jj, k, nxi, nxa, nyi, nya, nhit, iis, iie, jjs, jje;
     integer_t osize[2];
-    float vc, d, dow;
+    float d, dow, *d2 = NULL;
     double pfo, scale2, ac;
     double xxi, xxa, yyi, yya, w, dover;
     int xmin, xmax, ymin, ymax, n;
+    int ndata2;
+
+    ndata2 = p->ndata2;
 
     driz_log_message("starting do_kernel_turbo");
     bv = compute_bit_value(p->uuid);
@@ -640,6 +707,15 @@ do_kernel_turbo(struct driz_param_t *p) {
     /* This is the outer loop over all the lines in the input image */
 
     get_dimensions(p->output_data, osize);
+
+    if (ndata2 > 0) {
+        if (!(d2 = (float *)malloc(ndata2 * sizeof(float)))) {
+            driz_error_set(p->error, PyExc_MemoryError,
+                           "Memory allocation failed.");
+            return 1;
+        }
+    }
+
     for (j = ymin; j <= ymax; ++j) {
         /* Check the overlap with the output */
         n = get_scanline_limits(&s, j, &xmin, &xmax);
@@ -688,6 +764,11 @@ do_kernel_turbo(struct driz_param_t *p) {
 
                 /* Allow for stretching because of scale change */
                 d = get_pixel(p->data, i, j) * (float)scale2;
+                if (d2) {
+                    for (k = 0; k < ndata2; ++k) {
+                        d2[k] = get_pixel(p->data2[k], i, j) * scale2;
+                    }
+                }
 
                 /* Scale the weighting mask by the scale factor and inversely by
                    the Jacobian to ensure conservation of weight in the output.
@@ -712,7 +793,6 @@ do_kernel_turbo(struct driz_param_t *p) {
                             /* Count the hits */
                             ++nhit;
 
-                            vc = get_pixel(p->output_counts, ii, jj);
                             dow = (float)(dover * w);
 
                             /* If we are create or modifying the context image,
@@ -721,7 +801,7 @@ do_kernel_turbo(struct driz_param_t *p) {
                                 set_bit(p->output_context, ii, jj, bv);
                             }
 
-                            if (update_data(p, ii, jj, d, vc, dow)) {
+                            if (update_data(p, ii, jj, d, dow, d2)) {
                                 return 1;
                             }
                         }
@@ -749,11 +829,14 @@ do_kernel_turbo(struct driz_param_t *p) {
 
 int
 do_kernel_square(struct driz_param_t *p) {
-    integer_t bv, i, j, ii, jj, min_ii, max_ii, min_jj, max_jj, nhit;
+    integer_t bv, i, j, ii, jj, k, min_ii, max_ii, min_jj, max_jj, nhit;
     integer_t osize[2];
-    float scale2, vc, d, dow;
+    float scale2, d, dow, *d2 = NULL;
     double dh, jaco, tem, dover, w;
     double xin[4], yin[4], xout[4], yout[4];
+    int ndata2;
+
+    ndata2 = p->ndata2;
 
     struct scanner s;
     int xmin, xmax, ymin, ymax, n;
@@ -773,6 +856,15 @@ do_kernel_square(struct driz_param_t *p) {
 
     /* This is the outer loop over all the lines in the input image */
     get_dimensions(p->output_data, osize);
+
+    if (ndata2 > 0) {
+        if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
+            driz_error_set(p->error, PyExc_MemoryError,
+                           "Memory allocation failed.");
+            return 1;
+        }
+    }
+
     for (j = ymin; j <= ymax; ++j) {
         /* Check the overlap with the output */
         n = get_scanline_limits(&s, j, &xmin, &xmax);
@@ -830,6 +922,11 @@ do_kernel_square(struct driz_param_t *p) {
 
             /* Allow for stretching because of scale change */
             d = get_pixel(p->data, i, j) * scale2;
+            if (d2) {
+                for (k = 0; k < ndata2; ++k) {
+                    d2[k] = get_pixel(p->data2[k], i, j) * scale2;
+                }
+            }
 
             /* Scale the weighting mask by the scale factor and inversely by
                the Jacobian to ensure conservation of weight in the output */
@@ -851,8 +948,6 @@ do_kernel_square(struct driz_param_t *p) {
                     dover = compute_area((double)ii, (double)jj, xout, yout);
 
                     if (dover > 0.0) {
-                        vc = get_pixel(p->output_counts, ii, jj);
-
                         /* Re-normalise the area overlap using the Jacobian */
                         dover /= jaco;
                         dow = (float)(dover * w);
@@ -866,7 +961,7 @@ do_kernel_square(struct driz_param_t *p) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
 
-                        if (update_data(p, ii, jj, d, vc, dow)) {
+                        if (update_data(p, ii, jj, d, dow, d2)) {
                             return 1;
                         }
                     }
