@@ -450,7 +450,12 @@ class Drizzle:
             self._out_img = out_img
 
     def _alloc_output_arrays2_init(self, out_img2=None):
-        assert self._out_img2 is None
+        if hasattr(self, "_out_img2") and self._out_img2 is not None:
+            raise AssertionError(
+                "It is expected that _alloc_output_arrays2_init is called "
+                "before Drizzle._out_img2 is set."
+            )
+
         if out_img2 is None:
             return
 
