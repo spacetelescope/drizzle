@@ -59,8 +59,6 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
     PyArrayObject *arr = NULL;
     int i, at_least_one;
 
-    // *nx = -1;
-    // *ny = -1;
     *arrays = NULL;
     *nmax = 0;
     if (n_none) {
@@ -127,10 +125,11 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
                 if (n_none) {
                     (*n_none)++;
                 }
-                arr = NULL;
+                arr_list[i] = NULL;
                 Py_XDECREF(list_elem);
                 continue;
             } else {
+                *n_none = 1;
                 driz_error_set(
                     error, PyExc_ValueError,
                     "Element %d of '%s' list is None which is not allowed.", i,

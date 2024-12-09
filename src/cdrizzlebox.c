@@ -440,7 +440,7 @@ do_kernel_point(struct driz_param_t *p) {
             return 1;
         }
         for (i = 0; i < ndata2; ++i) {
-            if (!p->output_data2[k]) {
+            if (!p->output_data2[i]) {
                 driz_error_set(
                     p->error, PyExc_RuntimeError,
                     "Some arrays in 'output_data2' have invalid pointers.");
@@ -581,7 +581,7 @@ do_kernel_gaussian(struct driz_param_t *p) {
             return 1;
         }
         for (i = 0; i < ndata2; ++i) {
-            if (!p->output_data2[k]) {
+            if (!p->output_data2[i]) {
                 driz_error_set(
                     p->error, PyExc_RuntimeError,
                     "Some arrays in 'output_data2' have invalid pointers.");
@@ -752,7 +752,7 @@ do_kernel_lanczos(struct driz_param_t *p) {
             return 1;
         }
         for (i = 0; i < ndata2; ++i) {
-            if (!p->output_data2[k]) {
+            if (!p->output_data2[i]) {
                 driz_error_set(
                     p->error, PyExc_RuntimeError,
                     "Some arrays in 'output_data2' have invalid pointers.");
@@ -911,7 +911,7 @@ do_kernel_turbo(struct driz_param_t *p) {
             return 1;
         }
         for (i = 0; i < ndata2; ++i) {
-            if (!p->output_data2[k]) {
+            if (!p->output_data2[i]) {
                 driz_error_set(
                     p->error, PyExc_RuntimeError,
                     "Some arrays in 'output_data2' have invalid pointers.");
@@ -1080,7 +1080,7 @@ do_kernel_square(struct driz_param_t *p) {
             return 1;
         }
         for (i = 0; i < ndata2; ++i) {
-            if (!p->output_data2[k]) {
+            if (!p->output_data2[i]) {
                 driz_error_set(
                     p->error, PyExc_RuntimeError,
                     "Some arrays in 'output_data2' have invalid pointers.");
