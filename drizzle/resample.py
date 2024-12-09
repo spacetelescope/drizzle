@@ -659,7 +659,7 @@ class Drizzle:
             else:
                 shapes2 = set()
                 ninputs2 = len(data2)
-                data2 = [d for d in data2]
+                data2 = list(data2)
                 for k, d in enumerate(data2):
                     if d is None or d.size == 0:
                         data2[k] = None
