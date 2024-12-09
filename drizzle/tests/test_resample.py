@@ -1584,24 +1584,17 @@ def test_drizzle_weights_squared_bad_inputs():
         "Mismatch between the number of 'out_img2' images"
     )
 
-    # 5 - test same number of data2 is used each time:
+    # 5 - test mismatch between output data image and output variance image:
     out_img2 = np.zeros(tuple(s + 1 for s in out_shape), dtype=np.float32)
-    driz = resample.Drizzle(
-        kernel=kernel,
-        out_img=out_img,
-        out_img2=out_img2,
-    )
 
     with pytest.raises(ValueError) as err_info:
-        driz.add_image(
-            data=in_sci2,
-            exptime=1.0,
-            pixmap=pixmap,
-            weight_map=in_wht2,
-            data2=None,
+        driz = resample.Drizzle(
+            kernel=kernel,
+            out_img=out_img,
+            out_img2=out_img2,
         )
     assert str(err_info.value).startswith(
-        "Mismatch between the number of 'out_img2' images"
+        "Inconsistent data shapes specified:"
     )
 
 

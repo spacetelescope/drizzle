@@ -198,18 +198,18 @@ class Drizzle:
             ``fillval`` value.
 
         fillval2: float, None, str, optional
-            Same as ``filvall`` but applies to ``out_img2``.
+            Same as ``fillval`` but applies to ``out_img2``.
 
         out_img : 2D array of float32, None, optional
             A 2D numpy array containing the output image produced by
             drizzling. On the first call the array values should be set to zero.
-            Subsequent calls it will hold the intermediate results.
+            On subsequent calls it will hold the intermediate results.
 
         out_img2 : 2D array of float32, list of 2D arrays of float32, None, optional
             A 2D numpy array containing the output image produced by
             drizzling *with squared weights*. This is useful when performing
             standard error propagation using variance arrays. On the first call
-            the array values should be set to zero. Subsequent calls it will
+            the array values should be set to zero. On subsequent calls it will
             hold the intermediate results.
 
             Multiple output arrays (of the same shape as that of ``out_img``)
@@ -318,7 +318,7 @@ class Drizzle:
 
         if out_img2 is not None:
             if isinstance(out_img2, np.ndarray):
-                out_img2 = np.asarray(out_img, dtype=np.float32)
+                out_img2 = np.asarray(out_img2, dtype=np.float32)
                 shapes.add(out_img2.shape)
             else:
                 out_img2 = [
@@ -671,7 +671,8 @@ class Drizzle:
                     else:
                         shapes2.add(d.shape)
 
-                if len(shapes2) > 1 and shapes2.pop() != data.shape:
+                if ((len(shapes2) == 1 and shapes2.pop() != data.shape) or
+                        len(shapes2) > 1):
                     raise ValueError(
                         "'data2' shape(s) is not consistent with 'data' shape."
                     )
