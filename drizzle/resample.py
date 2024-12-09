@@ -351,7 +351,7 @@ class Drizzle:
                 out_wht=out_wht,
                 out_ctx=out_ctx,
             )
-            self._alloc_output_arrays2(out_img2=out_img2)
+            self._alloc_output_arrays2_init(out_img2=out_img2)
 
         elif len(shapes) > 1:
             raise ValueError(
@@ -449,41 +449,41 @@ class Drizzle:
         else:
             self._out_img = out_img
 
-    def _alloc_output_arrays2(self, out_img2=None, ninputs2=None):
-        if self._out_img2 is None:
-            if out_img2 is None:
-                if ninputs2 is None or ninputs2 < 1:
-                    # nothing to do
-                    return
-                if self._ncoadds > 0:
-                    raise ValueError(
-                        "Mismatch between the number of 'out_img2' images "
-                        "and the number of inputs."
-                    )
-                self._out_img2 = [
-                    np.zeros(self._out_shape, dtype=np.float32)
-                    for _ in range(ninputs2)
-                ]
+    def _alloc_output_arrays2_init(self, out_img2=None):
+        assert self._out_img2 is None
+        if out_img2 is None:
+            return
+
+        if isinstance(out_img2, np.ndarray):
+            out_img2 = [out_img2]
+
+        self._out_img2 = []
+        for i2 in out_img2:
+            if i2 is None:
+                arr = np.zeros(self._out_shape, dtype=np.float32)
             else:
-                if ninputs2 is not None:
-                    if len(out_img2) != ninputs2:
-                        raise ValueError(
-                            "Mismatch between the number of 'out_img2' images "
-                            "and the number of inputs."
-                        )
+                arr = np.asarray(i2, dtype=np.float32)
+            self._out_img2.append(arr)
 
-                if isinstance(out_img2, np.ndarray):
-                    out_img2 = [out_img2]
-
-                self._out_img2 = [
-                    np.asarray(i2, dtype=np.float32) for i2 in out_img2
-                ]
+    def _alloc_output_arrays2_add(self, ninputs2=None):
+        if self._out_img2 is None:
+            if ninputs2 is None or ninputs2 < 1:
+                # nothing to do
+                return
+            if self._ncoadds > 0:
+                raise ValueError(
+                    "Mismatch between the number of 'out_img2' images "
+                    "and the number of inputs."
+                )
+            self._out_img2 = [
+                np.zeros(self._out_shape, dtype=np.float32)
+                for _ in range(ninputs2)
+            ]
 
         else:
             nimg2 = len(self._out_img2)
 
-            if ((out_img2 is not None and len(out_img2) != nimg2) or
-                    (ninputs2 is not None and ninputs2 != nimg2) or
+            if ((ninputs2 is not None and ninputs2 != nimg2) or
                     (ninputs2 is None and nimg2 > 0)):
                 raise ValueError(
                     "Mismatch between the number of 'out_img2' images "
@@ -537,7 +537,7 @@ class Drizzle:
             pixels in the ouput frame and ``pixmap[..., 1]`` forms a 2D array of
             Y-coordinates of input pixels in the ouput coordinate frame.
 
-        data2 : 2D array of float32, list of 2D arrays of float32, None, optional
+        data2 : 2D array of float32, list of 2D arrays of float32 or None, None, optional
             A 2D numpy array (or a list of 2D arrays) with image data to be
             resampled and co-added using squared weights. The resampled output
             image can be accessed via ``out_img2`` property of the `Drizzle`
@@ -547,7 +547,15 @@ class Drizzle:
             Multiple data arrays (of the same shape as that of ``data``)
             can be provided as a list of 2D arrays. The number of arrays must
             match the number of output data arrays provided during
-            initialization via argument ``out_img2``.
+            initialization via argument ``out_img2``. If an item in the list
+            is `None`, that item will not be resampled to the corresponding
+            ``out_img2`` element.
+
+            .. note::
+                It is assumed that data in ``data2`` have squared units of
+                ``data``. Therefore, when ``in_units`` are "counts",
+                ``data2`` arrays will be rescaled by ``exptime**2`` to convert
+                to rate units before resampling.
 
         scale : float, optional
             The pixel scale of the input image. Conceptually, this is the
@@ -643,16 +651,27 @@ class Drizzle:
             ninputs2 = None
         else:
             if isinstance(data2, np.ndarray):
-                shapes2 = [data2.shape]
-                data2 = [data2]
                 ninputs2 = 1
+                if data2.shape != data.shape:
+                    raise ValueError(
+                        "'data2' shape is not consistent with 'data' shape."
+                    )
             else:
                 shapes2 = set()
                 ninputs2 = len(data2)
-                for d in data2:
-                    shapes2.add(d.shape)
+                data2 = [d for d in data2]
+                for k, d in enumerate(data2):
+                    if d is None or d.size == 0:
+                        data2[k] = None
+                    else:
+                        shapes2.add(d.shape)
 
-        self._alloc_output_arrays2(ninputs2=ninputs2)
+                if len(shapes2) > 1 and shapes2.pop() != data.shape:
+                    raise ValueError(
+                        "'data2' shape(s) is not consistent with 'data' shape."
+                    )
+
+        self._alloc_output_arrays2_add(ninputs2=ninputs2)
 
         plane_no, id_in_plane = self._increment_ctx_id()
 
@@ -675,12 +694,6 @@ class Drizzle:
         if pixmap.shape[:2] != data.shape:
             raise ValueError(
                 "'pixmap' shape is not consistent with 'data' shape."
-            )
-
-        if (data2 is not None and
-                (len(shapes2) > 1 or shapes2.pop() != data.shape)):
-            raise ValueError(
-                "'data2' shape(s) is not consistent with 'data' shape."
             )
 
         if xmin is None or xmin < 0:

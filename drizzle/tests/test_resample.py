@@ -1362,7 +1362,7 @@ def test_resample_edge_collinear():
     ],
 )
 def test_drizzle_weights_squared(kernel, fc):
-    n = 200
+    n = 17
     in_shape = (n, n)
 
     # input coordinate grid:
@@ -1420,6 +1420,7 @@ def test_drizzle_weights_squared(kernel, fc):
             weight_map=in_wht2,
             data2=in_sci2_sq,
         )
+
         assert isinstance(driz.out_img2, list)
         assert len(driz.out_img2) == 1
 
@@ -1468,7 +1469,7 @@ def test_drizzle_weights_squared(kernel, fc):
 
 
 def test_drizzle_weights_squared_bad_inputs():
-    n = 200
+    n = 21
     in_shape = (n, n)
     kernel = "square"
 
@@ -1605,7 +1606,7 @@ def test_drizzle_weights_squared_bad_inputs():
 
 
 def test_drizzle_weights_squared_array_shape_mismatch():
-    n = 200
+    n = 20
     in_shape = (n, n)
     in_shape1 = (n + 1, n + 1)
     kernel = "square"
@@ -1650,6 +1651,22 @@ def test_drizzle_weights_squared_array_shape_mismatch():
         )
     assert str(err_info.value).startswith(
         "'data2' shape(s) is not consistent with 'data' shape."
+    )
+
+    driz = resample.Drizzle(
+        kernel=kernel,
+        out_img2=out_img2,
+    )
+    with pytest.raises(ValueError) as err_info:
+        driz.add_image(
+            data=in_sci1,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=in_wht2,
+            data2=in_sci2_sq,
+        )
+    assert str(err_info.value).startswith(
+        "'data2' shape is not consistent with 'data' shape."
     )
 
     with pytest.raises(ValueError) as err_info:

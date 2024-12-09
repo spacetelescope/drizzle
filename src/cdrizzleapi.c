@@ -50,19 +50,22 @@ scale_image(PyArrayObject *image, double scale_factor) {
 
 static int
 process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
-                   const char *name, PyArrayObject ***arrays, int *narr,
-                   struct driz_error_t *error) {
+                   const char *name, PyArrayObject ***arrays, int *nmax,
+                   int allow_none, int *n_none, struct driz_error_t *error) {
     npy_intp *ndim;
     int inx, iny;
     PyObject *list_elem = NULL;
     PyArrayObject **arr_list = NULL;
     PyArrayObject *arr = NULL;
-    int i, nmax;
+    int i, at_least_one;
 
-    *nx = 0;
-    *ny = 0;
+    // *nx = -1;
+    // *ny = -1;
     *arrays = NULL;
-    *narr = 0;
+    *nmax = 0;
+    if (n_none) {
+        *n_none = 0;
+    }
 
     if (list == NULL || list == Py_None) {
         driz_error_set(error, PyExc_ValueError,
@@ -80,10 +83,12 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
         if (!arr) {
             driz_error_set(error, PyExc_ValueError, "Invalid '%s' array.",
                            name);
+            free(arr_list);
             return 1;
         }
         *arr_list = arr;
-        *narr = 1;
+        *nmax = 1;
+        *n_none = 0;
         ndim = PyArray_DIMS(arr);
         *nx = (int)ndim[1];
         *ny = (int)ndim[0];
@@ -93,39 +98,65 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
     } else if (!PyList_Check(list) && !PyTuple_Check(list)) {
         driz_error_set(
             error, PyExc_TypeError,
-            "Argument '%s' is not a list or a tuple of numpy.ndarray.", name);
+            "Argument '%s' is not a list or a tuple of numpy.ndarray or None.",
+            name);
     }
 
-    if (!(nmax = PySequence_Size(list))) {
+    at_least_one = 0;
+
+    if (!(*nmax = PySequence_Size(list))) {
         return 0;
     }
 
-    arr_list = (PyArrayObject **)calloc(nmax, sizeof(PyArrayObject *));
+    arr_list = (PyArrayObject **)calloc(*nmax, sizeof(PyArrayObject *));
     if (!arr_list) {
         driz_error_set(error, PyExc_MemoryError, "Memory allocation failed.");
         return 1;
     }
 
-    for (i = 0; i < nmax; ++i) {
-        if (!(list_elem = PySequence_GetItem(list, 0))) {
+    for (i = 0; i < *nmax; ++i) {
+        if (!(list_elem = PySequence_GetItem(list, i))) {
             driz_error_set(error, PyExc_RuntimeError,
-                           "Error retrieving array from the '%s' list.", name);
-            goto _exit_on_err;
-        }
-
-        arr = (PyArrayObject *)PyArray_ContiguousFromAny(list_elem, NPY_FLOAT,
-                                                         2, 2);
-        Py_XDECREF(list_elem);
-        list_elem = NULL;
-
-        if (!arr) {
-            driz_error_set(error, PyExc_ValueError, "Invalid '%s' array.",
+                           "Error retrieving array %d from the '%s' list.", i,
                            name);
             goto _exit_on_err;
         }
+
+        if (list_elem == Py_None) {
+            if (allow_none) {
+                if (n_none) {
+                    (*n_none)++;
+                }
+                arr = NULL;
+                Py_XDECREF(list_elem);
+                continue;
+            } else {
+                driz_error_set(
+                    error, PyExc_ValueError,
+                    "Element %d of '%s' list is None which is not allowed.", i,
+                    name);
+                goto _exit_on_err;
+            }
+        } else {
+            arr = (PyArrayObject *)PyArray_ContiguousFromAny(list_elem,
+                                                             NPY_FLOAT, 2, 2);
+            if (!arr) {
+                driz_error_set(error, PyExc_ValueError,
+                               "Invalid array in '%s' at position %d.", name,
+                               i);
+                goto _exit_on_err;
+            }
+            at_least_one = 1;
+        }
+        Py_XDECREF(list_elem);
+
         arr_list[i] = arr;
 
-        if (i) {
+        if (*nx < 0) {
+            ndim = PyArray_DIMS(arr);
+            *nx = (int)ndim[1];
+            *ny = (int)ndim[0];
+        } else {
             ndim = PyArray_DIMS(arr);
             inx = (int)ndim[1];
             iny = (int)ndim[0];
@@ -135,21 +166,23 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
                     "Inconsistent image shape in the '%s' image list.", name);
                 goto _exit_on_err;
             }
-        } else {
-            ndim = PyArray_DIMS(arr);
-            *nx = (int)ndim[1];
-            *ny = (int)ndim[0];
         }
     }
-    *arrays = arr_list;
-    *narr = nmax;
 
+    if (!at_least_one && !allow_none) {
+        free(arr_list);
+        arr_list = NULL;
+        *nmax = 0;
+    }
+
+    *arrays = arr_list;
     return 0;
 
 _exit_on_err:
+
     Py_XDECREF(list_elem);
     if (arr_list) {
-        for (i = 0; i < nmax; ++i) {
+        for (i = 0; i < *nmax; ++i) {
             Py_XDECREF(arr_list[i]);
         }
         free(arr_list);
@@ -167,7 +200,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords) {
     /* Arguments in the order they appear */
     PyObject *oimg, *owei, *pixmap, *oout, *owht, *ocon;
     PyObject *oimg2 = NULL, *oout2 = NULL;
-    int i;
+    int i, n_none;
     int nsq_args, nsq_arr = 0, nsq_arr_out = 0;
 
     integer_t uniqid = 1;
@@ -386,31 +419,45 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords) {
     nsq_args = ((int)(oimg2 != NULL && oimg2 != Py_None)) +
                ((int)(oout2 != NULL && oout2 != Py_None));
     if (nsq_args == 2) {
+        nx = inx;
+        ny = iny;
         if (process_array_list(oimg2, &nx, &ny, "input2", &img2_list, &nsq_arr,
-                               &error)) {
+                               1, &n_none, &error)) {
             goto _exit;
         }
-        if (nx != inx || ny != iny) {
-            driz_error_set_message(&error,
-                                   "'input2' arrays must have the same "
-                                   "dimensions as the 'input' array.");
-            goto _exit;
+        if (n_none == nsq_arr && img2_list) {
+            free(img2_list);
+            nsq_arr = 0;
         }
-        if (process_array_list(oout2, &nx, &ny, "output2", &out2_list,
-                               &nsq_arr_out, &error)) {
-            goto _exit;
-        }
-        if (nx != onx || ny != ony) {
-            driz_error_set_message(&error,
-                                   "'output2' arrays must have the same "
-                                   "dimensions as the 'output' array.");
-            goto _exit;
-        }
-        if (nsq_arr != nsq_arr_out) {
-            driz_error_set_message(&error,
-                                   "The number of 'output2' arrays must match "
-                                   "the number of 'input2' arrays.");
-            goto _exit;
+
+        if (nsq_arr) {
+            if (nx != inx || ny != iny) {
+                driz_error_set_message(&error,
+                                       "'input2' arrays must have the same "
+                                       "dimensions as the 'input' array.");
+                goto _exit;
+            }
+
+            nx = onx;
+            ny = ony;
+            if (process_array_list(oout2, &nx, &ny, "output2", &out2_list,
+                                   &nsq_arr_out, 0, NULL, &error)) {
+                goto _exit;
+            }
+            if (nx != onx || ny != ony) {
+                driz_error_set_message(&error,
+                                       "'output2' arrays must have the same "
+                                       "dimensions as the 'output' array.");
+                goto _exit;
+            }
+
+            if (nsq_arr != nsq_arr_out) {
+                driz_error_set_message(
+                    &error,
+                    "The number of 'output2' arrays must match "
+                    "the number of 'input2' arrays.");
+                goto _exit;
+            }
         }
     } else if (nsq_args == 1) {
         driz_error_set_message(
@@ -460,6 +507,13 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords) {
     if (inun != unit_cps) {
         inv_exposure_time = 1.0f / expin;
         scale_image(img, inv_exposure_time);
+        if (img2_list) {
+            for (i = 0; i < nsq_arr; ++i) {
+                if (img2_list[i] != NULL) {
+                    scale_image(img2_list[i], pow(inv_exposure_time, 2.0));
+                }
+            }
+        }
     }
 
     /* Setup reasonable defaults for drizzling */
@@ -548,12 +602,17 @@ _exit:
     Py_XDECREF(wht);
     Py_XDECREF(map);
 
-    if (nsq_arr > 0) {
+    if (nsq_arr > 0 && img2_list) {
         for (i = 0; i < nsq_arr; ++i) {
             Py_XDECREF(img2_list[i]);
-            Py_XDECREF(out2_list[i]);
         }
         free(img2_list);
+    }
+
+    if (nsq_arr_out > 0 && out2_list) {
+        for (i = 0; i < nsq_arr_out; ++i) {
+            Py_XDECREF(out2_list[i]);
+        }
         free(out2_list);
     }
 

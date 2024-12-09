@@ -30,6 +30,7 @@ update_data(struct driz_param_t *p, const integer_t ii, const integer_t jj,
     double v, vc2, dow2;
     float vc;
     int i;
+    PyArrayObject **arr2;
 
     if (oob_output_pixel(p, ii, jj)) {
         driz_error_format_message(
@@ -49,30 +50,25 @@ update_data(struct driz_param_t *p, const integer_t ii, const integer_t jj,
 
     if (vc == 0.0f) {
         set_pixel(p->output_data, ii, jj, d);
-        if (d2) {
-            dow2 = dow * dow;
-            vc2 = vc * vc;
-            vc_plus_dow2 = vc_plus_dow * vc_plus_dow;
+        if (d2 && (arr2 = p->output_data2)) {
             for (i = 0; i < p->ndata2; ++i) {
-                set_pixel(p->output_data2[i], ii, jj, d2[i]);
+                set_pixel(arr2[i], ii, jj, d2[i]);
             }
         }
     } else {
         v = (get_pixel(p->output_data, ii, jj) * vc + dow * d) / vc_plus_dow;
         set_pixel(p->output_data, ii, jj, v);
-        if (d2) {
+        if (d2 && (arr2 = p->output_data2)) {
             dow2 = dow * dow;
             vc2 = vc * vc;
             vc_plus_dow2 = vc_plus_dow * vc_plus_dow;
             for (i = 0; i < p->ndata2; ++i) {
-                v = (get_pixel(p->output_data2[i], ii, jj) * vc2 +
-                     dow2 * d2[i]) /
+                v = (get_pixel(arr2[i], ii, jj) * vc2 + dow2 * d2[i]) /
                     vc_plus_dow2;
-                set_pixel(p->output_data2[i], ii, jj, v);
+                set_pixel(arr2[i], ii, jj, v);
             }
         }
     }
-
     set_pixel(p->output_counts, ii, jj, vc_plus_dow);
 
     return 0;
@@ -437,6 +433,20 @@ do_kernel_point(struct driz_param_t *p) {
                            "Memory allocation failed.");
             return 1;
         }
+        if (!p->output_data2) {
+            driz_error_set(p->error, PyExc_RuntimeError,
+                           "'output_data2' must be a valid pointer when "
+                           "'data2' is valid.");
+            return 1;
+        }
+        for (i = 0; i < ndata2; ++i) {
+            if (!p->output_data2[k]) {
+                driz_error_set(
+                    p->error, PyExc_RuntimeError,
+                    "Some arrays in 'output_data2' have invalid pointers.");
+                return 1;
+            }
+        }
     }
 
     for (j = ymin; j <= ymax; ++j) {
@@ -478,7 +488,11 @@ do_kernel_point(struct driz_param_t *p) {
                     d = get_pixel(p->data, i, j) * scale2;
                     if (d2) {
                         for (k = 0; k < ndata2; ++k) {
-                            d2[k] = get_pixel(p->data2[k], i, j) * scale2;
+                            if (p->data2[k]) {
+                                d2[k] = get_pixel(p->data2[k], i, j) * scale2;
+                            } else {
+                                d2[k] = 0.0f;
+                            }
                         }
                     }
 
@@ -560,6 +574,20 @@ do_kernel_gaussian(struct driz_param_t *p) {
                            "Memory allocation failed.");
             return 1;
         }
+        if (!p->output_data2) {
+            driz_error_set(p->error, PyExc_RuntimeError,
+                           "'output_data2' must be a valid pointer when "
+                           "'data2' is valid.");
+            return 1;
+        }
+        for (i = 0; i < ndata2; ++i) {
+            if (!p->output_data2[k]) {
+                driz_error_set(
+                    p->error, PyExc_RuntimeError,
+                    "Some arrays in 'output_data2' have invalid pointers.");
+                return 1;
+            }
+        }
     }
 
     for (j = ymin; j <= ymax; ++j) {
@@ -605,7 +633,11 @@ do_kernel_gaussian(struct driz_param_t *p) {
                 d = get_pixel(p->data, i, j) * scale2;
                 if (d2) {
                     for (k = 0; k < ndata2; ++k) {
-                        d2[k] = get_pixel(p->data2[k], i, j) * scale2;
+                        if (p->data2[k]) {
+                            d2[k] = get_pixel(p->data2[k], i, j) * scale2;
+                        } else {
+                            d2[k] = 0.0f;
+                        }
                     }
                 }
 
@@ -713,6 +745,20 @@ do_kernel_lanczos(struct driz_param_t *p) {
                            "Memory allocation failed.");
             return 1;
         }
+        if (!p->output_data2) {
+            driz_error_set(p->error, PyExc_RuntimeError,
+                           "'output_data2' must be a valid pointer when "
+                           "'data2' is valid.");
+            return 1;
+        }
+        for (i = 0; i < ndata2; ++i) {
+            if (!p->output_data2[k]) {
+                driz_error_set(
+                    p->error, PyExc_RuntimeError,
+                    "Some arrays in 'output_data2' have invalid pointers.");
+                return 1;
+            }
+        }
     }
 
     for (j = ymin; j <= ymax; ++j) {
@@ -755,7 +801,11 @@ do_kernel_lanczos(struct driz_param_t *p) {
                 d = get_pixel(p->data, i, j) * scale2;
                 if (d2) {
                     for (k = 0; k < ndata2; ++k) {
-                        d2[k] = get_pixel(p->data2[k], i, j) * scale2;
+                        if (p->data2[k]) {
+                            d2[k] = get_pixel(p->data2[k], i, j) * scale2;
+                        } else {
+                            d2[k] = 0.0f;
+                        }
                     }
                 }
 
@@ -854,6 +904,20 @@ do_kernel_turbo(struct driz_param_t *p) {
                            "Memory allocation failed.");
             return 1;
         }
+        if (!p->output_data2) {
+            driz_error_set(p->error, PyExc_RuntimeError,
+                           "'output_data2' must be a valid pointer when "
+                           "'data2' is valid.");
+            return 1;
+        }
+        for (i = 0; i < ndata2; ++i) {
+            if (!p->output_data2[k]) {
+                driz_error_set(
+                    p->error, PyExc_RuntimeError,
+                    "Some arrays in 'output_data2' have invalid pointers.");
+                return 1;
+            }
+        }
     }
 
     for (j = ymin; j <= ymax; ++j) {
@@ -903,10 +967,14 @@ do_kernel_turbo(struct driz_param_t *p) {
                 nhit = 0;
 
                 /* Allow for stretching because of scale change */
-                d = get_pixel(p->data, i, j) * (float)scale2;
+                d = get_pixel(p->data, i, j) * scale2;
                 if (d2) {
                     for (k = 0; k < ndata2; ++k) {
-                        d2[k] = get_pixel(p->data2[k], i, j) * scale2;
+                        if (p->data2[k]) {
+                            d2[k] = get_pixel(p->data2[k], i, j) * scale2;
+                        } else {
+                            d2[k] = 0.0f;
+                        }
                     }
                 }
 
@@ -1005,6 +1073,20 @@ do_kernel_square(struct driz_param_t *p) {
                            "Memory allocation failed.");
             return 1;
         }
+        if (!p->output_data2) {
+            driz_error_set(p->error, PyExc_RuntimeError,
+                           "'output_data2' must be a valid pointer when "
+                           "'data2' is valid.");
+            return 1;
+        }
+        for (i = 0; i < ndata2; ++i) {
+            if (!p->output_data2[k]) {
+                driz_error_set(
+                    p->error, PyExc_RuntimeError,
+                    "Some arrays in 'output_data2' have invalid pointers.");
+                return 1;
+            }
+        }
     }
 
     for (j = ymin; j <= ymax; ++j) {
@@ -1077,7 +1159,11 @@ do_kernel_square(struct driz_param_t *p) {
             d = get_pixel(p->data, i, j) * scale2;
             if (d2) {
                 for (k = 0; k < ndata2; ++k) {
-                    d2[k] = get_pixel(p->data2[k], i, j) * scale2;
+                    if (p->data2[k]) {
+                        d2[k] = get_pixel(p->data2[k], i, j) * scale2;
+                    } else {
+                        d2[k] = 0.0f;
+                    }
                 }
             }
 
