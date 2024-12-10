@@ -23,6 +23,7 @@
 #define MAX_DRIZ_ERROR_LEN 512
 
 struct driz_error_t {
+    PyObject *type;
     char last_message[MAX_DRIZ_ERROR_LEN];
 };
 
@@ -31,6 +32,8 @@ int driz_error_check(struct driz_error_t *error, const char *message, int test);
 void driz_error_set_message(struct driz_error_t *error, const char *message);
 void driz_error_format_message(struct driz_error_t *error, const char *format,
                                ...);
+void driz_error_set(struct driz_error_t *error, PyObject *type,
+                    const char *format, ...);
 const char *driz_error_get_message(struct driz_error_t *error);
 int driz_error_is_set(struct driz_error_t *error);
 void driz_error_unset(struct driz_error_t *error);
@@ -121,10 +124,20 @@ struct driz_param_t {
     float exposure_time;     /* Exposure time was: EXPIN */
     float weight_scale;      /* Weight scale was: WTSCL */
     float fill_value;        /* Filling was: FILVAL */
+    float fill_value2;       /* Filling was: FILVAL */
     bool_t do_fill;          /* was: FILL */
+    bool_t do_fill2;         /* was: FILL */
     enum e_unit_t in_units;  /* CPS / counts was: INCPS, either counts or CPS */
     enum e_unit_t out_units; /* CPS / counts was: INCPS, either counts or CPS */
     integer_t uuid;          /* was: UNIQID */
+
+    /* Input image dimensions */
+    integer_t in_nx;
+    integer_t in_ny;
+
+    /* Output image dimensions */
+    integer_t out_nx;
+    integer_t out_ny;
 
     /* Scaling */
     double scale;
@@ -136,7 +149,7 @@ struct driz_param_t {
     integer_t ymax;
 
     /* Blotting-specific parameters */
-    enum e_interp_t interpolation; /* was INTERP */
+    enum e_interp_t interpolation;
     float ef;
     float misval;
     float sinscl;
@@ -144,13 +157,17 @@ struct driz_param_t {
 
     /* Input images */
     PyArrayObject *data;
+    PyArrayObject **data2;
     PyArrayObject *weights;
     PyArrayObject *pixmap;
 
     /* Output images */
     PyArrayObject *output_data;
-    PyArrayObject *output_counts;  /* was: COU */
-    PyArrayObject *output_context; /* was: CONTIM */
+    PyArrayObject **output_data2;
+    PyArrayObject *output_counts;
+    PyArrayObject *output_context;
+
+    integer_t ndata2;
 
     /* Other output */
     integer_t nmiss;
@@ -274,9 +291,24 @@ oob_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
     return 0;
 }
 
+static inline_macro int
+oob_output_pixel(driz_param_t *p, integer_t xpix, integer_t ypix) {
+    char buffer[64];
+    if ((xpix < 0 || xpix >= p->out_nx) || (ypix < 0 || ypix >= p->out_ny)) {
+        sprintf(buffer, "Point [%d,%d] is outside of [%d, %d]", xpix, ypix,
+                (int)p->out_nx, (int)p->out_ny);
+        driz_log_message(buffer);
+        return 1;
+    }
+
+    return 0;
+}
+
 #else
 
 #define oob_pixel(image, xpix, ypix) 0
+
+#define oob_output_pixel(p, xpix, ypix) 0
 
 #endif
 
@@ -359,7 +391,7 @@ was: FILALU
 void create_lanczos_lut(const int kernel_order, const size_t npix,
                         const float del, float *lanczos_lut);
 
-void put_fill(struct driz_param_t *p, const float fill_value);
+void put_fill(struct driz_param_t *p);
 
 /**
  Calculate the refractive index of MgF2 for a given C wavelength (in
