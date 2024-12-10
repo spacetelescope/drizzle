@@ -3,6 +3,7 @@ source = drizzle
 
 omit =
     drizzle/__init__*
+    drizzle/util.py
     drizzle/**/conftest.py
     drizzle/**/setup*
     drizzle/**/tests/*

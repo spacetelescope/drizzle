@@ -269,7 +269,7 @@ do_kernel_point(struct driz_param_t *p) {
     struct scanner s;
     integer_t i, j, ii, jj, k;
     integer_t osize[2];
-    float scale2, d, dow, *d2 = NULL;
+    float scale2, scale4, d, dow, *d2 = NULL;
     integer_t bv;
     int xmin, xmax, ymin, ymax, n;
     int ndata2;
@@ -288,6 +288,8 @@ do_kernel_point(struct driz_param_t *p) {
     get_dimensions(p->output_data, osize);
 
     if (ndata2 > 0) {
+        scale4 = scale2 * scale2;
+
         if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
             driz_error_set(p->error, PyExc_MemoryError,
                            "Memory allocation failed.");
@@ -346,13 +348,11 @@ do_kernel_point(struct driz_param_t *p) {
                 } else {
                     /* Allow for stretching because of scale change */
                     d = get_pixel(p->data, i, j) * scale2;
-                    if (d2) {
-                        for (k = 0; k < ndata2; ++k) {
-                            if (p->data2[k]) {
-                                d2[k] = get_pixel(p->data2[k], i, j) * scale2;
-                            } else {
-                                d2[k] = 0.0f;
-                            }
+                    for (k = 0; k < ndata2; ++k) {
+                        if (p->data2[k]) {
+                            d2[k] = get_pixel(p->data2[k], i, j) * scale4;
+                        } else {
+                            d2[k] = 0.0f;
                         }
                     }
 
@@ -398,7 +398,7 @@ do_kernel_gaussian(struct driz_param_t *p) {
     integer_t osize[2];
     float d, dow, *d2 = NULL;
     double gaussian_efac, gaussian_es;
-    double pfo, ac, scale2, xxi, xxa, yyi, yya, w, ddx, ddy, r2, dover;
+    double pfo, ac, scale2, scale4, xxi, xxa, yyi, yya, w, ddx, ddy, r2, dover;
     const double nsig = 2.5;
     int xmin, xmax, ymin, ymax, n;
     int ndata2;
@@ -429,6 +429,7 @@ do_kernel_gaussian(struct driz_param_t *p) {
     get_dimensions(p->output_data, osize);
 
     if (ndata2 > 0) {
+        scale4 = scale2 * scale2;
         if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
             driz_error_set(p->error, PyExc_MemoryError,
                            "Memory allocation failed.");
@@ -491,13 +492,11 @@ do_kernel_gaussian(struct driz_param_t *p) {
 
                 /* Allow for stretching because of scale change */
                 d = get_pixel(p->data, i, j) * scale2;
-                if (d2) {
-                    for (k = 0; k < ndata2; ++k) {
-                        if (p->data2[k]) {
-                            d2[k] = get_pixel(p->data2[k], i, j) * scale2;
-                        } else {
-                            d2[k] = 0.0f;
-                        }
+                for (k = 0; k < ndata2; ++k) {
+                    if (p->data2[k]) {
+                        d2[k] = get_pixel(p->data2[k], i, j) * scale4;
+                    } else {
+                        d2[k] = 0.0f;
                     }
                 }
 
@@ -560,7 +559,7 @@ do_kernel_lanczos(struct driz_param_t *p) {
     struct scanner s;
     integer_t bv, i, j, ii, jj, k, nxi, nxa, nyi, nya, nhit, ix, iy;
     integer_t osize[2];
-    float scale2, d, dow, *d2 = NULL;
+    float scale2, scale4, d, dow, *d2 = NULL;
     double pfo, xx, yy, xxi, xxa, yyi, yya, w, dx, dy, dover;
     int kernel_order;
     struct lanczos_param_t lanczos;
@@ -600,6 +599,8 @@ do_kernel_lanczos(struct driz_param_t *p) {
     get_dimensions(p->output_data, osize);
 
     if (ndata2 > 0) {
+        scale4 = scale2 * scale2;
+
         if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
             driz_error_set(p->error, PyExc_MemoryError,
                            "Memory allocation failed.");
@@ -659,13 +660,11 @@ do_kernel_lanczos(struct driz_param_t *p) {
 
                 /* Allow for stretching because of scale change */
                 d = get_pixel(p->data, i, j) * scale2;
-                if (d2) {
-                    for (k = 0; k < ndata2; ++k) {
-                        if (p->data2[k]) {
-                            d2[k] = get_pixel(p->data2[k], i, j) * scale2;
-                        } else {
-                            d2[k] = 0.0f;
-                        }
+                for (k = 0; k < ndata2; ++k) {
+                    if (p->data2[k]) {
+                        d2[k] = get_pixel(p->data2[k], i, j) * scale4;
+                    } else {
+                        d2[k] = 0.0f;
                     }
                 }
 
@@ -736,7 +735,7 @@ do_kernel_turbo(struct driz_param_t *p) {
     integer_t bv, i, j, ii, jj, k, nxi, nxa, nyi, nya, nhit, iis, iie, jjs, jje;
     integer_t osize[2];
     float d, dow, *d2 = NULL;
-    double pfo, scale2, ac;
+    double pfo, scale2, scale4, ac;
     double xxi, xxa, yyi, yya, w, dover;
     int xmin, xmax, ymin, ymax, n;
     int ndata2;
@@ -759,6 +758,8 @@ do_kernel_turbo(struct driz_param_t *p) {
     get_dimensions(p->output_data, osize);
 
     if (ndata2 > 0) {
+        scale4 = scale2 * scale2;
+
         if (!(d2 = (float *)malloc(ndata2 * sizeof(float)))) {
             driz_error_set(p->error, PyExc_MemoryError,
                            "Memory allocation failed.");
@@ -828,13 +829,11 @@ do_kernel_turbo(struct driz_param_t *p) {
 
                 /* Allow for stretching because of scale change */
                 d = get_pixel(p->data, i, j) * scale2;
-                if (d2) {
-                    for (k = 0; k < ndata2; ++k) {
-                        if (p->data2[k]) {
-                            d2[k] = get_pixel(p->data2[k], i, j) * scale2;
-                        } else {
-                            d2[k] = 0.0f;
-                        }
+                for (k = 0; k < ndata2; ++k) {
+                    if (p->data2[k]) {
+                        d2[k] = get_pixel(p->data2[k], i, j) * scale4;
+                    } else {
+                        d2[k] = 0.0f;
                     }
                 }
 
@@ -899,7 +898,7 @@ int
 do_kernel_square(struct driz_param_t *p) {
     integer_t bv, i, j, ii, jj, k, min_ii, max_ii, min_jj, max_jj, nhit;
     integer_t osize[2];
-    float scale2, d, dow, *d2 = NULL;
+    float scale2, scale4, d, dow, *d2 = NULL;
     double dh, jaco, tem, dover, w;
     double xin[4], yin[4], xout[4], yout[4];
     int ndata2;
@@ -926,6 +925,8 @@ do_kernel_square(struct driz_param_t *p) {
     get_dimensions(p->output_data, osize);
 
     if (ndata2 > 0) {
+        scale4 = scale2 * scale2;
+
         if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
             driz_error_set(p->error, PyExc_MemoryError,
                            "Memory allocation failed.");
@@ -1004,13 +1005,11 @@ do_kernel_square(struct driz_param_t *p) {
 
             /* Allow for stretching because of scale change */
             d = get_pixel(p->data, i, j) * scale2;
-            if (d2) {
-                for (k = 0; k < ndata2; ++k) {
-                    if (p->data2[k]) {
-                        d2[k] = get_pixel(p->data2[k], i, j) * scale2;
-                    } else {
-                        d2[k] = 0.0f;
-                    }
+            for (k = 0; k < ndata2; ++k) {
+                if (p->data2[k]) {
+                    d2[k] = get_pixel(p->data2[k], i, j) * scale4;
+                } else {
+                    d2[k] = 0.0f;
                 }
             }
 
