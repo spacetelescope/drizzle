@@ -316,17 +316,6 @@ class Drizzle:
             out_img = np.asarray(out_img, dtype=np.float32)
             shapes.add(out_img.shape)
 
-        if out_img2 is not None:
-            if isinstance(out_img2, np.ndarray):
-                out_img2 = np.asarray(out_img2, dtype=np.float32)
-                shapes.add(out_img2.shape)
-            else:
-                out_img2 = [
-                    np.asarray(img, dtype=np.float32) for img in out_img2
-                ]
-                for img in out_img2:
-                    shapes.add(img.shape)
-
         if out_wht is not None:
             out_wht = np.asarray(out_wht, dtype=np.float32)
             shapes.add(out_wht.shape)
@@ -351,7 +340,6 @@ class Drizzle:
                 out_wht=out_wht,
                 out_ctx=out_ctx,
             )
-            self._alloc_output_arrays2_init(out_img2=out_img2)
 
         elif len(shapes) > 1:
             raise ValueError(
@@ -364,10 +352,37 @@ class Drizzle:
             self._out_wht = None
             self._out_ctx = None
 
+        if out_img2 is not None:
+            if self._out_shape is not None:
+                shapes.add(self._out_shape)
+            if isinstance(out_img2, np.ndarray):
+                out_img2 = np.asarray(out_img2, dtype=np.float32)
+                shapes.add(out_img2.shape)
+            else:
+                for img in out_img2:
+                    if img is not None:
+                        shapes.add(np.shape(img))
+            if len(shapes) > 1:
+                raise ValueError(
+                    "Inconsistent data shapes specified: 'out_shape' "
+                    "and/or out_img, out_img2, out_wht, out_ctx have "
+                    "different shapes."
+                )
+        self._output_shapes = shapes
+        self._alloc_output_arrays2_init(out_img2=out_img2)
+
     @property
     def fillval(self):
         """Fill value for output pixels without contributions from input images."""
         return self._fillval
+
+    @property
+    def fillval2(self):
+        """Fill value for output pixels in ``out_img2`` without contributions
+        from input images.
+
+        """
+        return self._fillval2
 
     @property
     def kernel(self):
@@ -463,14 +478,35 @@ class Drizzle:
             out_img2 = [out_img2]
 
         self._out_img2 = []
+
+        if (isinstance(self._fillval2, str) and
+                self._fillval2.strip().upper() == "INDEF"):
+            fv = np.nan
+        else:
+            fv = np.float32(self._fillval2)
+
         for i2 in out_img2:
             if i2 is None:
-                arr = np.zeros(self._out_shape, dtype=np.float32)
+                if self._out_shape is None:
+                    if len(self._output_shapes) == 1:
+                        shape = next(iter(self._output_shapes))
+                    else:
+                        self._out_img2.append(None)
+                        continue
+                else:
+                    shape = self._out_shape
+                arr = np.full(shape, fill_value=fv, dtype=np.float32)
             else:
                 arr = np.asarray(i2, dtype=np.float32)
             self._out_img2.append(arr)
+            del arr
 
     def _alloc_output_arrays2_add(self, ninputs2=None):
+        if (isinstance(self._fillval2, str) and
+                self._fillval2.strip().upper() == "INDEF"):
+            fv = np.nan
+        else:
+            fv = np.float32(self._fillval2)
         if self._out_img2 is None:
             if ninputs2 is None or ninputs2 < 1:
                 # nothing to do
@@ -481,12 +517,21 @@ class Drizzle:
                     "and the number of inputs."
                 )
             self._out_img2 = [
-                np.zeros(self._out_shape, dtype=np.float32)
+                np.full(self._out_shape, fill_value=fv, dtype=np.float32)
                 for _ in range(ninputs2)
             ]
 
         else:
             nimg2 = len(self._out_img2)
+
+            # replace None values with arrays of _out_shape:
+            for k, img in enumerate(self._out_img2):
+                if img is None:
+                    self._out_img2[k] = np.full(
+                        self._out_shape,
+                        fill_value=fv,
+                        dtype=np.float32
+                    )
 
             if ((ninputs2 is not None and ninputs2 != nimg2) or
                     (ninputs2 is None and nimg2 > 0)):
@@ -632,17 +677,26 @@ class Drizzle:
         # set output image shape based on output coordinates from the pixmap.
         #
         if self._out_shape is None:
-            pmap_xmin = int(np.floor(np.nanmin(pixmap[:, :, 0])))
-            pmap_xmax = int(np.ceil(np.nanmax(pixmap[:, :, 0])))
-            pmap_ymin = int(np.floor(np.nanmin(pixmap[:, :, 1])))
-            pmap_ymax = int(np.ceil(np.nanmax(pixmap[:, :, 1])))
-            pixmap = pixmap.copy()
-            pixmap[:, :, 0] -= pmap_xmin
-            pixmap[:, :, 1] -= pmap_ymin
-            self._out_shape = (
-                pmap_xmax - pmap_xmin + 1,
-                pmap_ymax - pmap_ymin + 1
-            )
+            nshapes = len(self._output_shapes)
+            if nshapes == 0:
+                pmap_xmin = int(np.floor(np.nanmin(pixmap[:, :, 0])))
+                pmap_xmax = int(np.ceil(np.nanmax(pixmap[:, :, 0])))
+                pmap_ymin = int(np.floor(np.nanmin(pixmap[:, :, 1])))
+                pmap_ymax = int(np.ceil(np.nanmax(pixmap[:, :, 1])))
+                pixmap = pixmap.copy()
+                pixmap[:, :, 0] -= pmap_xmin
+                pixmap[:, :, 1] -= pmap_ymin
+                self._out_shape = (
+                    pmap_xmax - pmap_xmin + 1,
+                    pmap_ymax - pmap_ymin + 1
+                )
+            elif nshapes == 1:
+                self._out_shape = next(iter(self._output_shapes))
+            else:
+                raise ValueError(
+                    "Inconsistent data shapes: 'out_shape' and/or "
+                    "out_img, out_img2, out_wht, out_ctx have different shapes."
+                )  # pragma: no cover
 
             self._alloc_output_arrays(
                 out_shape=self._out_shape,
