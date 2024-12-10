@@ -1390,8 +1390,6 @@ def test_drizzle_weights_squared(kernel, fc):
 
     out_shape = (int(y.max()) + 1, int(x.max()) + 1)
 
-    assert np.min(x) > -0.5 and np.min(y) > -0.5
-
     if fc:
         # create a Drizzle object using all default parameters
         # (except for 'kernel', 'out_shape')
@@ -1425,15 +1423,14 @@ def test_drizzle_weights_squared(kernel, fc):
         assert len(driz.out_img2) == 1
 
     else:
-        # create a Drizzle object using all default parameters
-        # (except for 'kernel')
+        # create a Drizzle object using mostly default parameters
         driz = resample.Drizzle(
             kernel=kernel,
+            out_img2=[None],
             fillval2=-99.0,
         )
 
         assert driz.out_img is None
-        assert driz.out_img2 is None
         assert driz.total_exptime == 0.0
 
         with pytest.warns(Warning):
@@ -1466,6 +1463,7 @@ def test_drizzle_weights_squared(kernel, fc):
         rtol=1.0e-6,
         atol=0.0
     )
+    assert abs(float(driz.fillval2) + 99.0) < 1e-7
 
 
 def test_drizzle_weights_squared_bad_inputs():
@@ -1608,6 +1606,7 @@ def test_drizzle_weights_squared_array_shape_mismatch():
     y, x = np.indices(in_shape, dtype=np.float64)
 
     in_sci1 = np.zeros(in_shape, dtype=np.float32)
+    in_sci1[n // 2, n // 2] = 2.222222222222
     in_sci1_sq = np.zeros(in_shape, dtype=np.float32)
 
     in_wht2 = np.zeros(in_shape1, dtype=np.float32)
@@ -1632,7 +1631,8 @@ def test_drizzle_weights_squared_array_shape_mismatch():
 
     driz = resample.Drizzle(
         kernel=kernel,
-        out_img2=[out_img2, out_img2],
+        out_img=out_img2.copy(),
+        out_img2=[out_img2, out_img2, None],
     )
     with pytest.raises(ValueError) as err_info:
         driz.add_image(
@@ -1640,7 +1640,7 @@ def test_drizzle_weights_squared_array_shape_mismatch():
             exptime=1.0,
             pixmap=pixmap,
             weight_map=in_wht2,
-            data2=[in_sci1_sq, in_sci2_sq],
+            data2=[in_sci1_sq, in_sci2_sq, None],
         )
     assert str(err_info.value).startswith(
         "'data2' shape(s) is not consistent with 'data' shape."
@@ -1685,3 +1685,24 @@ def test_drizzle_weights_squared_array_shape_mismatch():
     assert str(err_info.value).startswith(
         "'weight_map' shape is not consistent with 'data' shape."
     )
+
+    # zero-sized variance array
+    driz = resample.Drizzle(
+        kernel=kernel,
+        out_img2=[out_img2, out_img2.copy(), out_img2.copy(), None]
+    )
+    driz.add_image(
+        data=in_sci1,
+        exptime=1.0,
+        pixmap=pixmap,
+        data2=[in_sci1, in_sci1, np.array([]), None]
+    )
+    driz.add_image(
+        data=in_sci1,
+        exptime=1.0,
+        pixmap=pixmap,
+        data2=[in_sci1, None, in_sci1, None]
+    )
+    assert np.allclose(np.nansum(driz.out_img2[0]), 2.0 * np.nansum(driz.out_img2[1]))
+    assert np.allclose(np.nansum(driz.out_img2[0]), 2.0 * np.nansum(driz.out_img2[2]))
+    assert np.allclose(0.0, np.nansum(driz.out_img2[3]))
