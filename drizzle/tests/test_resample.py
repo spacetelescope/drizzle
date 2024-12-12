@@ -1,5 +1,6 @@
 import math
 import os
+from itertools import product
 
 import numpy as np
 import pytest
@@ -1435,3 +1436,460 @@ def test_resample_inconsistent_output():
             out_wht=out_wht,
         )
     assert str(err_info.value).startswith("Inconsistent data shapes specified")
+
+
+@pytest.mark.parametrize(
+    'kernel,fc',
+    [
+        ('square', True),
+        ('point', True),
+        ('turbo', True),
+        ('lanczos2', False),
+        ('lanczos3', False),
+        ('gaussian', False),
+    ],
+)
+def test_drizzle_weights_squared(kernel, fc):
+    n = 17
+    in_shape = (n, n)
+
+    # input coordinate grid:
+    y, x = np.indices(in_shape, dtype=np.float64)
+
+    in_sci1 = np.zeros(in_shape, dtype=np.float32)
+    in_wht1 = np.zeros(in_shape, dtype=np.float32)
+    in_sci1_sq = np.zeros(in_shape, dtype=np.float32)
+
+    in_sci2 = np.zeros(in_shape, dtype=np.float32)
+    in_wht2 = np.zeros(in_shape, dtype=np.float32)
+    in_sci2_sq = np.zeros(in_shape, dtype=np.float32)
+
+    xc = yc = n // 2
+
+    in_sci1[yc, xc] = 1.0
+    in_wht1[yc, xc] = 0.99
+    in_sci1_sq[yc, xc] = 0.5
+
+    in_sci2[yc, xc] = 7.0
+    in_wht2[yc, xc] = 0.01
+    in_sci2_sq[yc, xc] = 50.0
+
+    pixmap = np.dstack([x, y])
+
+    out_shape = (int(y.max()) + 1, int(x.max()) + 1)
+
+    if fc:
+        # create a Drizzle object using all default parameters
+        # (except for 'kernel', 'out_shape')
+        driz = resample.Drizzle(
+            kernel=kernel,
+            out_shape=out_shape,
+            fillval2=-99.0,
+        )
+
+        assert driz.out_img is not None
+        assert driz.out_img2 is None
+        assert driz.total_exptime == 0.0
+
+        driz.add_image(
+            data=in_sci1,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=in_wht1,
+            data2=[in_sci1_sq],
+        )
+
+        driz.add_image(
+            data=in_sci2,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=in_wht2,
+            data2=in_sci2_sq,
+        )
+
+        assert isinstance(driz.out_img2, list)
+        assert len(driz.out_img2) == 1
+
+    else:
+        # create a Drizzle object using mostly default parameters
+        driz = resample.Drizzle(
+            kernel=kernel,
+            out_img2=[None],
+            fillval2=-99.0,
+        )
+
+        assert driz.out_img is None
+        assert driz.total_exptime == 0.0
+
+        with pytest.warns(Warning):
+            driz.add_image(
+                data=in_sci1,
+                exptime=1.0,
+                pixmap=pixmap,
+                weight_map=in_wht1,
+                data2=[in_sci1_sq],
+            )
+            driz.add_image(
+                data=in_sci2,
+                exptime=1.0,
+                pixmap=pixmap,
+                weight_map=in_wht2,
+                data2=[in_sci2_sq],
+            )
+
+    assert np.allclose(
+        np.max(driz.out_img2),
+        0.495050013,
+        rtol=1.0e-6,
+        atol=0.0
+    )
+
+    # check fill value
+    assert np.allclose(
+        np.min(driz.out_img2),
+        -99.0,
+        rtol=1.0e-6,
+        atol=0.0
+    )
+    assert abs(float(driz.fillval2) + 99.0) < 1e-7
+
+
+@pytest.mark.filterwarnings("ignore:Kernel '")
+@pytest.mark.parametrize(
+    'kernel_fc, pscale, weights',
+    (
+        x for x in product(
+            [
+                ('square', True),
+                ('turbo', True),
+                ('point', True),
+                ('gaussian', False),
+                # lanczos kernels do not support pscale != 1 or pixfrac != 1
+                # ('lanczos2', False),
+                # ('lanczos3', False),
+            ],
+            [0.25, 0.5, 1, 1.2, 1.5],
+            [(0.99, 0.01), (0.8, 0.2), (0.9, 1.5), (467, 733)],
+        )
+    )
+)
+def test_drizzle_weights_squared_pscale(kernel_fc, pscale, weights):
+    n = 25
+    shape = (n, n)
+
+    # unpack parameters:
+    kernel, fc = kernel_fc
+
+    # pixel values in input data:
+    dataval = [1, 7]
+
+    # pixel values in input variance:
+    varval = [0.5, 50]
+
+    # input coordinate grid:
+    y, x = np.indices(shape, dtype=np.float64)
+    pixmap = np.dstack([x, y]) / pscale
+
+    data = [np.zeros(shape, dtype=np.float32) for _ in range(2)]
+    weight = [np.zeros(shape, dtype=np.float32) for _ in range(2)]
+    var = [np.zeros(shape, dtype=np.float32) for _ in range(2)]
+
+    xc = yc = n // 2
+    for k in range(2):
+        data[k][xc - 4: xc + 5, yc - 4: yc + 5] = dataval[k]
+        weight[k][xc - 4: xc + 5, yc - 4: yc + 5] = weights[k]
+        var[k][xc - 4: xc + 5, yc - 4: yc + 5] = varval[k]
+
+    out_shape = (int(pixmap[..., 1].max()) + 1, int(pixmap[..., 0].max()) + 1)
+
+    # create a Drizzle object
+    driz = resample.Drizzle(
+        kernel=kernel,
+        out_shape=out_shape,
+        fillval=0.0,
+        fillval2=0.0,
+    )
+
+    # resample & add input images
+    for k in range(2):
+        driz.add_image(
+            data=data[k],
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=weight[k],
+            data2=var[k],
+        )
+
+    mask = driz.out_ctx[0] > 0
+    n_nonzero = np.sum(data[0] > 0.0)
+
+    rtol = 1.0e-6 if fc else 0.15
+
+    ideal_output = np.dot(dataval, weights) * n_nonzero
+    ideal_output2 = np.dot(varval, np.square(weights)) / np.sum(weights)**2
+
+    tflux = np.sum(driz.out_img[mask] * driz.out_wht[mask])
+    tflux2 = np.max(driz.out_img2[0])
+
+    # check output flux:
+    assert np.allclose(
+        tflux,
+        ideal_output,
+        rtol=rtol,
+        atol=0.0
+    )
+
+    # check output variance:
+    # less restrictive (to account for pixel overlap variations):
+    assert (np.max(tflux2) <= ideal_output2 * (1 + rtol) and
+            np.max(tflux2) >= 0.25 * ideal_output2 * (1 - rtol))
+
+    # more restrictive check assumes pixels have good overlaps:
+    assert np.allclose(
+        tflux2,
+        ideal_output2,
+        rtol=rtol,
+        atol=0.0
+    )
+
+
+def test_drizzle_weights_squared_bad_inputs():
+    n = 21
+    in_shape = (n, n)
+    kernel = "square"
+
+    # input coordinate grid:
+    y, x = np.indices(in_shape, dtype=np.float64)
+
+    in_sci1 = np.zeros(in_shape, dtype=np.float32)
+    in_wht1 = np.zeros(in_shape, dtype=np.float32)
+    in_sci1_sq = np.zeros(in_shape, dtype=np.float32)
+
+    in_sci2 = np.zeros(in_shape, dtype=np.float32)
+    in_wht2 = np.zeros(in_shape, dtype=np.float32)
+    in_sci2_sq = np.zeros(in_shape, dtype=np.float32)
+
+    pixmap = np.dstack([x, y])
+
+    out_shape = (int(y.max()) + 1, int(x.max()) + 1)
+
+    out_img = np.zeros(out_shape, dtype=np.float32)
+    out_img2 = np.zeros(out_shape, dtype=np.float32)
+    out_img2b = np.zeros(out_shape, dtype=np.float32)
+
+    # 1 - test same number of data2 is used each time:
+    driz = resample.Drizzle(
+        kernel=kernel,
+    )
+
+    assert driz.out_img is None
+    assert driz.out_img2 is None
+    assert driz.total_exptime == 0.0
+
+    driz.add_image(
+        data=in_sci1,
+        exptime=1.0,
+        pixmap=pixmap,
+        weight_map=in_wht1,
+        data2=None,
+    )
+    assert driz.out_img2 is None
+
+    with pytest.raises(ValueError) as err_info:
+        driz.add_image(
+            data=in_sci2,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=in_wht2,
+            data2=in_sci2_sq,
+        )
+    assert str(err_info.value).startswith(
+        "Mismatch between the number of 'out_img2' images"
+    )
+
+    # 2 - test same number of data2 is used each time:
+    driz = resample.Drizzle(
+        kernel=kernel,
+    )
+
+    driz.add_image(
+        data=in_sci1,
+        exptime=1.0,
+        pixmap=pixmap,
+        weight_map=in_wht1,
+        data2=in_sci1_sq,
+    )
+
+    with pytest.raises(ValueError) as err_info:
+        driz.add_image(
+            data=in_sci2,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=in_wht2,
+            data2=None,
+        )
+    assert str(err_info.value).startswith(
+        "Mismatch between the number of 'out_img2' images"
+    )
+
+    # 3 - test same number of data2 is used each time:
+    driz = resample.Drizzle(
+        kernel=kernel,
+        out_img2=[out_img2, out_img2b],
+    )
+
+    with pytest.raises(ValueError) as err_info:
+        driz.add_image(
+            data=in_sci2,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=in_wht2,
+            data2=in_sci1_sq,
+        )
+    assert str(err_info.value).startswith(
+        "Mismatch between the number of 'out_img2' images"
+    )
+
+    # 4 - test same number of data2 is used each time:
+    driz = resample.Drizzle(
+        kernel=kernel,
+        out_img=out_img,
+        out_img2=out_img2,
+    )
+
+    with pytest.raises(ValueError) as err_info:
+        driz.add_image(
+            data=in_sci2,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=in_wht2,
+            data2=None,
+        )
+    assert str(err_info.value).startswith(
+        "Mismatch between the number of 'out_img2' images"
+    )
+
+    # 5 - test mismatch between output data image and output variance image:
+    out_img2 = np.zeros(tuple(s + 1 for s in out_shape), dtype=np.float32)
+
+    with pytest.raises(ValueError) as err_info:
+        driz = resample.Drizzle(
+            kernel=kernel,
+            out_img=out_img,
+            out_img2=out_img2,
+        )
+    assert str(err_info.value).startswith(
+        "Inconsistent data shapes specified:"
+    )
+
+
+def test_drizzle_weights_squared_array_shape_mismatch():
+    n = 20
+    in_shape = (n, n)
+    in_shape1 = (n + 1, n + 1)
+    kernel = "square"
+
+    # input coordinate grid:
+    y, x = np.indices(in_shape, dtype=np.float64)
+
+    in_sci1 = np.zeros(in_shape, dtype=np.float32)
+    in_sci1[n // 2, n // 2] = 2.222222222222
+    in_sci1_sq = np.zeros(in_shape, dtype=np.float32)
+
+    in_wht2 = np.zeros(in_shape1, dtype=np.float32)
+    in_sci2_sq = np.zeros(in_shape1, dtype=np.float32)
+
+    pixmap = np.dstack([x, y])
+
+    out_shape = (int(y.max()) + 1, int(x.max()) + 1)
+    out_shape1 = (out_shape[0] + 1, out_shape[1] + 1)
+
+    out_img2 = np.zeros(out_shape, dtype=np.float32)
+    out_img2b = np.zeros(out_shape1, dtype=np.float32)
+
+    with pytest.raises(ValueError) as err_info:
+        driz = resample.Drizzle(
+            kernel=kernel,
+            out_img2=[out_img2, out_img2b],
+        )
+    assert str(err_info.value).startswith(
+        "Inconsistent data shapes specified:"
+    )
+
+    driz = resample.Drizzle(
+        kernel=kernel,
+        out_img=out_img2.copy(),
+        out_img2=[out_img2, out_img2, None],
+    )
+    with pytest.raises(ValueError) as err_info:
+        driz.add_image(
+            data=in_sci1,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=in_wht2,
+            data2=[in_sci1_sq, in_sci2_sq, None],
+        )
+    assert str(err_info.value).startswith(
+        "'data2' shape(s) is not consistent with 'data' shape."
+    )
+
+    driz = resample.Drizzle(
+        kernel=kernel,
+        out_img2=out_img2,
+    )
+    with pytest.raises(ValueError) as err_info:
+        driz.add_image(
+            data=in_sci1,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=in_wht2,
+            data2=in_sci2_sq,
+        )
+    assert str(err_info.value).startswith(
+        "'data2' shape is not consistent with 'data' shape."
+    )
+
+    with pytest.raises(ValueError) as err_info:
+        driz = resample.Drizzle(
+            kernel=kernel,
+            out_img2=[out_img2, out_img2b],
+        )
+    assert str(err_info.value).startswith(
+        "Inconsistent data shapes specified:"
+    )
+
+    # wrong weight shape
+    driz = resample.Drizzle(
+        kernel=kernel,
+    )
+    with pytest.raises(ValueError) as err_info:
+        driz.add_image(
+            data=in_sci1,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=in_wht2,
+        )
+    assert str(err_info.value).startswith(
+        "'weight_map' shape is not consistent with 'data' shape."
+    )
+
+    # zero-sized variance array
+    driz = resample.Drizzle(
+        kernel=kernel,
+        out_img2=[out_img2, out_img2.copy(), out_img2.copy(), None]
+    )
+    driz.add_image(
+        data=in_sci1,
+        exptime=1.0,
+        pixmap=pixmap,
+        data2=[in_sci1, in_sci1, np.array([]), None]
+    )
+    driz.add_image(
+        data=in_sci1,
+        exptime=1.0,
+        pixmap=pixmap,
+        data2=[in_sci1, None, in_sci1, None]
+    )
+    assert np.allclose(np.nansum(driz.out_img2[0]), 2.0 * np.nansum(driz.out_img2[1]))
+    assert np.allclose(np.nansum(driz.out_img2[0]), 2.0 * np.nansum(driz.out_img2[2]))
+    assert np.allclose(0.0, np.nansum(driz.out_img2[3]))
