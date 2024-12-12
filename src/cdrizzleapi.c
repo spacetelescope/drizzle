@@ -944,7 +944,6 @@ clip_polygon_wrap(PyObject *self, PyObject *args) {
 static struct PyMethodDef cdrizzle_methods[] = {
     {"tdriz", (PyCFunction)tdriz, METH_VARARGS | METH_KEYWORDS,
      "tdriz(image, weights, pixmap, output, counts, context, image2, "
-     "counts2, "
      "output2, uniqid, xmin, xmax, ymin, ymax, scale, pixfrac, kernel, "
      "in_units, expscale, wtscale, fillstr, fillstr2)"},
     {"tblot", (PyCFunction)tblot, METH_VARARGS | METH_KEYWORDS,
