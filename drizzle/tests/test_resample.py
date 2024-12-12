@@ -1652,6 +1652,7 @@ def test_drizzle_weights_squared_pscale(kernel_fc, pscale, weights):
         atol=0.0
     )
 
+
 def test_drizzle_weights_squared_bad_inputs():
     n = 21
     in_shape = (n, n)
