@@ -1,5 +1,6 @@
 import math
 import os
+from itertools import product
 
 import numpy as np
 import pytest
@@ -1465,6 +1466,104 @@ def test_drizzle_weights_squared(kernel, fc):
     )
     assert abs(float(driz.fillval2) + 99.0) < 1e-7
 
+
+@pytest.mark.filterwarnings("ignore:Kernel '")
+@pytest.mark.parametrize(
+    'kernel_fc, pscale, weights',
+    (
+        x for x in product(
+            [
+                ('square', True),
+                ('turbo', True),
+                ('point', True),
+                ('gaussian', False),
+                # lanczos kernels do not support pscale != 1 or pixfrac != 1
+                # ('lanczos2', False),
+                # ('lanczos3', False),
+            ],
+            [0.25, 0.5, 1, 1.2, 1.5],
+            [(0.99, 0.01), (0.8, 0.2), (0.9, 1.5), (467, 733)],
+        )
+    )
+)
+def test_drizzle_weights_squared_pscale(kernel_fc, pscale, weights):
+    n = 25
+    shape = (n, n)
+
+    # unpack parameters:
+    kernel, fc = kernel_fc
+
+    # pixel values in input data:
+    dataval = [1, 7]
+
+    # pixel values in input variance:
+    varval = [0.5, 50]
+
+    # input coordinate grid:
+    y, x = np.indices(shape, dtype=np.float64)
+    pixmap = np.dstack([x, y]) / pscale
+
+    data = [np.zeros(shape, dtype=np.float32) for _ in range(2)]
+    weight = [np.zeros(shape, dtype=np.float32) for _ in range(2)]
+    var = [np.zeros(shape, dtype=np.float32) for _ in range(2)]
+
+    xc = yc = n // 2
+    for k in range(2):
+        data[k][xc - 4: xc + 5, yc - 4: yc + 5] = dataval[k]
+        weight[k][xc - 4: xc + 5, yc - 4: yc + 5] = weights[k]
+        var[k][xc - 4: xc + 5, yc - 4: yc + 5] = varval[k]
+
+    out_shape = (int(pixmap[..., 1].max()) + 1, int(pixmap[..., 0].max()) + 1)
+
+    # create a Drizzle object
+    driz = resample.Drizzle(
+        kernel=kernel,
+        out_shape=out_shape,
+        fillval=0.0,
+        fillval2=0.0,
+    )
+
+    # resample & add input images
+    for k in range(2):
+        driz.add_image(
+            data=data[k],
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=weight[k],
+            data2=var[k],
+        )
+
+    mask = driz.out_ctx[0] > 0
+    n_nonzero = np.sum(data[0] > 0.0)
+
+    rtol = 1.0e-6 if fc else 0.15
+
+    ideal_output = np.dot(dataval, weights) * n_nonzero
+    ideal_output2 = np.dot(varval, np.square(weights)) / np.sum(weights)**2
+
+    tflux = np.sum(driz.out_img[mask] * driz.out_wht[mask])
+    tflux2 = np.max(driz.out_img2[0])
+
+    # check output flux:
+    assert np.allclose(
+        tflux,
+        ideal_output,
+        rtol=rtol,
+        atol=0.0
+    )
+
+    # check output variance:
+    # less restrictive (to account for pixel overlap variations):
+    assert (np.max(tflux2) <= ideal_output2 * (1 + rtol) and
+            np.max(tflux2) >= 0.25 * ideal_output2 * (1 - rtol))
+
+    # more restrictive check assumes pixels have good overlaps:
+    assert np.allclose(
+        tflux2,
+        ideal_output2,
+        rtol=rtol,
+        atol=0.0
+    )
 
 def test_drizzle_weights_squared_bad_inputs():
     n = 21
