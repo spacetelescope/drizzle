@@ -1494,7 +1494,7 @@ def test_drizzle_weights_squared_pscale(kernel_fc, pscale, weights):
     kernel, fc = kernel_fc
 
     # pixel values in input data:
-    dataval = [1, 7]
+    dataval = [1.0, 7.0]
 
     # pixel values in input variance:
     varval = [0.5, 50]
@@ -1508,10 +1508,11 @@ def test_drizzle_weights_squared_pscale(kernel_fc, pscale, weights):
     var = [np.zeros(shape, dtype=np.float32) for _ in range(2)]
 
     xc = yc = n // 2
+    sl = np.s_[yc - 4: yc + 5, xc - 4: xc + 5]
     for k in range(2):
-        data[k][xc - 4: xc + 5, yc - 4: yc + 5] = dataval[k]
-        weight[k][xc - 4: xc + 5, yc - 4: yc + 5] = weights[k]
-        var[k][xc - 4: xc + 5, yc - 4: yc + 5] = varval[k]
+        data[k][sl] = dataval[k]
+        weight[k][sl] = weights[k]
+        var[k][sl] = varval[k]
 
     out_shape = (int(pixmap[..., 1].max()) + 1, int(pixmap[..., 0].max()) + 1)
 
