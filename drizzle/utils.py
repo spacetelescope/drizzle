@@ -85,7 +85,21 @@ def calc_pixmap(wcs_from, wcs_to, shape=None):
         )
 
     y, x = np.indices(shape, dtype=np.float64)
-    x, y = wcs_to.world_to_pixel_values(*wcs_from.pixel_to_world_values(x, y))
+
+    # temporarily disable the bounding box:
+    if hasattr(wcs_to, "bounding_box"):
+        orig_bbox = getattr(wcs_to, "bounding_box", None)
+        wcs_to.bounding_box = None
+    else:
+        orig_bbox = None
+    try:
+        x, y = wcs_to.world_to_pixel_values(
+            *wcs_from.pixel_to_world_values(x, y)
+        )
+    finally:
+        if orig_bbox is not None:
+            wcs_to.bounding_box = orig_bbox
+
     pixmap = np.dstack([x, y])
     return pixmap
 
