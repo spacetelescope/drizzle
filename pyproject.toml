@@ -6,8 +6,8 @@ authors = [
     { name = "STScI", email = "help@stsci.edu" },
 ]
 dependencies = [
-    "numpy",
     "astropy",
+    "numpy",
 ]
 dynamic = [
     "version",
