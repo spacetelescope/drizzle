@@ -7,7 +7,6 @@ authors = [
 ]
 dependencies = [
     "numpy",
-    "astropy",
 ]
 dynamic = [
     "version",
@@ -29,6 +28,7 @@ Documentation = "http://spacetelescope.github.io/drizzle/"
 
 [project.optional-dependencies]
 test = [
+    "astropy",
     "pytest",
     "pytest-cov",
     "pytest-doctestplus",
