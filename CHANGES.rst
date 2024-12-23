@@ -4,6 +4,14 @@
 Release Notes
 =============
 
+2.0.1 (2024-12-16)
+==================
+
+- Update ``utils.calc_pixmap`` code to be ready for upcoming changes in GWCS
+  due to which inverse WCS transformations will respect bounding box by
+  disabling the bounding box when computing pixel map. [#164]
+
+
 2.0.0 (2024-10-23)
 ==================
 

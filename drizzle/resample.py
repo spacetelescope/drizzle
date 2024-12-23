@@ -6,7 +6,7 @@ import numpy as np
 
 from drizzle import cdrizzle
 
-__all__ = ["blot_image", "Drizzle"]
+__all__ = ["Drizzle", "blot_image"]
 
 SUPPORTED_DRIZZLE_KERNELS = [
     "square",
