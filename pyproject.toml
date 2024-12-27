@@ -133,6 +133,8 @@ lint.ignore = [
     "RUF005",  # unpack-instead-of-concatenating-to-collection-literal -- it's not clearly faster.
 
     "Q000",  # Single quotes found but double quotes preferred
+
+    "UP038",  # Use |-separated union of types instead of a tuple of types.
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
