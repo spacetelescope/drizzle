@@ -1,11 +1,7 @@
-import os
-
 import numpy as np
 import pytest
 from numpy.testing import assert_almost_equal, assert_equal
 
-from astropy import wcs
-from astropy.io import fits
 from drizzle.utils import (
     _estimate_pixel_scale,
     calc_pixmap,
@@ -13,8 +9,7 @@ from drizzle.utils import (
     estimate_pixel_scale_ratio,
 )
 
-TEST_DIR = os.path.abspath(os.path.dirname(__file__))
-DATA_DIR = os.path.join(TEST_DIR, 'data')
+from .helpers import wcs_from_file
 
 
 def test_map_rectangular():
@@ -34,14 +29,10 @@ def test_map_to_self():
     """
     Map a pixel array to itself. Should return the same array.
     """
-    input_file = os.path.join(DATA_DIR, 'input1.fits')
-    input_hdu = fits.open(input_file)
+    input_wcs = wcs_from_file("j8bt06nyq_sip_flt.fits", ext=1)
+    shape = input_wcs.array_shape
 
-    input_wcs = wcs.WCS(input_hdu[1].header)
-    naxis1, naxis2 = input_wcs.pixel_shape
-    input_hdu.close()
-
-    ok_pixmap = np.indices((naxis1, naxis2), dtype='float32')
+    ok_pixmap = np.indices(shape, dtype='float32')
     ok_pixmap = ok_pixmap.transpose()
 
     pixmap = calc_pixmap(input_wcs, input_wcs)
@@ -72,7 +63,7 @@ def test_map_to_self():
     assert_equal(pixmap.shape, (12, 34, 2))
 
     # from bounding box and pixel_shape (the later takes precedence):
-    input_wcs.pixel_shape = (naxis1, naxis2)
+    input_wcs.array_shape = shape
     pixmap = calc_pixmap(input_wcs, input_wcs)
     assert_equal(pixmap.shape, ok_pixmap.shape)
 
@@ -81,22 +72,15 @@ def test_translated_map():
     """
     Map a pixel array to  at translated array.
     """
-    first_file = os.path.join(DATA_DIR, 'input1.fits')
-    first_hdu = fits.open(first_file)
-    first_header = first_hdu[1].header
+    first_wcs = wcs_from_file("j8bt06nyq_sip_flt.fits", ext=1)
+    second_wcs = wcs_from_file(
+        "j8bt06nyq_sip_flt.fits",
+        ext=1,
+        crpix_shift=(-2, -2)  # shift loaded WCS by subtracting this from CRPIX
+    )
+    assert np.allclose(second_wcs.wcs.crpix, (510, 510))
 
-    first_wcs = wcs.WCS(first_header)
-    naxis1, naxis2 = first_wcs.pixel_shape
-    first_hdu.close()
-
-    second_file = os.path.join(DATA_DIR, 'input3.fits')
-    second_hdu = fits.open(second_file)
-    second_header = second_hdu[1].header
-
-    second_wcs = wcs.WCS(second_header)
-    second_hdu.close()
-
-    ok_pixmap = np.indices((naxis1, naxis2), dtype='float32') - 2.0
+    ok_pixmap = np.indices(first_wcs.array_shape, dtype='float32') - 2.0
     ok_pixmap = ok_pixmap.transpose()
 
     pixmap = calc_pixmap(first_wcs, second_wcs)
@@ -108,27 +92,20 @@ def test_translated_map():
 
 
 def test_estimate_pixel_scale_ratio():
-    input_file = os.path.join(DATA_DIR, 'j8bt06nyq_flt.fits')
-
-    with fits.open(input_file) as h:
-        w = wcs.WCS(h[1].header)
-
+    w = wcs_from_file("j8bt06nyq_flt.fits", ext=1)
     pscale = estimate_pixel_scale_ratio(w, w, w.wcs.crpix, (0, 0))
-
     assert abs(pscale - 0.9999999916964737) < 1.0e-9
 
 
 def test_estimate_pixel_scale_no_refpix():
     # create a WCS without higher order (polynomial) distortions:
-    fits_file = os.path.join(DATA_DIR, 'input1.fits')
-    with fits.open(fits_file) as h:
-        w = wcs.WCS(h[1].header, h)
-        w.sip = None
-        w.det2im1 = None
-        w.det2im2 = None
-        w.cpdis1 = None
-        w.cpdis2 = None
-        pixel_shape = w.pixel_shape[:]
+    w = wcs_from_file("j8bt06nyq_sip_flt.fits", ext=1)
+    w.sip = None
+    w.det2im1 = None
+    w.det2im2 = None
+    w.cpdis1 = None
+    w.cpdis2 = None
+    pixel_shape = w.pixel_shape[:]
 
     ref_pscale = _estimate_pixel_scale(w, w.wcs.crpix)
 
