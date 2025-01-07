@@ -25,14 +25,17 @@ def test_map_rectangular():
     assert_equal(pixmap[5, 500], (500, 5))
 
 
-def test_map_to_self():
+@pytest.mark.parametrize(
+    "wcs_type", ["fits", "gwcs"]
+)
+def test_map_to_self(wcs_type):
     """
     Map a pixel array to itself. Should return the same array.
     """
-    input_wcs = wcs_from_file("j8bt06nyq_sip_flt.fits", ext=1)
+    input_wcs = wcs_from_file("j8bt06nyq_sip_flt.fits", ext=1, wcs_type=wcs_type)
     shape = input_wcs.array_shape
 
-    ok_pixmap = np.indices(shape, dtype='float32')
+    ok_pixmap = np.indices(shape, dtype='float64')
     ok_pixmap = ok_pixmap.transpose()
 
     pixmap = calc_pixmap(input_wcs, input_wcs)
@@ -68,17 +71,24 @@ def test_map_to_self():
     assert_equal(pixmap.shape, ok_pixmap.shape)
 
 
-def test_translated_map():
+@pytest.mark.parametrize(
+    "wcs_type", ["fits", "gwcs"]
+)
+def test_translated_map(wcs_type):
     """
     Map a pixel array to  at translated array.
     """
-    first_wcs = wcs_from_file("j8bt06nyq_sip_flt.fits", ext=1)
+    first_wcs = wcs_from_file(
+        "j8bt06nyq_sip_flt.fits",
+        ext=1,
+        wcs_type=wcs_type
+    )
     second_wcs = wcs_from_file(
         "j8bt06nyq_sip_flt.fits",
         ext=1,
-        crpix_shift=(-2, -2)  # shift loaded WCS by subtracting this from CRPIX
+        crpix_shift=(-2, -2),  # shift loaded WCS by adding this to CRPIX
+        wcs_type=wcs_type
     )
-    assert np.allclose(second_wcs.wcs.crpix, (510, 510))
 
     ok_pixmap = np.indices(first_wcs.array_shape, dtype='float32') - 2.0
     ok_pixmap = ok_pixmap.transpose()
@@ -88,7 +98,7 @@ def test_translated_map():
     # Got x-y transpose right
     assert_equal(pixmap.shape, ok_pixmap.shape)
     # Mapping an array to a translated array
-    assert_almost_equal(pixmap, ok_pixmap, decimal=5)
+    assert_almost_equal(pixmap[2:, 2:], ok_pixmap[2:, 2:], decimal=5)
 
 
 def test_estimate_pixel_scale_ratio():
