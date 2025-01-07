@@ -61,6 +61,8 @@ def calc_pixmap(wcs_from, wcs_to, shape=None):
         shape = wcs_from.array_shape
         if shape is None:
             if (bbox := getattr(wcs_from, "bounding_box", None)) is not None:
+                if not isinstance(bbox, tuple):
+                    bbox = bbox.bounding_box()
                 if (nd := np.ndim(bbox)) == 1:
                     bbox = (bbox, )
                 if nd > 1:

@@ -50,9 +50,10 @@ def test_map_to_self(wcs_type):
     pixmap = calc_pixmap(input_wcs, input_wcs, (12, 34))
     assert_equal(pixmap.shape, (12, 34, 2))
 
-    # Check that an exception is raised for WCS without pixel_shape or
+    # Check that an exception is raised for WCS without pixel_shape and
     # bounding_box:
     input_wcs.pixel_shape = None
+    input_wcs.bounding_box = None
     with pytest.raises(ValueError):
         calc_pixmap(input_wcs, input_wcs)
 
