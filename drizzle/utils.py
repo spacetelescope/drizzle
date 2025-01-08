@@ -61,6 +61,17 @@ def calc_pixmap(wcs_from, wcs_to, shape=None):
         shape = wcs_from.array_shape
         if shape is None:
             if (bbox := getattr(wcs_from, "bounding_box", None)) is not None:
+                try:
+                    # to avoid dependency on astropy just to check whether
+                    # the bounding box is an instance of
+                    # modeling.bounding_box.ModelBoundingBox, we try to
+                    # directly use and bounding_box(order='F') and if it fails,
+                    # fall back to converting the bounding box to a tuple
+                    # (of intervals):
+                    bbox = bbox.bounding_box(order='F')
+                except AttributeError:
+                    bbox = tuple(bbox)
+
                 if (nd := np.ndim(bbox)) == 1:
                     bbox = (bbox, )
                 if nd > 1:
