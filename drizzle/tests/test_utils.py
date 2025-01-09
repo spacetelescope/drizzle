@@ -102,6 +102,63 @@ def test_translated_map(wcs_type):
     assert_almost_equal(pixmap[2:, 2:], ok_pixmap[2:, 2:], decimal=5)
 
 
+def test_disable_gwcs_bbox():
+    """
+    Map a pixel array to a translated version ofitself.
+    """
+    first_wcs = wcs_from_file(
+        "j8bt06nyq_sip_flt.fits",
+        ext=1,
+        wcs_type="gwcs"
+    )
+    second_wcs = wcs_from_file(
+        "j8bt06nyq_sip_flt.fits",
+        ext=1,
+        crpix_shift=(-2, -2),  # shift loaded WCS by adding this to CRPIX
+        wcs_type="gwcs"
+    )
+
+    ok_pixmap = np.indices(first_wcs.array_shape, dtype='float64') - 2.0
+    ok_pixmap = ok_pixmap.transpose()
+
+    # Mapping an array to a translated array
+
+    # disable both bounding boxes:
+    pixmap = calc_pixmap(first_wcs, second_wcs, disable_bbox="both")
+    assert_almost_equal(pixmap[2:, 2:], ok_pixmap[2:, 2:], decimal=5)
+    assert np.all(np.isfinite(pixmap[:2, :2]))
+    assert np.all(np.isfinite(pixmap[-2:, -2:]))
+    # check bbox was restored
+    assert first_wcs.bounding_box is not None
+    assert second_wcs.bounding_box is not None
+
+    # disable "from" bounding box:
+    pixmap = calc_pixmap(second_wcs, first_wcs, disable_bbox="from")
+    assert_almost_equal(pixmap[:-2, :-2], ok_pixmap[:-2, :-2] + 4.0, decimal=5)
+    assert np.all(np.logical_not(np.isfinite(pixmap[-2:, -2:])))
+    # check bbox was restored
+    assert first_wcs.bounding_box is not None
+    assert second_wcs.bounding_box is not None
+
+    # disable "to" bounding boxes:
+    pixmap = calc_pixmap(first_wcs, second_wcs, disable_bbox="to")
+    assert_almost_equal(pixmap[2:, 2:], ok_pixmap[2:, 2:], decimal=5)
+    assert np.all(np.isfinite(pixmap[:2, :2]))
+    assert np.all(pixmap[:2, :2] < 0.0)
+    assert np.all(np.isfinite(pixmap[-2:, -2:]))
+    # check bbox was restored
+    assert first_wcs.bounding_box is not None
+    assert second_wcs.bounding_box is not None
+
+    # enable all bounding boxes:
+    pixmap = calc_pixmap(first_wcs, second_wcs, disable_bbox="none")
+    assert_almost_equal(pixmap[2:, 2:], ok_pixmap[2:, 2:], decimal=5)
+    assert np.all(np.logical_not(np.isfinite(pixmap[:2, :2])))
+    # check bbox was restored
+    assert first_wcs.bounding_box is not None
+    assert second_wcs.bounding_box is not None
+
+
 def test_estimate_pixel_scale_ratio():
     w = wcs_from_file("j8bt06nyq_flt.fits", ext=1)
     pscale = estimate_pixel_scale_ratio(w, w, w.wcs.crpix, (0, 0))

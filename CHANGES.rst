@@ -9,7 +9,8 @@ Release Notes
 
 - Update ``utils.calc_pixmap`` code to be ready for upcoming changes in GWCS
   due to which inverse WCS transformations will respect bounding box by
-  disabling the bounding box when computing pixel map. [#164]
+  allowing the caller of ``utils.calc_pixmap`` to disable the bounding box(es)
+  on both or one of the input WCS when computing pixel map. [#164]
 
 
 2.0.0 (2024-10-23)
