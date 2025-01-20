@@ -7,7 +7,7 @@ __all__ = ["calc_pixmap", "decode_context", "estimate_pixel_scale_ratio"]
 _DEG2RAD = math.pi / 180.0
 
 
-def calc_pixmap(wcs_from, wcs_to, shape=None):
+def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to"):
     """
     Calculate a discretized on a grid mapping between the pixels of two images
     using provided WCS of the original ("from") image and the destination ("to")
@@ -35,6 +35,14 @@ def calc_pixmap(wcs_from, wcs_to, shape=None):
         ``numpy.ndarray`` order. When provided, it takes precedence over the
         ``wcs_from.array_shape`` property.
 
+    disable_bbox : {"to", "from", "both", "none"}, optional
+        Indicates whether to use or not to use the bounding box of either
+        (both) ``wcs_from`` or (and) ``wcs_to`` when computing pixel map. When
+        ``disable_bbox`` is "none", pixel coordinates outside of the bounding
+        box are set to `NaN` only if ``wcs_from`` or (and) ``wcs_to`` sets
+        world coordinates to NaN when input pixel coordinates are outside of
+        the bounding box.
+
     Returns
     -------
     pixmap : numpy.ndarray
@@ -57,27 +65,39 @@ def calc_pixmap(wcs_from, wcs_to, shape=None):
     If ``bounding_box`` is not available, a `ValueError` will be raised.
 
     """
+    if (bbox_from := getattr(wcs_from, "bounding_box", None)) is not None:
+        try:
+            # to avoid dependency on astropy just to check whether
+            # the bounding box is an instance of
+            # modeling.bounding_box.ModelBoundingBox, we try to
+            # directly use and bounding_box(order='F') and if it fails,
+            # fall back to converting the bounding box to a tuple
+            # (of intervals):
+            bbox_from = bbox_from.bounding_box(order='F')
+        except AttributeError:
+            bbox_from = tuple(bbox_from)
+
+    if (bbox_to := getattr(wcs_to, "bounding_box", None)) is not None:
+        try:
+            # to avoid dependency on astropy just to check whether
+            # the bounding box is an instance of
+            # modeling.bounding_box.ModelBoundingBox, we try to
+            # directly use and bounding_box(order='F') and if it fails,
+            # fall back to converting the bounding box to a tuple
+            # (of intervals):
+            bbox_to = bbox_to.bounding_box(order='F')
+        except AttributeError:
+            bbox_to = tuple(bbox_to)
+
     if shape is None:
         shape = wcs_from.array_shape
-        if shape is None:
-            if (bbox := getattr(wcs_from, "bounding_box", None)) is not None:
-                try:
-                    # to avoid dependency on astropy just to check whether
-                    # the bounding box is an instance of
-                    # modeling.bounding_box.ModelBoundingBox, we try to
-                    # directly use and bounding_box(order='F') and if it fails,
-                    # fall back to converting the bounding box to a tuple
-                    # (of intervals):
-                    bbox = bbox.bounding_box(order='F')
-                except AttributeError:
-                    bbox = tuple(bbox)
-
-                if (nd := np.ndim(bbox)) == 1:
-                    bbox = (bbox, )
-                if nd > 1:
-                    shape = tuple(
-                        int(math.ceil(lim[1] + 0.5)) for lim in bbox[::-1]
-                    )
+        if shape is None and bbox_from is not None:
+            if (nd := np.ndim(bbox_from)) == 1:
+                bbox_from = (bbox_from, )
+            if nd > 1:
+                shape = tuple(
+                    int(math.ceil(lim[1] + 0.5)) for lim in bbox_from[::-1]
+                )
 
     if shape is None:
         raise ValueError(
@@ -85,7 +105,22 @@ def calc_pixmap(wcs_from, wcs_to, shape=None):
         )
 
     y, x = np.indices(shape, dtype=np.float64)
-    x, y = wcs_to.world_to_pixel_values(*wcs_from.pixel_to_world_values(x, y))
+
+    # temporarily disable the bounding box for the "from" WCS:
+    if disable_bbox in ["from", "both"] and bbox_from is not None:
+        wcs_from.bounding_box = None
+    if disable_bbox in ["to", "both"] and bbox_to is not None:
+        wcs_to.bounding_box = None
+    try:
+        x, y = wcs_to.world_to_pixel_values(
+            *wcs_from.pixel_to_world_values(x, y)
+        )
+    finally:
+        if bbox_from is not None:
+            wcs_from.bounding_box = bbox_from
+        if bbox_to is not None:
+            wcs_to.bounding_box = bbox_to
+
     pixmap = np.dstack([x, y])
     return pixmap
 
