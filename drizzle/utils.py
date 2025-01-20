@@ -2,6 +2,8 @@ import math
 
 import numpy as np
 
+from astropy.wcs.utils import pixel_to_pixel
+
 __all__ = ["calc_pixmap", "decode_context", "estimate_pixel_scale_ratio"]
 
 _DEG2RAD = math.pi / 180.0
@@ -112,9 +114,7 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to"):
     if disable_bbox in ["to", "both"] and bbox_to is not None:
         wcs_to.bounding_box = None
     try:
-        x, y = wcs_to.world_to_pixel_values(
-            *wcs_from.pixel_to_world_values(x, y)
-        )
+        x, y = pixel_to_pixel(wcs_from, wcs_to, x, y)
     finally:
         if bbox_from is not None:
             wcs_from.bounding_box = bbox_from
