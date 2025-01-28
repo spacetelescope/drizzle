@@ -4,7 +4,7 @@
 Release Notes
 =============
 
-2.0.1 (Unreleased)
+2.0.1 (2025-01-28)
 ==================
 
 - Update ``utils.calc_pixmap`` code to be ready for upcoming changes in GWCS
