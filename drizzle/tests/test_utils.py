@@ -2,14 +2,13 @@ import numpy as np
 import pytest
 from numpy.testing import assert_almost_equal, assert_equal
 
+from drizzle.tests.helpers import wcs_from_file
 from drizzle.utils import (
     _estimate_pixel_scale,
     calc_pixmap,
     decode_context,
     estimate_pixel_scale_ratio,
 )
-
-from .helpers import wcs_from_file
 
 
 def test_map_rectangular():

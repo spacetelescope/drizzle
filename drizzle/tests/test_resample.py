@@ -1098,3 +1098,16 @@ def test_resample_inconsistent_output():
             out_wht=out_wht,
         )
     assert str(err_info.value).startswith("Inconsistent data shapes specified")
+
+
+@pytest.mark.parametrize(
+    "fillval", ["NaN", "INDEF", "", None]
+)
+def test_nan_fillval(fillval):
+    driz = resample.Drizzle(
+        kernel='square',
+        fillval=fillval,
+        out_shape=(20, 20)
+    )
+
+    assert np.all(~np.isfinite(driz.out_img))
