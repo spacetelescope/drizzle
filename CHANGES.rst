@@ -4,6 +4,16 @@
 Release Notes
 =============
 
+
+2.0.2 (Unreleased)
+==================
+
+- Fix a bug in ``resample.Drizzle`` due to which initially, before adding
+  the first image, ``Drizzle.output_img`` is not filled with ``NaN`` when
+  ``fillval`` is either ``INDEF``, ``NAN``, ``None`` *and* the ``Drizzle``
+  object was initialized with ``out_img=None``. [#170]
+
+
 2.0.1 (2025-01-28)
 ==================
 
