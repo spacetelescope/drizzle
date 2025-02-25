@@ -24,11 +24,14 @@ jobs:
         - linux: check-security
         - linux: py310-xdist
         - linux: py311-xdist
-        - linux: py313-xdist
-        - macos: py312-xdist
-        - windows: py312-xdist
-        - linux: py312-xdist-cov
+        - linux: py312-xdist
+        # `tox` does not currently respect `requires-python` versions when creating testing environments;
+        # if this breaks, add an upper pin to `requires-python` and revert this py3 to the latest working version
+        - linux: py3-cov-xdist
           coverage: codecov
-        - linux: py312-xdist-devdeps
+        - macos: py3-xdist
+        - windows: py3-xdist
+        - linux: py3-devdeps-xdist
+      toxdeps: tox-uv
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
