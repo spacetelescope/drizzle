@@ -82,6 +82,127 @@ compute_bit_value(integer_t uuid) {
     return bv;
 }
 
+/*
+To calculate area under a line segment within unit square at origin.
+This is used by BOXER.
+*/
+
+static inline_macro double
+sgarea(const double x1, const double y1, const double x2, const double y2,
+	const int sgn_dx, const double slope, const double inv_slope) {
+  double c, xlo, xhi, ylo, yhi, xtop;
+
+  /* Trap vertical line */
+  if (x1 - x2 == 0)
+    return 0.0;
+
+  if (sgn_dx < 0) {
+    xlo = x2;
+    xhi = x1;
+  } else {
+    xlo = x1;
+    xhi = x2;
+  }
+
+  /* And determine the bounds ignoring y for now */
+  if (xlo >= 1.0 || xhi <= 0.0)
+    return 0.0;
+
+  xlo = MAX(xlo, 0.0);
+  xhi = MIN(xhi, 1.0);
+
+  /* Now look at y */
+  assert(slope != 0.0);
+  c = y1 - slope * x1;
+  ylo = slope * xlo + c;
+  yhi = slope * xhi + c;
+
+  /* Trap segment entirely below axis */
+  if (ylo <= 0.0 && yhi <= 0.0)
+    return 0.0;
+
+  /* There are four possibilities: both y below 1, both y above 1 and
+     one of each. */
+  if (ylo >= 1.0 && yhi >= 1.0) {
+    /* Line segment is entirely above square */
+    return sgn_dx * (xhi - xlo);
+  }
+
+  /* Adjust bounds if segment crosses axis (to exclude anything below
+     axis) */
+  if (ylo < 0.0) {
+    ylo = 0.0;
+    xlo = -c * inv_slope;
+  }
+
+  if (yhi < 0.0) {
+    yhi = 0.0;
+    xhi = -c * inv_slope;
+  }
+
+  if (ylo <= 1.0) {
+    if (yhi <= 1.0) {
+      /* Segment is entirely within square */
+      return sgn_dx * 0.5 * (xhi - xlo) * (yhi + ylo);
+    }
+
+    /* Otherwise, it must cross the top of the square */
+    xtop = (1.0 - c) * inv_slope;
+    return sgn_dx * (0.5 * (xtop - xlo) * (1.0 + ylo) + xhi - xtop);
+  }
+
+  xtop = (1.0 - c) * inv_slope;
+  return sgn_dx * (0.5 * (xhi - xtop) * (1.0 + yhi) + xtop - xlo);
+
+  /* Shouldn't ever get here */
+  assert(FALSE);
+  return 0.0;
+}
+
+/**
+ compute area of box overlap
+
+ Calculate the area common to input clockwise polygon x(n), y(n) with
+ square (is, js) to (is+1, js+1).
+ This version is for a quadrilateral.
+
+ Used by do_square_kernel.
+*/
+
+double
+boxer(double is, double js,
+      const double x[4], const double y[4],
+      const int sgn_dx[4], const double slope[4], const double inv_slope[4]) {
+  integer_t i, i2;
+  double sum;
+  double px[4], py[4];
+
+  assert(x);
+  assert(y);
+
+  is -= 0.5;
+  js -= 0.5;
+  /* Set up coords relative to unit square at origin Note that the
+     +0.5s were added when this code was included in DRIZZLE */
+
+  for (i = 0; i < 4; ++i) {
+    px[i] = x[i] - is;
+    py[i] = y[i] - js;
+  }
+
+  /* For each line in the polygon (or at this stage, input
+     quadrilateral) calculate the area common to the unit square
+     (allow negative area for subsequent `vector' addition of
+     subareas). */
+  sum = 0.0;
+  for (i = 0; i < 4; ++i) {
+    sum += sgarea(px[i], py[i], px[(i+1) & 0x3], py[(i+1) & 0x3],
+		  sgn_dx[i], slope[i], inv_slope[i]);
+  }
+
+  return sum;
+}
+
 /** ---------------------------------------------------------------------------
  * Compute area of box overlap. Calculate the area common to input clockwise
  * polygon x(n), y(n) with square (is, js) to (is+1, js+1). This version is for
@@ -752,8 +873,10 @@ do_kernel_square(struct driz_param_t *p) {
     integer_t bv, i, j, ii, jj, min_ii, max_ii, min_jj, max_jj, nhit;
     integer_t osize[2];
     float scale2, vc, d, dow;
-    double dh, jaco, tem, dover, w;
+    double dh, jaco, tem, dover, w, dx, dy;
     double xin[4], yin[4], xout[4], yout[4];
+    double slope[4], inv_slope[4];
+    int sgn_dx[4];
 
     struct scanner s;
     int xmin, xmax, ymin, ymax, n;
@@ -839,6 +962,23 @@ do_kernel_square(struct driz_param_t *p) {
                 w = 1.0;
             }
 
+	    /* Pre-compute slopes and sign of dx for each segment,
+	       since they will be used for all pixels in the loop.
+	       Also compute the inverse of the slope to avoid more
+	       division calls later.
+	     */
+
+	    for (ii = 0; ii < 4; ii++) {
+	      dx = xout[(ii+1) & 0x3] - xout[ii];
+	      dy = yout[(ii+1) & 0x3] - yout[ii];
+	      if (dx >= 0)
+		sgn_dx[ii] = 1;
+	      else
+		sgn_dx[ii] = -1;
+	      slope[ii] = dy / dx;
+	      inv_slope[ii] = 1 / slope[ii];
+	    }
+
             /* Loop over output pixels which could be affected */
             min_jj = MAX(fortran_round(min_doubles(yout, 4)), 0);
             max_jj = MIN(fortran_round(max_doubles(yout, 4)), osize[1] - 1);
@@ -848,7 +988,9 @@ do_kernel_square(struct driz_param_t *p) {
             for (jj = min_jj; jj <= max_jj; ++jj) {
                 for (ii = min_ii; ii <= max_ii; ++ii) {
                     /* Call compute_area to calculate overlap */
-                    dover = compute_area((double)ii, (double)jj, xout, yout);
+                    //dover = compute_area((double)ii, (double)jj, xout, yout);
+		    dover = boxer((double)ii, (double)jj, xout, yout,
+				  sgn_dx, slope, inv_slope);
 
                     if (dover > 0.0) {
                         vc = get_pixel(p->output_counts, ii, jj);
