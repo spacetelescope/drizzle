@@ -969,14 +969,14 @@ do_kernel_square(struct driz_param_t *p) {
 	     */
 
 	    for (ii = 0; ii < 4; ii++) {
-	      dx = xout[(ii+1) & 0x3] - xout[ii];
-	      dy = yout[(ii+1) & 0x3] - yout[ii];
-	      if (dx >= 0)
-		sgn_dx[ii] = 1;
-	      else
-		sgn_dx[ii] = -1;
-	      slope[ii] = dy / dx;
-	      inv_slope[ii] = 1 / slope[ii];
+	        dx = xout[(ii+1) & 0x3] - xout[ii];
+	        dy = yout[(ii+1) & 0x3] - yout[ii];
+	        if (dx >= 0)
+		    sgn_dx[ii] = 1;
+	        else
+		    sgn_dx[ii] = -1;
+	        slope[ii] = dy / dx;
+	        inv_slope[ii] = 1 / slope[ii];
 	    }
 
             /* Loop over output pixels which could be affected */
@@ -985,8 +985,8 @@ do_kernel_square(struct driz_param_t *p) {
             min_ii = MAX(fortran_round(min_doubles(xout, 4)), 0);
             max_ii = MIN(fortran_round(max_doubles(xout, 4)), osize[0] - 1);
 
-            for (jj = min_jj; jj <= max_jj; ++jj) {
-                for (ii = min_ii; ii <= max_ii; ++ii) {
+	    for (jj = min_jj; jj <= max_jj; ++jj) {
+	        for (ii = min_ii; ii <= max_ii; ++ii) {
                     /* Call compute_area to calculate overlap */
                     //dover = compute_area((double)ii, (double)jj, xout, yout);
 		    dover = boxer((double)ii, (double)jj, xout, yout,
