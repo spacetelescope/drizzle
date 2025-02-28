@@ -141,7 +141,9 @@ sgarea(const double x1, const double y1, const double x2, const double y2,
 
   if (ylo <= 1.0) {
     if (yhi <= 1.0) {
-      /* Segment is entirely within square */
+      /* Segment is entirely within the square.
+	 The case of zero slope will end up here without ever
+	 calling for inv_slope earlier. */
       return sgn_dx * 0.5 * (xhi - xlo) * (yhi + ylo);
     }
 
