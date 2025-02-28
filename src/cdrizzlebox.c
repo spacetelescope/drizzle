@@ -112,7 +112,6 @@ sgarea(const double x1, const double y1, const double x2, const double y2,
   xhi = MIN(xhi, 1.0);
 
   /* Now look at y */
-  assert(slope != 0.0);
   c = y1 - slope * x1;
   ylo = slope * xlo + c;
   yhi = slope * xhi + c;
