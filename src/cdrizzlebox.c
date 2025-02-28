@@ -874,7 +874,7 @@ do_kernel_square(struct driz_param_t *p) {
     integer_t bv, i, j, ii, jj, min_ii, max_ii, min_jj, max_jj, nhit;
     integer_t osize[2];
     float scale2, vc, d, dow;
-    double dh, jaco, tem, dover, w, dx, dy;
+    double dh, jaco, tem, dover, w, dx, dy, inv_jaco;
     double xin[4], yin[4], xout[4], yout[4];
     double slope[4], inv_slope[4];
     int sgn_dx[4];
@@ -979,6 +979,7 @@ do_kernel_square(struct driz_param_t *p) {
 	        slope[ii] = dy / dx;
 	        inv_slope[ii] = dx / dy;
 	    }
+	    inv_jaco = 1.0 / jaco;
 
             /* Loop over output pixels which could be affected */
             min_jj = MAX(fortran_round(min_doubles(yout, 4)), 0);
@@ -997,7 +998,8 @@ do_kernel_square(struct driz_param_t *p) {
                         vc = get_pixel(p->output_counts, ii, jj);
 
                         /* Re-normalise the area overlap using the Jacobian */
-                        dover /= jaco;
+                        //dover /= jaco;
+			dover *= inv_jaco;
                         dow = (float)(dover * w);
 
                         /* Count the hits */
