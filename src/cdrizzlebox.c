@@ -93,7 +93,7 @@ sgarea(const double x1, const double y1, const double x2, const double y2,
   double c, xlo, xhi, ylo, yhi, xtop;
 
   /* Trap vertical line */
-  if (x1 - x2 == 0)
+  if (inv_slope == 0)
     return 0.0;
 
   if (sgn_dx < 0) {
@@ -976,7 +976,7 @@ do_kernel_square(struct driz_param_t *p) {
 	        else
 		    sgn_dx[ii] = -1;
 	        slope[ii] = dy / dx;
-	        inv_slope[ii] = 1 / slope[ii];
+	        inv_slope[ii] = dx / dy;
 	    }
 
             /* Loop over output pixels which could be affected */
