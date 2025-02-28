@@ -985,8 +985,8 @@ do_kernel_square(struct driz_param_t *p) {
             min_ii = MAX(fortran_round(min_doubles(xout, 4)), 0);
             max_ii = MIN(fortran_round(max_doubles(xout, 4)), osize[0] - 1);
 
-	    for (jj = min_jj; jj <= max_jj; ++jj) {
-	        for (ii = min_ii; ii <= max_ii; ++ii) {
+	    for (ii = min_ii; ii <= max_ii; ++ii) {
+	        for (jj = min_jj; jj <= max_jj; ++jj) {
                     /* Call compute_area to calculate overlap */
                     //dover = compute_area((double)ii, (double)jj, xout, yout);
 		    dover = boxer((double)ii, (double)jj, xout, yout,
