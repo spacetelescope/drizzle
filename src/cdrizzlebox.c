@@ -204,144 +204,8 @@ boxer(double is, double js,
 }
 
 /** ---------------------------------------------------------------------------
- * Compute area of box overlap. Calculate the area common to input clockwise
- * polygon x(n), y(n) with square (is, js) to (is+1, js+1). This version is for
- * a quadrilateral. Used by do_square_kernel.
- *
- * is: x coordinate of a pixel on the output image
- * js: y coordinate of a pixel on the output image
- * x:  x coordinates of endpoints of quadrilateral containing flux of input
- * pixel y:  y coordinates of endpoints of quadrilateral containing flux of
- * input pixel
- */
-
-double
-compute_area(double is, double js, const double x[4], const double y[4]) {
-    int ipoint, jpoint, idim, jdim, iside, outside, count;
-    int positive[2];
-    double area, width;
-    double midpoint[2], delta[2];
-    double border[2][2], segment[2][2];
-
-    /* The area for a qadrilateral clipped to a square of unit length whose
-     * sides are aligned with the axes. The area is computed by computing the
-     * area under each line segment clipped to the boundary of three sides of
-     * the sqaure. Since the computed width is positive for two of the sides and
-     * negative for the other two, we subtract the area outside the
-     * quadrilateral without any extra code.
-     */
-    area = 0.0;
-
-    border[0][0] = is - 0.5;
-    border[0][1] = js - 0.5;
-    border[1][0] = is + 0.5;
-    border[1][1] = js + 0.5;
-
-    for (ipoint = 0; ipoint < 4; ++ipoint) {
-        jpoint = (ipoint + 1) & 03; /* Next point in cyclical order */
-
-        segment[0][0] = x[ipoint];
-        segment[0][1] = y[ipoint];
-        segment[1][0] = x[jpoint];
-        segment[1][1] = y[jpoint];
-
-        /* Compute the endpoints of the line segment that
-         * lie inside the border (possibly the whole segment)
-         */
-
-        for (idim = 0, count = 3; idim < 2; ++idim) {
-            for (iside = 0; iside < 2; ++iside, --count) {
-                delta[0] = segment[0][idim] - border[iside][idim];
-                delta[1] = segment[1][idim] - border[iside][idim];
-
-                positive[0] = delta[0] > 0.0;
-                positive[1] = delta[1] > 0.0;
-
-                /* If both deltas have the same signe there is no baundary
-                 * crossing
-                 */
-                if (positive[0] == positive[1]) {
-                    /* A diagram will convince that you decide a point is
-                     * inside or outside the boundary by the following test
-                     */
-                    if (positive[0] == iside) {
-                        /* Segment is entirely outside the boundary */
-                        if (count == 0) {
-                            /* Implicitly multiplied by 1.0, the square height
-                             */
-                            width = segment[1][0] - segment[0][0];
-                            area += width;
-                        } else {
-                            goto _nextsegment;
-                        }
-
-                    } else {
-                        /* Segment entirely within the boundary */
-                        if (count == 0) {
-                            /* Use the trapezoid formula to compute the area
-                             * under the segment. Delta is the distance to the
-                             * top of the square and is negative or zero for the
-                             * segment inside the square
-                             */
-                            width = segment[1][0] - segment[0][0];
-                            area += 0.5 * width *
-                                    ((1.0 + delta[0]) + (1.0 + delta[1]));
-                        }
-                    }
-
-                } else {
-                    /* If ends of the line segment are on opposite sides of the
-                     * boundary, calculate midpoint, the point of intersection
-                     */
-                    outside = positive[iside];
-                    jdim = (idim + 1) & 01; /* the other dimension */
-
-                    midpoint[idim] = border[iside][idim];
-
-                    midpoint[jdim] = (delta[1] * segment[0][jdim] -
-                                      delta[0] * segment[1][jdim]) /
-                                     (delta[1] - delta[0]);
-
-                    if (count == 0) {
-                        /* If a segment cross the boundary the formula for its
-                         * area is a combination of the formulas for segments
-                         * entirely inside and outside.
-                         */
-                        if (outside == 0) {
-                            width = midpoint[0] - segment[0][0];
-                            area += width;
-                            width = segment[1][0] - midpoint[0];
-                            /* Delta[0] is at the crossing point and thus zero
-                             */
-                            area += 0.5 * width * (1.0 + (1.0 + delta[1]));
-                        } else {
-                            width = segment[1][0] - midpoint[0];
-                            area += width;
-                            width = midpoint[0] - segment[0][0];
-                            /* Delta[1] is at the crossing point and thus zero
-                             */
-                            area += 0.5 * width * ((1.0 + delta[0]) + 1.0);
-                        }
-
-                    } else {
-                        /* Clip segment against each boundary except the last */
-                        segment[outside][0] = midpoint[0];
-                        segment[outside][1] = midpoint[1];
-                    }
-                }
-            }
-        }
-
-    _nextsegment:
-        continue;
-    }
-
-    return fabs(area);
-}
-
-/** ---------------------------------------------------------------------------
  * Calculate overlap between an arbitrary rectangle, aligned with the axes, and
- * a pixel. This is a simplified version of the compute_area, only valid if axes
+ * a pixel. This is a simplified version of boxer, only valid if axes
  * are nearly aligned. Used by do_kernel_turbo.
  *
  * i:    the x coordinate of a pixel on the output image
@@ -987,8 +851,7 @@ do_kernel_square(struct driz_param_t *p) {
 
 	    for (ii = min_ii; ii <= max_ii; ++ii) {
 	        for (jj = min_jj; jj <= max_jj; ++jj) {
-                    /* Call compute_area to calculate overlap */
-                    //dover = compute_area((double)ii, (double)jj, xout, yout);
+                    /* Call boxer to calculate overlap */
 		    dover = boxer((double)ii, (double)jj, xout, yout,
 				  sgn_dx, slope, inv_slope);
 
