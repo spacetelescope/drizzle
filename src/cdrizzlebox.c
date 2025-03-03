@@ -872,7 +872,7 @@ do_kernel_turbo(struct driz_param_t *p) {
 int
 do_kernel_square(struct driz_param_t *p) {
     integer_t bv, i, j, ii, jj, min_ii, max_ii, min_jj, max_jj, nhit;
-    integer_t osize[2];
+    integer_t osize[2], mapsize[2];
     float scale2, vc, d, dow;
     double dh, jaco, tem, dover, w, dx, dy, inv_jaco;
     double xin[4], yin[4], xout[4], yout[4];
@@ -897,6 +897,8 @@ do_kernel_square(struct driz_param_t *p) {
 
     /* This is the outer loop over all the lines in the input image */
     get_dimensions(p->output_data, osize);
+    get_dimensions(p->pixmap, mapsize);
+
     for (j = ymin; j <= ymax; ++j) {
         /* Check the overlap with the output */
         n = get_scanline_limits(&s, j, &xmin, &xmax);
@@ -927,30 +929,33 @@ do_kernel_square(struct driz_param_t *p) {
             xin[3] = xin[0] = (double)i - dh;
             xin[2] = xin[1] = (double)i + dh;
 
-            for (ii = 0; ii < 4; ++ii) {
-                if (interpolate_point(p, xin[ii], yin[ii], xout + ii,
-                                      yout + ii)) {
-                    goto _miss;
-                }
-            }
+	    /* Assuming we don't need to extrapolate, call a more
+	     * efficient interpolator that takes advantage of the fact
+	     * that pixfrac<1 and that we are using a square grid.
+	     */
+	    if (i > 0 && i < mapsize[0] - 1 && j > 0 && j < mapsize[1] - 1) {
+	        if (interpolate_four_points(p, i, j, dh,
+					    xout, xout + 1, xout + 2, xout + 3,
+					    yout, yout + 1, yout + 2, yout + 3))
+		    goto _miss;
+	    } else {
+	        for (ii = 0; ii < 4; ++ii) {
+                    if (interpolate_point(p, xin[ii], yin[ii], xout + ii,
+                                          yout + ii))
+		        goto _miss;
+	        }
+	    }
 
-            /* Work out the area of the quadrilateral on the output grid.
-               Note that this expression expects the points to be in clockwise
-               order */
+            /* Work out the area of the quadrilateral on the output
+             * grid.  If the points are in clockwise order we get a
+             * postive area.  If they are in anticlockwise order, jaco
+             * will be negative, but so will the areas computed by
+             * boxer, so it doesn't actually matter once we divide it
+             * out.
+	     */
 
             jaco = 0.5f * ((xout[1] - xout[3]) * (yout[0] - yout[2]) -
                            (xout[0] - xout[2]) * (yout[1] - yout[3]));
-
-            if (jaco < 0.0) {
-                jaco *= -1.0;
-                /* Swap */
-                tem = xout[1];
-                xout[1] = xout[3];
-                xout[3] = tem;
-                tem = yout[1];
-                yout[1] = yout[3];
-                yout[3] = tem;
-            }
 
             /* Allow for stretching because of scale change */
             d = get_pixel(p->data, i, j) * scale2;
@@ -987,14 +992,15 @@ do_kernel_square(struct driz_param_t *p) {
             min_ii = MAX(fortran_round(min_doubles(xout, 4)), 0);
             max_ii = MIN(fortran_round(max_doubles(xout, 4)), osize[0] - 1);
 
-	    for (ii = min_ii; ii <= max_ii; ++ii) {
-	        for (jj = min_jj; jj <= max_jj; ++jj) {
+	    for (jj = min_jj; jj <= max_jj; ++jj) {
+	        for (ii = min_ii; ii <= max_ii; ++ii) {
                     /* Call boxer to calculate overlap */
                     //dover = compute_area((double)ii, (double)jj, xout, yout);
 		    dover = boxer((double)ii, (double)jj, xout, yout,
 				  sgn_dx, slope, inv_slope);
 
-                    if (dover > 0.0) {
+		    /* Could be positive or negative, depending on the sign of jaco */
+                    if (dover != 0.0) {
                         vc = get_pixel(p->output_counts, ii, jj);
 
                         /* Re-normalise the area overlap using the Jacobian */
