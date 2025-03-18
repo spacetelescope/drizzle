@@ -7,7 +7,6 @@ from gwcs.coordinate_frames import CelestialFrame, Frame2D
 from astropy import coordinates as coord
 from astropy import units
 from astropy import wcs as fits_wcs
-
 from astropy.io import fits
 from astropy.modeling.models import (
     Mapping,
@@ -63,8 +62,7 @@ def wcs_from_file(filename, ext=None, return_data=False, crpix_shift=None,
         naxis2 = hdr.get("WCSNAX2", hdr.get("NAXIS2"))
         if naxis1 is None or naxis2 is None:
             return None
-        else:
-            return (naxis2, naxis1)
+        return (naxis2, naxis1)
 
     def data_from_hdr(hdr, data=None, shape=None):
         if data is not None:
