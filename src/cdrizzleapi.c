@@ -186,6 +186,7 @@ _exit_on_err:
         }
         free(arr_list);
     }
+    return 1;
 }
 
 static PyObject *
