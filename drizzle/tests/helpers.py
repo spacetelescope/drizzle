@@ -7,6 +7,7 @@ from gwcs.coordinate_frames import CelestialFrame, Frame2D
 from astropy import coordinates as coord
 from astropy import units
 from astropy import wcs as fits_wcs
+
 from astropy.io import fits
 from astropy.modeling.models import (
     Mapping,
@@ -56,40 +57,72 @@ def wcs_from_file(filename, ext=None, return_data=False, crpix_shift=None,
     """
     full_file_name = os.path.join(DATA_DIR, filename)
     path = os.path.join(DATA_DIR, full_file_name)
-    with fits.open(path) as hdu:
-        if ext is None:
-            for k, u in enumerate(hdu):
+
+    def get_shape(hdr):
+        naxis1 = hdr.get("WCSNAX1", hdr.get("NAXIS1"))
+        naxis2 = hdr.get("WCSNAX2", hdr.get("NAXIS2"))
+        if naxis1 is None or naxis2 is None:
+            return None
+        else:
+            return (naxis2, naxis1)
+
+    def data_from_hdr(hdr, data=None, shape=None):
+        if data is not None:
+            return data
+        bitpix = hdr.get("BITPIX", -32)
+        dtype = fits.hdu.BITPIX2DTYPE[bitpix]
+        shape = get_shape(hdr) or shape
+        if shape is None:
+            return None
+        return np.zeros(shape, dtype=dtype)
+
+    if os.path.splitext(filename)[1] in [".hdr", ".txt"]:
+        hdul = None
+        hdr = fits.Header.fromfile(
+            path,
+            sep='\n',
+            endcard=False,
+            padding=False
+        )
+
+    else:
+        with fits.open(path) as fits_hdul:
+            hdul = fits.HDUList([hdu.copy() for hdu in fits_hdul])
+
+        if ext is None and hdul is not None:
+            for k, u in enumerate(hdul):
                 if "CTYPE1" in u.header:
                     ext = k
                     break
 
-        hdr = hdu[ext].header
-        naxis1 = hdr.get("WCSNAX1", hdr.get("NAXIS1"))
-        naxis2 = hdr.get("WCSNAX2", hdr.get("NAXIS2"))
-        if naxis1 is not None and naxis2 is not None:
-            shape = (naxis2, naxis1)
-            if hdu[ext].data is None:
-                hdu[ext].data = np.zeros(shape, dtype=np.float32)
-        else:
-            shape = None
+        hdr = hdul[ext].header
 
-        if crpix_shift is not None and "CRPIX1" in hdr:
-            hdr["CRPIX1"] += crpix_shift[0]
-            hdr["CRPIX2"] += crpix_shift[1]
+    if crpix_shift is not None and "CRPIX1" in hdr:
+        hdr["CRPIX1"] += crpix_shift[0]
+        hdr["CRPIX2"] += crpix_shift[1]
 
-        result = fits_wcs.WCS(hdr, hdu)
-        result.array_shape = shape
+    result = fits_wcs.WCS(hdr, hdul)
+    shape = get_shape(hdr)
+    result.array_shape = shape
 
-        if wcs_type == "gwcs":
-            result = _gwcs_from_hst_fits_wcs(result)
+    if wcs_type == "gwcs":
+        result = _gwcs_from_hst_fits_wcs(result)
 
-        if return_data:
-            result = (result, )
-            if not isinstance(return_data, (list, tuple)):
-                return_data = [ext]
-            for ext in return_data:
-                data = (hdu[ext].data, )
-                result = result + data
+    if return_data:
+        if hdul is None:
+            data = data_from_hdr(hdr, data=None, shape=shape)
+            return (result, data)
+
+        result = (result, )
+        if not isinstance(return_data, (list, tuple)):
+            return_data = [ext]
+        for ext in return_data:
+            data = data_from_hdr(
+                hdul[ext].header,
+                data=hdul[ext].data,
+                shape=shape
+            )
+            result = result + (data, )
 
     return result
 
