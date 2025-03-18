@@ -96,7 +96,7 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to"):
                 bbox_from = (bbox_from, )
             if nd > 1:
                 shape = tuple(
-                    int(math.ceil(lim[1] + 0.5)) for lim in bbox_from[::-1]
+                    math.ceil(lim[1] + 0.5) for lim in bbox_from[::-1]
                 )
 
     if shape is None:

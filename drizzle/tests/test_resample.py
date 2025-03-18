@@ -199,7 +199,7 @@ def nrcb5_stars():
 
     wcs, data = wcs_from_file(path, return_data=True)
     dq = np.zeros(data.shape, dtype=np.int32)
-
+    wht = np.zeros(data.shape, dtype=np.float32)
     np.random.seed(0)
 
     patch_size = 21
@@ -232,14 +232,15 @@ def nrcb5_stars():
                     x_size=patch_size,
                     y_size=patch_size
                 ).array
-
-            flux = psf.sum()
+            weight = 0.6 + 0.4 * np.random.random((patch_size, patch_size))
+            wflux = (psf * weight).sum()
 
             data[sl] = psf
+            wht[sl] = weight
             dq[sl] = 0
-            stars.append((xc, yc, flux, sl))
+            stars.append((xc, yc, wflux, sl))
 
-    return data, dq, stars, wcs
+    return data, wht, dq, stars, wcs
 
 
 def test_drizzle_defaults():
@@ -876,7 +877,7 @@ def test_flux_conservation_distorted(kernel, fc):
 @pytest.mark.parametrize("pscale_ratio", [0.55, 1.0, 1.2])
 def test_flux_conservation_distorted_distributed_sources(nrcb5_stars, kernel, pscale_ratio):
     """ test aperture photometry """
-    insci, dq, stars, wcs = nrcb5_stars
+    insci, inwht, dq, stars, wcs = nrcb5_stars
 
     suffix = f"{pscale_ratio}".replace(".", "p")
     output_wcs = wcs_from_file(f"nrcb5_output_wcs_psr_{suffix}.hdr")
@@ -886,8 +887,6 @@ def test_flux_conservation_distorted_distributed_sources(nrcb5_stars, kernel, ps
         output_wcs,
         wcs.array_shape,
     )
-
-    inwht = np.ones_like(insci) * (1 - dq)
 
     driz = resample.Drizzle(
         kernel=kernel,
