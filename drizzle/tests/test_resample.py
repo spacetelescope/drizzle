@@ -201,9 +201,12 @@ def nrcb5_stars():
     wcs, data = wcs_from_file(path, return_data=True)
     dq = np.zeros(data.shape, dtype=np.int32)
     wht = np.zeros(data.shape, dtype=np.float32)
+    var = np.zeros(data.shape, dtype=np.float32)
+
     np.random.seed(0)
 
     patch_size = 21
+    patch_area = patch_size**2
     p2 = patch_size // 2
     # add border so that resampled partial pixels can be isolated
     # in the segmentation:
@@ -222,7 +225,7 @@ def nrcb5_stars():
             flux = 1.0 + 99.0 * np.random.random()
             if np.random.random() > 0.7:
                 # uniform image
-                psf = np.full((patch_size, patch_size), flux)
+                psf = np.full((patch_size, patch_size), flux / patch_area)
             else:
                 # "star":
                 fwhm = 1.5 + 1.5 * np.random.random()
@@ -236,12 +239,17 @@ def nrcb5_stars():
             weight = 0.6 + 0.4 * np.random.random((patch_size, patch_size))
             wflux = (psf * weight).sum()
 
+            mean_noise = (0.05 + 0.35 * np.random.random()) * flux / patch_area
+            rdnoise = mean_noise * np.random.random((patch_size, patch_size))
+
             data[sl] = psf
             wht[sl] = weight
             dq[sl] = 0
-            stars.append((xc, yc, wflux, sl))
+            var_patch = psf + rdnoise
+            var[sl] = var_patch
+            stars.append((xc, yc, wflux, (var_patch * weight**2).sum(), sl))
 
-    return data, wht, dq, stars, wcs
+    return data, wht, dq, var, stars, wcs
 
 
 def test_drizzle_defaults():
@@ -891,7 +899,7 @@ def test_flux_conservation_distorted(kernel, fc):
 @pytest.mark.parametrize("pscale_ratio", [0.55, 1.0, 1.2])
 def test_flux_conservation_distorted_distributed_sources(nrcb5_stars, kernel, pscale_ratio):
     """ test aperture photometry """
-    insci, inwht, dq, stars, wcs = nrcb5_stars
+    insci, inwht, dq, invar, stars, wcs = nrcb5_stars
 
     suffix = f"{pscale_ratio}".replace(".", "p")
     output_wcs = wcs_from_file(f"nrcb5_output_wcs_psr_{suffix}.hdr")
@@ -902,13 +910,16 @@ def test_flux_conservation_distorted_distributed_sources(nrcb5_stars, kernel, ps
         wcs.array_shape,
     )
 
-    driz = resample.Drizzle(
-        kernel=kernel,
+    # resample variance using squared coefficients AND a "point" kernel
+    # ("point" kernel is needed for the *aperture* photometry/variance)
+    driz_var = resample.Drizzle(
+        kernel="point",
         out_shape=output_wcs.array_shape,
         fillval=0.0,
     )
-    driz.add_image(
-        insci,
+    driz_var.add_image(
+        data=insci,
+        data2=invar,
         exptime=1.0,
         pixmap=pixmap,
         weight_map=inwht,
@@ -917,18 +928,43 @@ def test_flux_conservation_distorted_distributed_sources(nrcb5_stars, kernel, ps
 
     # for efficiency, instead of doing this patch-by-patch,
     # multiply resampled data by resampled image weight
-    out_data = driz.out_img * driz.out_wht
+    if kernel == "point":
+        out_data = driz_var.out_img * driz_var.out_wht
+    else:
+        # resample "SCI" array using user-specified kernel:
+        driz = resample.Drizzle(
+            kernel=kernel,
+            out_shape=output_wcs.array_shape,
+            fillval=0.0,
+        )
+        driz.add_image(
+            data=insci,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=inwht,
+            scale=1,
+        )
+        out_data = driz_var.out_img * driz_var.out_wht
+    out_var = driz_var.out_img2[0] * (driz_var.out_wht**2)
 
     dim3 = (slice(None, None, None), )
-    for _, _, fin, sl in stars:
-        xyout = pixmap[sl + dim3]
-        xmin = int(np.floor(xyout[:, :, 0].min() - 0.5))
-        xmax = int(np.ceil(xyout[:, :, 0].max() + 1.5))
-        ymin = int(np.floor(xyout[:, :, 1].min() - 0.5))
-        ymax = int(np.ceil(xyout[:, :, 1].max() + 1.5))
-        fout = np.nansum(out_data[ymin:ymax, xmin:xmax])
 
-        assert np.allclose(fin, fout, rtol=1.0e-6, atol=0.0)
+    for _, _, wfin, wvfin, sl in stars:
+        xyout = pixmap[sl + dim3]
+        xmin = math.floor(xyout[:, :, 0].min() - 0.5)
+        xmax = math.ceil(xyout[:, :, 0].max() + 1.5)
+        ymin = math.floor(xyout[:, :, 1].min() - 0.5)
+        ymax = math.ceil(xyout[:, :, 1].max() + 1.5)
+
+        wfout = np.nansum(out_data[ymin:ymax, xmin:xmax])
+        wvfout = np.nansum(out_var[ymin:ymax, xmin:xmax])
+
+        # test resampled "weighted" flux in an aperture matches flux from input
+        assert np.allclose(wfin, wfout, rtol=1.0e-6, atol=0.0)
+
+        # test resampled "weighted" variance in an aperture matches
+        # "weighted" variance from input
+        assert np.allclose(wvfin, wvfout, rtol=1.0e-6, atol=0.0)
 
 
 def test_drizzle_exptime():
