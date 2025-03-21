@@ -414,12 +414,11 @@ class Drizzle:
                     )
 
         if out_img is None:
-            self._out_img = np.empty(out_shape, dtype=np.float32)
             if self._fillval.upper() in ["INDEF", "NAN"]:
                 fillval = np.nan
             else:
                 fillval = float(self._fillval)
-            self._out_img[:, :] = fillval
+            self._out_img = np.full(out_shape, fillval, dtype=np.float32)
         else:
             self._out_img = out_img
 
