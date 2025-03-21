@@ -1222,4 +1222,4 @@ def test_nan_fillval(fillval):
         out_shape=(20, 20)
     )
 
-    assert np.all(~np.isfinite(driz.out_img))
+    assert np.all(np.isnan(driz.out_img))
