@@ -548,7 +548,7 @@ class Drizzle:
 
             self._alloc_output_arrays(
                 out_shape=self._out_shape,
-                max_ctx_id=max(self._max_ctx_id, self._ctx_id),
+                max_ctx_id=self._max_ctx_id,
                 out_img=None,
                 out_wht=None,
                 out_ctx=None,

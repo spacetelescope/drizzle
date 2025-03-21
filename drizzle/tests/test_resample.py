@@ -1194,3 +1194,19 @@ def test_resample_inconsistent_output():
             out_wht=out_wht,
         )
     assert str(err_info.value).startswith("Inconsistent data shapes specified")
+
+
+def test_resample_disable_ctx():
+    n = 20
+    in_shape = (n, n)
+
+    pixmap = np.dstack(np.indices(in_shape, dtype=np.float64)[::-1])
+
+    # simulate constant data:
+    in_sci = np.ones(in_shape, dtype=np.float32)
+
+    driz = resample.Drizzle(
+        disable_ctx=True,
+    )
+
+    driz.add_image(in_sci, exptime=1.0, pixmap=pixmap)

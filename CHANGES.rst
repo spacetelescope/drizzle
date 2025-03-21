@@ -4,6 +4,13 @@
 Release Notes
 =============
 
+2.0.2 (unreleased)
+==================
+
+- Fixes a crash when ``Drizzle`` is initialized with ``disable_ctx``
+  set to ``True``. [#180]
+
+
 2.0.1 (2025-01-28)
 ==================
 
@@ -23,7 +30,7 @@ Release Notes
 - Deprecated module ``util``. New software should not import from this
   module as it will be removed in a future release. [#134]
 
-- Bug fix: exposure time was undefined when in_units were not cps. [#134]
+- Bug fix: exposure time was undefined when ``in_units`` were not "cps". [#134]
 
 - BUG FIX: ``cdrizzle.tdriz`` signature was out of date. [#134]
 
