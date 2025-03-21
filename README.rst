@@ -49,8 +49,8 @@ Requirements
 The Drizzle Algorithm
 ---------------------
 
-This section has been extracted from Chapter 2 of
-`The DrizzlePac Handbook <http://www.stsci.edu/hst/HST_overview/drizzlepac/documents/handbooks/drizzlepac.pdf>`_ [Driz2012]_
+This section has been extracted from Chapter 3 of
+`The DrizzlePac Handbook <https://hst-docs.stsci.edu/drizzpac>`_ [Driz2025]_
 
 There are a family of linear reconstruction techniques that, at two opposite
 extremes, are represented by the interlacing and shift-and-add techniques, with
@@ -141,4 +141,4 @@ for identifying cosmic rays in the original image. Blot requires the user
 to provide the world coordinate system (WCS)-based transformations in the
 form of a pixel map array as input.
 
-.. [Driz2012] Gonzaga, S., Hack, W., Fruchter, A., Mack, J., eds. 2012, The DrizzlePac Handbook. (Baltimore, STScI)
+.. [Driz2025] Anand, G. S., Mack, J., et al., 2025, “The DrizzlePac Handbook”, Version 3.0, (Baltimore: STScI)
