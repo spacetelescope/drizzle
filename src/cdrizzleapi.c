@@ -607,7 +607,10 @@ clip_polygon_wrap(PyObject *self, PyObject *args) {
 /** ---------------------------------------------------------------------------
  * Table of functions callable from python
  */
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-function-type-mismatch"
 static struct PyMethodDef cdrizzle_methods[] = {
     {"tdriz", (PyCFunction)tdriz, METH_VARARGS | METH_KEYWORDS,
      "tdriz(image, weights, pixmap, output, counts, context, uniqid, xmin, "
@@ -623,6 +626,8 @@ static struct PyMethodDef cdrizzle_methods[] = {
     {"clip_polygon", clip_polygon_wrap, METH_VARARGS, "clip_polygon(p, q)"},
     {NULL, NULL} /* sentinel */
 };
+#pragma clang diagnostic pop
+#pragma GCC diagnostic pop
 
 /** ---------------------------------------------------------------------------
  */
