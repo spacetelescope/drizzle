@@ -139,7 +139,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords) {
             driz_error_set_message(&error, "Invalid context array");
             goto _exit;
         }
-    };
+    }
 
     /* Convert the fill value string */
 
@@ -607,10 +607,13 @@ clip_polygon_wrap(PyObject *self, PyObject *args) {
 /** ---------------------------------------------------------------------------
  * Table of functions callable from python
  */
+#if defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#elif defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-function-type-mismatch"
+#endif
 static struct PyMethodDef cdrizzle_methods[] = {
     {"tdriz", (PyCFunction)tdriz, METH_VARARGS | METH_KEYWORDS,
      "tdriz(image, weights, pixmap, output, counts, context, uniqid, xmin, "
@@ -626,8 +629,11 @@ static struct PyMethodDef cdrizzle_methods[] = {
     {"clip_polygon", clip_polygon_wrap, METH_VARARGS, "clip_polygon(p, q)"},
     {NULL, NULL} /* sentinel */
 };
-#pragma clang diagnostic pop
+#if defined(__GNUC__)
 #pragma GCC diagnostic pop
+#elif defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 /** ---------------------------------------------------------------------------
  */
