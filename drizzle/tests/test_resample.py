@@ -1210,3 +1210,16 @@ def test_resample_disable_ctx():
     )
 
     driz.add_image(in_sci, exptime=1.0, pixmap=pixmap)
+
+
+@pytest.mark.parametrize(
+    "fillval", ["NaN", "INDEF", "", None]
+)
+def test_nan_fillval(fillval):
+    driz = resample.Drizzle(
+        kernel='square',
+        fillval=fillval,
+        out_shape=(20, 20)
+    )
+
+    assert np.all(np.isnan(driz.out_img))
