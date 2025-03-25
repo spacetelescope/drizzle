@@ -1,0 +1,25 @@
+NAXIS   =                    2 / number of array dimensions                     
+NAXIS1  =                 3774                                                  
+NAXIS2  =                 3760                                                  
+WCSAXES =                    2 / Number of coordinate axes                      
+WCSNAX1 =                 3774                                                  
+WCSNAX2 =                 3760                                                  
+WCSNAME = 'NRCB5-resampled-psr=0.55'                                            
+CRPIX1  =               1881.5 / Pixel coordinate of reference point            
+CRPIX2  =               1888.5 / Pixel coordinate of reference point            
+CD1_1   = -3.2887784263502E-06 / Coordinate transformation matrix element       
+CD1_2   =  9.0452124171947E-06 / Coordinate transformation matrix element       
+CD2_1   =  9.0452124170788E-06 / Coordinate transformation matrix element       
+CD2_2   =  3.2887784263487E-06 / Coordinate transformation matrix element       
+CUNIT1  = 'deg'                / Units of coordinate increment and value        
+CUNIT2  = 'deg'                / Units of coordinate increment and value        
+CTYPE1  = 'RA---TAN'           / Right ascension, gnomonic projection           
+CTYPE2  = 'DEC--TAN'           / Declination, gnomonic projection               
+CRVAL1  =      34.462181668953 / [deg] Coordinate value at reference point      
+CRVAL2  =     -5.2370769627861 / [deg] Coordinate value at reference point      
+LONPOLE =                180.0 / [deg] Native longitude of celestial pole       
+LATPOLE =     -5.2370769627861 / [deg] Native latitude of celestial pole        
+MJDREF  =                  0.0 / [d] MJD of fiducial time                       
+RADESYS = 'ICRS'               / Equatorial coordinate system                   
+COMMENT pixel scale ratio: 0.55                                                 
+END                                                                             

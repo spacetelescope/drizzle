@@ -76,23 +76,24 @@ class Drizzle:
     information about which input image has contributed to the corresponding
     pixel in the resampled data array. Context image uses 32 bit integers to
     encode this information and hence it can keep track of only 32 input images.
-    First bit corresponds to the first input image, second bit corrsponds to the
-    second input image, and so on. We call this (0-indexed) order "context ID"
-    which is represented by the ``ctx_id`` parameter/property. If the number of
+    The first bit corresponds to the first input image, the second bit
+    corresponds to the second input image, and so on.
+    We call this (0-indexed) order "context ID" which is represented by
+    the ``ctx_id`` parameter/property. If the number of
     input images exceeds 32, then it is necessary to have multiple context
-    images ("planes") to hold information about all input images with the first
+    images ("planes") to hold information about all input images, with the first
     plane encoding which of the first 32 images contributed to the output data
-    pixel, second plane representing next 32 input images (number 33-64), etc.
-    For this reason, context array is either a 2D array (if the total number
-    of resampled images is less than 33) of the type `numpy.int32` and shape
-    ``(ny, nx)`` or a a 3D array of shape ``(np, ny, nx)`` where ``nx`` and
-    ``ny`` are dimensions of image's data. ``np`` is the number of "planes"
-    equal to ``(number of input images - 1) // 32 + 1``. If a bit at position
-    ``k`` in a pixel with coordinates ``(p, y, x)`` is 0 then input image number
-    ``32 * p + k`` (0-indexed) did not contribute to the output data pixel
-    with array coordinates ``(y, x)`` and if that bit is 1 then input image
-    number ``32 * p + k`` did contribute to the pixel ``(y, x)`` in the
-    resampled image.
+    pixel, the second plane representing next 32 input images (number 33-64),
+    etc. For this reason, context array is either a 2D array (if the total
+    number of resampled images is less than 33) of the type `numpy.int32` and
+    shape ``(ny, nx)`` or a a 3D array of shape ``(np, ny, nx)`` where ``nx``
+    and ``ny`` are dimensions of the image data. ``np`` is the number of
+    "planes" computed as ``(number of input images - 1) // 32 + 1``. If a bit at
+    position ``k`` in a pixel with coordinates ``(p, y, x)`` is 0, then input
+    image number ``32 * p + k`` (0-indexed) did not contribute to the output
+    data pixel with array coordinates ``(y, x)`` and if that bit is 1, then
+    input image number ``32 * p + k`` did contribute to the pixel ``(y, x)``
+    in the resampled image.
 
     As an example, let's assume we have 8 input images. Then, when ``out_ctx``
     pixel values are displayed using binary representation (and decimal in
@@ -413,7 +414,11 @@ class Drizzle:
                     )
 
         if out_img is None:
-            self._out_img = np.zeros(out_shape, dtype=np.float32)
+            if self._fillval.upper() in ["INDEF", "NAN"]:
+                fillval = np.nan
+            else:
+                fillval = float(self._fillval)
+            self._out_img = np.full(out_shape, fillval, dtype=np.float32)
         else:
             self._out_img = out_img
 
@@ -548,7 +553,7 @@ class Drizzle:
 
             self._alloc_output_arrays(
                 out_shape=self._out_shape,
-                max_ctx_id=max(self._max_ctx_id, self._ctx_id),
+                max_ctx_id=self._max_ctx_id,
                 out_img=None,
                 out_wht=None,
                 out_ctx=None,
