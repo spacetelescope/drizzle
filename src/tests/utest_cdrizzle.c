@@ -241,7 +241,7 @@ print_pixmap(char *title, struct driz_param_t *p, int lo, int hi) {
 }
 
 struct driz_param_t *
-setup_parameters() {
+setup_parameters(void) {
     struct driz_error_t *error;
 
     /* Initialize the parameter struct with vanilla defaults */
@@ -1132,4 +1132,6 @@ FCT_BGN_FN(utest_cdrizzle) {
     }
     FCT_FIXTURE_SUITE_END();
 }
+{
 FCT_END_FN();
+}
