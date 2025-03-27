@@ -678,7 +678,7 @@ init_edge(struct edge *e, struct vertex v1, struct vertex v2, int position) {
     e->m = (v2.x - v1.x) / (v2.y - v1.y);
     e->b = (v1.x * v2.y - v1.y * v2.x) / (v2.y - v1.y);
     e->c = e->b - copysign(0.5 + 0.5 * fabs(e->m), (double)position);
-};
+}
 
 /**
  * Set-up scanner structure for a polygon.
@@ -849,7 +849,7 @@ get_scanline_limits(struct scanner *s, int y, int *x1, int *x2) {
             return 1;
         }
         ++s->left;
-    };
+    }
 
     while (pyb > s->right->v2.y) {
         if (s->right == er_max) {
@@ -858,7 +858,7 @@ get_scanline_limits(struct scanner *s, int y, int *x1, int *x2) {
             return 1;
         }
         ++s->right;
-    };
+    }
 
     xlb = s->left->m * y + s->left->c - MAX_INV_ERR;
     xrb = s->right->m * y + s->right->c + MAX_INV_ERR;
@@ -872,7 +872,7 @@ get_scanline_limits(struct scanner *s, int y, int *x1, int *x2) {
         }
         ++s->left;
         edge_ymax = s->left->v2.y + 0.5 + MAX_INV_ERR;
-    };
+    }
 
     edge_ymax = s->right->v2.y + 0.5 + MAX_INV_ERR;
     while (pyt > edge_ymax) {
@@ -883,7 +883,7 @@ get_scanline_limits(struct scanner *s, int y, int *x1, int *x2) {
         }
         ++s->right;
         edge_ymax = s->right->v2.y + 0.5 + MAX_INV_ERR;
-    };
+    }
 
     xlt = s->left->m * y + s->left->c - MAX_INV_ERR;
     xrt = s->right->m * y + s->right->c + MAX_INV_ERR;
