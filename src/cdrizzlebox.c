@@ -93,8 +93,9 @@ sgarea(const double x1, const double y1, const double x2, const double y2,
   double c, xlo, xhi, ylo, yhi, xtop;
 
   /* Trap vertical line */
-  if (inv_slope == 0)
+  if (inv_slope == 0) {
     return 0.0;
+  }
 
   if (sgn_dx < 0) {
     xlo = x2;
