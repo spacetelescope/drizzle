@@ -980,10 +980,11 @@ do_kernel_square(struct driz_param_t *p) {
 	    for (ii = 0; ii < 4; ii++) {
 	        dx = xout[(ii+1) & 0x3] - xout[ii];
 	        dy = yout[(ii+1) & 0x3] - yout[ii];
-	        if (dx >= 0)
-		    sgn_dx[ii] = 1;
-	        else
-		    sgn_dx[ii] = -1;
+	        if (dx >= 0) {
+		  sgn_dx[ii] = 1;
+		} else {
+		  sgn_dx[ii] = -1;
+		}
 	        slope[ii] = dy / dx;
 	        inv_slope[ii] = dx / dy;
 	    }
