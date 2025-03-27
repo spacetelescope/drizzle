@@ -119,8 +119,9 @@ sgarea(const double x1, const double y1, const double x2, const double y2,
   yhi = slope * xhi + c;
 
   /* Trap segment entirely below axis */
-  if (ylo <= 0.0 && yhi <= 0.0)
+  if (ylo <= 0.0 && yhi <= 0.0) {
     return 0.0;
+  }
 
   /* There are four possibilities: both y below 1, both y above 1 and
      one of each. */
