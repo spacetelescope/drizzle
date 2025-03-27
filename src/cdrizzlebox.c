@@ -106,8 +106,9 @@ sgarea(const double x1, const double y1, const double x2, const double y2,
   }
 
   /* And determine the bounds ignoring y for now */
-  if (xlo >= 1.0 || xhi <= 0.0)
+  if (xlo >= 1.0 || xhi <= 0.0) {
     return 0.0;
+  }
 
   xlo = MAX(xlo, 0.0);
   xhi = MIN(xhi, 1.0);
