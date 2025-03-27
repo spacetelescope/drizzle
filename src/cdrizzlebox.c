@@ -157,10 +157,6 @@ sgarea(const double x1, const double y1, const double x2, const double y2,
 
   xtop = (1.0 - c) * inv_slope;
   return sgn_dx * (0.5 * (xhi - xtop) * (1.0 + yhi) + xtop - xlo);
-
-  /* Shouldn't ever get here */
-  assert(FALSE);
-  return 0.0;
 }
 
 /**
