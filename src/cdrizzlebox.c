@@ -177,7 +177,7 @@ double
 boxer(double is, double js,
       const double x[4], const double y[4],
       const int sgn_dx[4], const double slope[4], const double inv_slope[4]) {
-  integer_t i, i2;
+  integer_t i;
   double sum;
   double px[4], py[4];
 
