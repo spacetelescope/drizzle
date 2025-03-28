@@ -932,7 +932,7 @@ do_kernel_square(struct driz_param_t *p) {
 	     * efficient interpolator that takes advantage of the fact
 	     * that pixfrac<1 and that we are using a square grid.
 	     */
-	    if (i > 0 && i < mapsize[0] - 1 && j > 0 && j < mapsize[1] - 1) {
+	    if (i > 0 && i < mapsize[0] - 2 && j > 0 && j < mapsize[1] - 2) {
 	        if (interpolate_four_points(p, i, j, dh,
 					    xout, xout + 1, xout + 2, xout + 3,
 					    yout, yout + 1, yout + 2, yout + 3))
