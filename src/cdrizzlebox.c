@@ -873,7 +873,7 @@ do_kernel_square(struct driz_param_t *p) {
     integer_t bv, i, j, ii, jj, min_ii, max_ii, min_jj, max_jj, nhit;
     integer_t osize[2], mapsize[2];
     float scale2, vc, d, dow;
-    double dh, jaco, tem, dover, w, dx, dy;
+    double dh, jaco, dover, w, dx, dy;
     double xin[4], yin[4], xout[4], yout[4];
     double slope[4], inv_slope[4];
     int sgn_dx[4];
