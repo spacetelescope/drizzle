@@ -8,6 +8,7 @@ authors = [
 dependencies = [
     "numpy",
 ]
+license-files = ["LICENSE.rst"]
 dynamic = [
     "version",
 ]
@@ -15,10 +16,6 @@ dynamic = [
 [project.readme]
 file = "README.rst"
 content-type = "text/x-rst"
-
-[project.license]
-file = "LICENSE.rst"
-content-type = "text/plain"
 
 [project.urls]
 Homepage = "https://github.com/spacetelescope/drizzle"
