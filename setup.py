@@ -37,6 +37,7 @@ def get_extensions():
     else:
         cfg['libraries'].append('m')
         cfg['extra_compile_args'] = [
+            '-O3',
             '-Wall',
             '-Wextra',
             '-Wpedantic',

@@ -25,7 +25,9 @@ int dobox(struct driz_param_t *p);
 
 double compute_area(double is, double js, const double x[4], const double y[4]);
 
-double boxer(double is, double js, const double x[4], const double y[4]);
+double boxer(double is, double js, const double x[4], const double y[4],
+	     const int sgn_dx[4], const double slope[4],
+	     const double inv_slope[4]);
 
 typedef int (*kernel_handler_t)(struct driz_param_t *);
 
