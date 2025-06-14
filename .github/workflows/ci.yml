@@ -31,6 +31,8 @@ jobs:
           coverage: codecov
         - macos: py3-xdist
         - windows: py3-xdist
+          # exclude Python 1.13.4, see https://github.com/python/cpython/issues/135151
+          python-version: '>=3.13.5 <3.14'
         - linux: py3-devdeps-xdist
       toxdeps: tox-uv
     secrets:
