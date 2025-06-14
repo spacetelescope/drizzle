@@ -27,9 +27,13 @@ def get_extensions():
     cfg['include_dirs'].append(srcdir)
 
     if sys.platform == 'win32':
-        cfg['define_macros'].append(('WIN32', None))
-        cfg['define_macros'].append(('__STDC__', 1))
-        cfg['define_macros'].append(('_CRT_SECURE_NO_WARNINGS', None))
+        cfg['define_macros'].extend(
+            [
+                ('WIN32', None),
+                ('__STDC__', 1),
+                ('_CRT_SECURE_NO_WARNINGS', None),
+            ]
+        )
     else:
         cfg['libraries'].append('m')
         cfg['extra_compile_args'] = [
