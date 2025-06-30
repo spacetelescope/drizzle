@@ -36,14 +36,6 @@ def get_extensions():
         )
     else:
         cfg['libraries'].append('m')
-        cfg['extra_compile_args'] = [
-            '-O3',
-            '-Wall',
-            '-Wextra',
-            '-Wpedantic',
-            '-Wno-unused-parameter',
-            '-Wincompatible-pointer-types'
-        ]
     # importing these extension modules is tested in `.github/workflows/build.yml`;
     # when adding new modules here, make sure to add them to the `test_command` entry there
     return [Extension(str('drizzle.cdrizzle'), sources, **cfg)]

@@ -1235,3 +1235,51 @@ def test_nan_fillval(fillval):
     )
 
     assert np.all(np.isnan(driz.out_img))
+
+
+def test_edge_effects():
+    pixmap = np.array([
+        [
+            [0.31887051, 1.],
+            [1.01898591, 1.],
+            [1.71909665, 1.],
+        ],
+        [
+            [0.31591881, 0.],
+            [1.0160342312345672, 0.],
+            [1.716145, 0.],
+        ]
+    ], dtype="f8")
+
+
+    in_shape = pixmap.shape[:2]
+    out_shape = (4, 4)
+
+
+    d0 = resample.Drizzle(
+        kernel='square',
+        fillval='nan',
+        out_shape=out_shape,
+        disable_ctx=True,
+    )
+
+    img = np.full(in_shape, 42, dtype=np.float32)
+
+    d0.add_image(
+        img,
+        exptime=11.776,
+        in_units='cps',
+        pixfrac=1.0,
+        pixmap=pixmap,
+        scale=1.0,
+        wht_scale=1.0,
+    )
+
+    img = d0.out_img
+
+    # expected pixels should be close to 42
+    np.testing.assert_allclose(img[:2, :3], 42, rtol=1E-4)
+
+    # other values should be nan
+    np.testing.assert_equal(img[:, 3:], np.nan)
+    np.testing.assert_equal(img[2:], np.nan)

@@ -1,0 +1,291 @@
+name: Build and publish Python package
+
+on:
+  workflow_call:
+    inputs:
+      targets:
+        description: List of build targets for cibuildwheel
+        required: false
+        default: |
+          - linux
+          - macos
+          - windows
+        type: string
+      sdist:
+        description: Whether to build a source distribution
+        required: false
+        default: true
+        type: boolean
+      test_groups:
+        description: PEP 735 dependency groups that should be installed for testing
+        required: false
+        default: ''
+        type: string
+      test_extras:
+        description: Any extras_requires modifier that should be used to install the package for testing
+        required: false
+        default: ''
+        type: string
+      test_command:
+        description: The command to run to test the package (will be run in a temporary directory)
+        required: false
+        default: ''
+        type: string
+      env:
+        description: A map of environment variables to be available when building and testing
+        required: false
+        default: ''
+        type: string
+      libraries:
+        description: Packages needed to build the source distribution for testing (installed using apt)
+        required: false
+        default: ''
+        type: string
+      sdist-runs-on:
+        description: Which runner image to use to build and test the sdist
+        required: false
+        default: 'ubuntu-latest'
+        type: string
+      upload_to_pypi:
+        description: A condition specifying whether to upload to PyPI
+        required: false
+        default: 'refs/tags/v'
+        type: string
+      repository_url:
+        description: The PyPI repository URL to use
+        required: false
+        default: ''
+        type: string
+      upload_to_anaconda:
+        description: A condition specifying whether to upload to Anaconda.org
+        required: false
+        default: false
+        type: boolean
+      anaconda_user:
+        description: Anaconda.org user or organisation
+        required: false
+        default: ''
+        type: string
+      anaconda_package:
+        description: Anaconda.org package name
+        required: false
+        default: ''
+        type: string
+      anaconda_keep_n_latest:
+        description: If specified, only this number of the most recent versions are kept
+        required: false
+        default: -1
+        type: number
+      fail-fast:
+        description: Whether to cancel all in-progress jobs if any job fails
+        required: false
+        default: false
+        type: boolean
+      timeout-minutes:
+        description: The maximum number of minutes to let a build job run before GitHub automatically cancels it
+        required: false
+        default: 360
+        type: number
+      submodules:
+        description: Whether to checkout submodules
+        required: false
+        default: true
+        type: boolean
+      checkout_ref:
+        description: The ref to checkout
+        required: false
+        default: ''
+        type: string
+    secrets:
+      pypi_token:
+        required: false
+      anaconda_token:
+        required: false
+
+jobs:
+
+  targets:
+    name: Load build targets
+    if: ${{ inputs.targets != '' }}
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-outputs.outputs.matrix }}
+      upload_to_pypi: ${{ steps.set-upload.outputs.upload_to_pypi }}
+    steps:
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install PyYAML click
+      - run: echo $LOAD_BUILD_TARGETS_SCRIPT | base64 --decode > load_build_targets.py
+        env:
+          LOAD_BUILD_TARGETS_SCRIPT: aW1wb3J0IGpzb24KaW1wb3J0IG9zCmltcG9ydCByZQoKaW1wb3J0IGNsaWNrCmltcG9ydCB5YW1sCgpNQUNISU5FX1RZUEUgPSB7CiAgICAibGludXgiOiAidWJ1bnR1LWxhdGVzdCIsCiAgICAibWFjb3MiOiAibWFjb3MtbGF0ZXN0IiwKICAgICJ3aW5kb3dzIjogIndpbmRvd3MtbGF0ZXN0IiwKfQoKQ0lCV19CVUlMRCA9IG9zLmVudmlyb24uZ2V0KCJDSUJXX0JVSUxEIiwgIioiKQpDSUJXX0FSQ0hTID0gb3MuZW52aXJvbi5nZXQoIkNJQldfQVJDSFMiLCAiYXV0byIpCgoKQGNsaWNrLmNvbW1hbmQoKQpAY2xpY2sub3B0aW9uKCItLXRhcmdldHMiLCBkZWZhdWx0PSIiKQpkZWYgbG9hZF9idWlsZF90YXJnZXRzKHRhcmdldHMpOgogICAgIiIiU2NyaXB0IHRvIGxvYWQgY2lidWlsZHdoZWVsIHRhcmdldHMgZm9yIEdpdEh1YiBBY3Rpb25zIHdvcmtmbG93LiIiIgogICAgIyBMb2FkIGxpc3Qgb2YgdGFyZ2V0cwogICAgdGFyZ2V0cyA9IHlhbWwubG9hZCh0YXJnZXRzLCBMb2FkZXI9eWFtbC5CYXNlTG9hZGVyKQogICAgcHJpbnQoanNvbi5kdW1wcyh0YXJnZXRzLCBpbmRlbnQ9MikpCgogICAgIyBDcmVhdGUgbWF0cml4CiAgICBtYXRyaXggPSB7ImluY2x1ZGUiOiBbXX0KICAgIGZvciB0YXJnZXQgaW4gdGFyZ2V0czoKICAgICAgICBtYXRyaXhbImluY2x1ZGUiXS5hcHBlbmQoZ2V0X21hdHJpeF9pdGVtKHRhcmdldCkpCgogICAgIyBPdXRwdXQgbWF0cml4CiAgICBwcmludChqc29uLmR1bXBzKG1hdHJpeCwgaW5kZW50PTIpKQogICAgd2l0aCBvcGVuKG9zLmVudmlyb25bIkdJVEhVQl9PVVRQVVQiXSwgImEiKSBhcyBmOgogICAgICAgIGYud3JpdGUoZiJtYXRyaXg9e2pzb24uZHVtcHMobWF0cml4KX1cbiIpCgoKZGVmIGdldF9vcyh0YXJnZXQpOgogICAgaWYgIm1hY29zIiBpbiB0YXJnZXQ6CiAgICAgICAgcmV0dXJuIE1BQ0hJTkVfVFlQRVsibWFjb3MiXQogICAgaWYgIndpbiIgaW4gdGFyZ2V0OgogICAgICAgIHJldHVybiBNQUNISU5FX1RZUEVbIndpbmRvd3MiXQogICAgcmV0dXJuIE1BQ0hJTkVfVFlQRVsibGludXgiXQoKCmRlZiBnZXRfY2lid19idWlsZCh0YXJnZXQpOgogICAgaWYgdGFyZ2V0IGluIHsibGludXgiLCAibWFjb3MiLCAid2luZG93cyJ9OgogICAgICAgIHJldHVybiBDSUJXX0JVSUxECiAgICByZXR1cm4gdGFyZ2V0CgoKZGVmIGdldF9jaWJ3X2FyY2hzKHRhcmdldCk6CiAgICAiIiIKICAgIEhhbmRsZSBub24tbmF0aXZlIGFyY2hpdGVjdHVyZXMKCiAgICBjaWJ3IGFsbG93cyBydW5uaW5nIG5vbi1uYXRpdmUgYnVpbGRzIG9uIHZhcmlvdXMgcGxhdGZvcm1zOgogICAgaHR0cHM6Ly9jaWJ1aWxkd2hlZWwucHlwYS5pby9lbi9zdGFibGUvb3B0aW9ucy8jYXJjaHMKCiAgICBUaGlzIGxvZ2ljIG92ZXJyaWRlcyB0aGUgImF1dG8iIGZsYWcgYmFzZWQgb24gT1MgYW5kIGEgbGlzdCBvZiBzdXBwb3J0ZWQKICAgIG5vbi1uYXRpdmUgYXJjaCBpZiBhIG5vbi1uYXRpdmUgYXJjaCBpcyBnaXZlbiBmb3IgYSBwYXJ0aWN1bGFyIHBsYXRmb3JtIGluCiAgICB0YXJnZXRzLCByYXRoZXIgdGhhbiB0aGUgdXNlciBoYXZpbmcgdG8gZG8gdGhpcyBtYW51YWxseS4KICAgICIiIgogICAgcGxhdGZvcm1fYXJjaHMgPSB7CiAgICAgICAgIyBXZSBub3cgY3Jvc3MgY29tcGlsZSB4ODZfNjQgb24gYXJtNjQgYnkgZGVmYXVsdAogICAgICAgICJtYWNvcyI6IFsidW5pdmVyc2FsMiIsICJ4ODZfNjQiXSwKICAgICAgICAjIFRoaXMgaXMgYSBsaXN0IG9mIHN1cHBvcnRlZCBldW11bGF0ZWQgYXJjaGVzIG9uIGxpbnV4CiAgICAgICAgImxpbnV4IjogWyJhYXJjaDY0IiwgInBwYzY0bGUiLCAiczM5MHgiLCAiYXJtdjdsIl0sCiAgICB9CiAgICBmb3IgcGxhdGZvcm0sIGFyY2hzIGluIHBsYXRmb3JtX2FyY2hzLml0ZW1zKCk6CiAgICAgICAgaWYgcGxhdGZvcm0gaW4gdGFyZ2V0OgogICAgICAgICAgICBmb3IgYXJjaCBpbiBhcmNoczoKICAgICAgICAgICAgICAgIGlmIHRhcmdldC5lbmRzd2l0aChhcmNoKToKICAgICAgICAgICAgICAgICAgICByZXR1cm4gYXJjaAoKICAgICMgSWYgbm8gZXhwbGljdCBhcmNoIGhhcyBiZWVuIHNwZWNpZmllZCBidWlsZCBib3RoIGFybTY0IGFuZCB4ODZfNjQgb24gbWFjb3MKICAgIGlmICJtYWNvcyIgaW4gdGFyZ2V0OgogICAgICAgIHJldHVybiBvcy5lbnZpcm9uLmdldCgiQ0lCV19BUkNIUyIsICJhcm02NCB4ODZfNjQiKQoKICAgIHJldHVybiBDSUJXX0FSQ0hTCgoKZGVmIGdldF9hcnRpZmFjdF9uYW1lKHRhcmdldCk6CiAgICBhcnRpZmFjdF9uYW1lID0gcmUuc3ViKHIiW1xcIC86PD58Kj9cIiddIiwgIi0iLCB0YXJnZXQpCiAgICBhcnRpZmFjdF9uYW1lID0gcmUuc3ViKHIiLSsiLCAiLSIsIGFydGlmYWN0X25hbWUpCiAgICByZXR1cm4gYXJ0aWZhY3RfbmFtZQoKCmRlZiBnZXRfbWF0cml4X2l0ZW0odGFyZ2V0KToKICAgIGV4dHJhX3RhcmdldF9hcmdzID0ge30KICAgIGlmIGlzaW5zdGFuY2UodGFyZ2V0LCBkaWN0KToKICAgICAgICBleHRyYV90YXJnZXRfYXJncyA9IHRhcmdldAogICAgICAgIHRhcmdldCA9IGV4dHJhX3RhcmdldF9hcmdzLnBvcCgidGFyZ2V0IikKICAgIHJldHVybiB7CiAgICAgICAgInRhcmdldCI6IHRhcmdldCwKICAgICAgICAicnVucy1vbiI6IGdldF9vcyh0YXJnZXQpLAogICAgICAgICJDSUJXX0JVSUxEIjogZ2V0X2NpYndfYnVpbGQodGFyZ2V0KSwKICAgICAgICAiQ0lCV19BUkNIUyI6IGdldF9jaWJ3X2FyY2hzKHRhcmdldCksCiAgICAgICAgImFydGlmYWN0LW5hbWUiOiBnZXRfYXJ0aWZhY3RfbmFtZSh0YXJnZXQpLAogICAgICAgICoqZXh0cmFfdGFyZ2V0X2FyZ3MsCiAgICB9CgoKaWYgX19uYW1lX18gPT0gIl9fbWFpbl9fIjoKICAgIGxvYWRfYnVpbGRfdGFyZ2V0cygpCg==
+      - id: set-outputs
+        run: python load_build_targets.py --targets "${{ inputs.targets }}"
+        shell: sh
+      - id: set-upload
+        run: |
+          if [ $UPLOAD_TO_PYPI == "true" ] || [ $UPLOAD_TAG == "true" ];
+          then
+            echo "upload_to_pypi=true" >> $GITHUB_OUTPUT
+          else
+            echo "upload_to_pypi=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          UPLOAD_TO_PYPI: ${{ inputs.upload_to_pypi }}
+          UPLOAD_TAG: ${{ startsWith(inputs.upload_to_pypi, 'refs/tags/') && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'release' || github.event_name == 'create') && startsWith(github.ref, inputs.upload_to_pypi) }}
+
+  build_wheels:
+    name: Build ${{ matrix.target }} wheels
+    needs: [targets]
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    strategy:
+      fail-fast: ${{ inputs.fail-fast }}
+      matrix: ${{fromJSON(needs.targets.outputs.matrix)}}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+          lfs: true
+          submodules: ${{ inputs.submodules }}
+          ref: ${{ inputs.checkout_ref }}
+      - name: Get machine arch
+        if: ${{ runner.os == 'Linux' }}
+        id: uname_m
+        run: |
+          echo "uname_m=$(uname -m)" >> "$GITHUB_OUTPUT"
+      - name: Set up QEMU
+        if: ${{ runner.os == 'Linux' && (matrix.CIBW_ARCHS != 'auto' && matrix.CIBW_ARCHS != steps.uname_m.outputs.uname_m) }}
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392  # v3.6.0
+        with:
+          platforms: all
+      - name: Parse dependency groups
+        shell: bash
+        run: |
+          echo "space_sep_groups=$( python -c "print('${{ inputs.test_groups }}'.replace(',', ' '))" )" >> "$GITHUB_ENV"
+      - name: Configure cibuildwheel
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.test_extras }}" ];
+          then
+            echo "CIBW_TEST_EXTRAS=${{ inputs.test_extras }}" >> $GITHUB_ENV
+          fi
+          if [ -n "${{ inputs.test_groups }}" ];
+          then
+            echo "CIBW_TEST_GROUPS=$space_sep_groups" >> $GITHUB_ENV
+          fi
+          set +e
+          IFS='' read -r -d '' test_command <<"EOF"
+          ${{ inputs.test_command }}
+          EOF
+          set -e
+          if [ -n "$test_command" ];
+          then
+            echo "CIBW_TEST_COMMAND<<EOF" >> $GITHUB_ENV
+            echo $(echo $test_command | tr -d '\n') >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          fi
+          cat $GITHUB_ENV
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
+        if: ${{ inputs.env != '' }}
+        with:
+          python-version: '3.12'
+      - id: set-env
+        if: ${{ inputs.env != '' }}
+        run: |
+          python -m pip install PyYAML
+          echo $SET_ENV_SCRIPT | base64 --decode > set_env.py
+          python set_env.py "${{ inputs.env }}"
+          rm set_env.py
+        shell: sh
+        env:
+          SET_ENV_SCRIPT: aW1wb3J0IGpzb24KaW1wb3J0IG9zCmltcG9ydCBzeXMKCmltcG9ydCB5YW1sCgpHSVRIVUJfRU5WID0gb3MuZ2V0ZW52KCJHSVRIVUJfRU5WIikKaWYgR0lUSFVCX0VOViBpcyBOb25lOgogICAgcmFpc2UgVmFsdWVFcnJvcigiR0lUSFVCX0VOViBub3Qgc2V0LiBNdXN0IGJlIHJ1biBpbnNpZGUgR2l0SHViIEFjdGlvbnMuIikKCkRFTElNSVRFUiA9ICJFT0YiCgoKZGVmIHNldF9lbnYoZW52KToKCiAgICBlbnYgPSB5YW1sLmxvYWQoZW52LCBMb2FkZXI9eWFtbC5CYXNlTG9hZGVyKQogICAgcHJpbnQoanNvbi5kdW1wcyhlbnYsIGluZGVudD0yKSkKCiAgICBpZiBub3QgaXNpbnN0YW5jZShlbnYsIGRpY3QpOgogICAgICAgIHRpdGxlID0gImBlbnZgIG11c3QgYmUgbWFwcGluZyIKICAgICAgICBtZXNzYWdlID0gZiJgZW52YCBtdXN0IGJlIG1hcHBpbmcgb2YgZW52IHZhcmlhYmxlcyB0byB2YWx1ZXMsIGdvdCB0eXBlIHt0eXBlKGVudil9IgogICAgICAgIHByaW50KGYiOjplcnJvciB0aXRsZT17dGl0bGV9Ojp7bWVzc2FnZX0iKQogICAgICAgIGV4aXQoMSkKCiAgICBmb3IgaywgdiBpbiBlbnYuaXRlbXMoKToKCiAgICAgICAgaWYgbm90IGlzaW5zdGFuY2Uodiwgc3RyKToKICAgICAgICAgICAgdGl0bGUgPSAiYGVudmAgdmFsdWVzIG11c3QgYmUgc3RyaW5ncyIKICAgICAgICAgICAgbWVzc2FnZSA9IGYiYGVudmAgdmFsdWVzIG11c3QgYmUgc3RyaW5ncywgYnV0IHZhbHVlIG9mIHtrfSBoYXMgdHlwZSB7dHlwZSh2KX0iCiAgICAgICAgICAgIHByaW50KGYiOjplcnJvciB0aXRsZT17dGl0bGV9Ojp7bWVzc2FnZX0iKQogICAgICAgICAgICBleGl0KDEpCgogICAgICAgIHYgPSB2LnNwbGl0KCJcbiIpCgogICAgICAgIHdpdGggb3BlbihHSVRIVUJfRU5WLCAiYSIpIGFzIGY6CiAgICAgICAgICAgIGlmIGxlbih2KSA9PSAxOgogICAgICAgICAgICAgICAgZi53cml0ZShmIntrfT17dlswXX1cbiIpCiAgICAgICAgICAgIGVsc2U6CiAgICAgICAgICAgICAgICBmb3IgbGluZSBpbiB2OgogICAgICAgICAgICAgICAgICAgIGFzc2VydCBsaW5lLnN0cmlwKCkgIT0gREVMSU1JVEVSCiAgICAgICAgICAgICAgICBmLndyaXRlKGYie2t9PDx7REVMSU1JVEVSfVxuIikKICAgICAgICAgICAgICAgIGZvciBsaW5lIGluIHY6CiAgICAgICAgICAgICAgICAgICAgZi53cml0ZShmIntsaW5lfVxuIikKICAgICAgICAgICAgICAgIGYud3JpdGUoZiJ7REVMSU1JVEVSfVxuIikKCiAgICAgICAgcHJpbnQoZiJ7a30gd3JpdHRlbiB0byBHSVRIVUJfRU5WIikKCgppZiBfX25hbWVfXyA9PSAiX19tYWluX18iOgogICAgc2V0X2VudihzeXMuYXJndlsxXSkK
+      - name: Run cibuildwheel
+        uses: pypa/cibuildwheel@5f22145df44122af0f5a201f93cf0207171beca7  # v3.0.0
+        with:
+          output-dir: dist
+        env:
+          CIBW_BUILD: ${{ matrix.CIBW_BUILD }}
+          CIBW_ARCHS: ${{ matrix.CIBW_ARCHS }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: "dist-${{ matrix.artifact-name }}"
+          path: dist/*
+
+  build_sdist:
+    name: Build source distribution
+    needs: [targets]
+    if: ${{ inputs.sdist }}
+    runs-on: ${{ inputs.sdist-runs-on }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    steps:
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
+        if: ${{ inputs.env != '' }}
+        with:
+          python-version: '3.12'
+      - id: set-env
+        if: ${{ inputs.env != '' }}
+        run: |
+          python -m pip install PyYAML
+          echo $SET_ENV_SCRIPT | base64 --decode > set_env.py
+          python set_env.py "${{ inputs.env }}"
+          rm set_env.py
+        shell: sh
+        env:
+          SET_ENV_SCRIPT: aW1wb3J0IGpzb24KaW1wb3J0IG9zCmltcG9ydCBzeXMKCmltcG9ydCB5YW1sCgpHSVRIVUJfRU5WID0gb3MuZ2V0ZW52KCJHSVRIVUJfRU5WIikKaWYgR0lUSFVCX0VOViBpcyBOb25lOgogICAgcmFpc2UgVmFsdWVFcnJvcigiR0lUSFVCX0VOViBub3Qgc2V0LiBNdXN0IGJlIHJ1biBpbnNpZGUgR2l0SHViIEFjdGlvbnMuIikKCkRFTElNSVRFUiA9ICJFT0YiCgoKZGVmIHNldF9lbnYoZW52KToKCiAgICBlbnYgPSB5YW1sLmxvYWQoZW52LCBMb2FkZXI9eWFtbC5CYXNlTG9hZGVyKQogICAgcHJpbnQoanNvbi5kdW1wcyhlbnYsIGluZGVudD0yKSkKCiAgICBpZiBub3QgaXNpbnN0YW5jZShlbnYsIGRpY3QpOgogICAgICAgIHRpdGxlID0gImBlbnZgIG11c3QgYmUgbWFwcGluZyIKICAgICAgICBtZXNzYWdlID0gZiJgZW52YCBtdXN0IGJlIG1hcHBpbmcgb2YgZW52IHZhcmlhYmxlcyB0byB2YWx1ZXMsIGdvdCB0eXBlIHt0eXBlKGVudil9IgogICAgICAgIHByaW50KGYiOjplcnJvciB0aXRsZT17dGl0bGV9Ojp7bWVzc2FnZX0iKQogICAgICAgIGV4aXQoMSkKCiAgICBmb3IgaywgdiBpbiBlbnYuaXRlbXMoKToKCiAgICAgICAgaWYgbm90IGlzaW5zdGFuY2Uodiwgc3RyKToKICAgICAgICAgICAgdGl0bGUgPSAiYGVudmAgdmFsdWVzIG11c3QgYmUgc3RyaW5ncyIKICAgICAgICAgICAgbWVzc2FnZSA9IGYiYGVudmAgdmFsdWVzIG11c3QgYmUgc3RyaW5ncywgYnV0IHZhbHVlIG9mIHtrfSBoYXMgdHlwZSB7dHlwZSh2KX0iCiAgICAgICAgICAgIHByaW50KGYiOjplcnJvciB0aXRsZT17dGl0bGV9Ojp7bWVzc2FnZX0iKQogICAgICAgICAgICBleGl0KDEpCgogICAgICAgIHYgPSB2LnNwbGl0KCJcbiIpCgogICAgICAgIHdpdGggb3BlbihHSVRIVUJfRU5WLCAiYSIpIGFzIGY6CiAgICAgICAgICAgIGlmIGxlbih2KSA9PSAxOgogICAgICAgICAgICAgICAgZi53cml0ZShmIntrfT17dlswXX1cbiIpCiAgICAgICAgICAgIGVsc2U6CiAgICAgICAgICAgICAgICBmb3IgbGluZSBpbiB2OgogICAgICAgICAgICAgICAgICAgIGFzc2VydCBsaW5lLnN0cmlwKCkgIT0gREVMSU1JVEVSCiAgICAgICAgICAgICAgICBmLndyaXRlKGYie2t9PDx7REVMSU1JVEVSfVxuIikKICAgICAgICAgICAgICAgIGZvciBsaW5lIGluIHY6CiAgICAgICAgICAgICAgICAgICAgZi53cml0ZShmIntsaW5lfVxuIikKICAgICAgICAgICAgICAgIGYud3JpdGUoZiJ7REVMSU1JVEVSfVxuIikKCiAgICAgICAgcHJpbnQoZiJ7a30gd3JpdHRlbiB0byBHSVRIVUJfRU5WIikKCgppZiBfX25hbWVfXyA9PSAiX19tYWluX18iOgogICAgc2V0X2VudihzeXMuYXJndlsxXSkK
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
+          lfs: true
+          submodules: ${{ inputs.submodules }}
+      - name: Install dependencies
+        if: ${{ inputs.libraries != '' }}
+        uses: ConorMacBride/install-package@3e7ad059e07782ee54fa35f827df52aae0626f30  # v1.1.0
+        with:
+          apt: ${{ inputs.libraries }}
+      - id: build
+        uses: OpenAstronomy/build-python-dist@9a4b2bd6bda5c48ef3c12b53504ee2263ed032e3  # v1.1.0
+        with:
+          test_groups: ${{ inputs.test_groups }}
+          test_extras: ${{ inputs.test_extras }}
+          test_command: ${{ inputs.test_command }}
+          pure_python_wheel: false
+          python-version: '3.12'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.5
+        if: |
+          needs.targets.outputs.upload_to_pypi == 'true' || inputs.upload_to_anaconda
+        with:
+          name: dist-sdist
+          path: dist/*
+
+  upload:
+    name: Upload
+    needs: [targets, build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    if: |
+      always() &&
+      needs.targets.result == 'success' &&
+      ( needs.targets.outputs.upload_to_pypi == 'true' ||
+        inputs.upload_to_anaconda ) &&
+      needs.build_wheels.result != 'failure' &&
+      needs.build_sdist.result != 'failure'
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+      - uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc  # v1.12.4
+        name: Upload to PyPI
+        if: ${{ needs.targets.outputs.upload_to_pypi == 'true' }}
+        with:
+          user: __token__
+          password: ${{ secrets.pypi_token }}
+          repository-url: ${{ inputs.repository_url }}
+      - uses: OpenAstronomy/publish-wheels-anaconda@eae491141709933a7636af70b070e4a92d1a45be  # v1.0.1
+        if: ${{ inputs.upload_to_anaconda }}
+        with:
+          anaconda_user: ${{ inputs.anaconda_user }}
+          anaconda_package: ${{ inputs.anaconda_package }}
+          anaconda_token: ${{ secrets.anaconda_token }}
+          keep_n_latest: ${{ inputs.anaconda_keep_n_latest }}

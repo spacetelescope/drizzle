@@ -1,16 +1,14 @@
 name: build
 
 on:
-  release:
-    types: [ released ]
   pull_request:
   workflow_dispatch:
 
 jobs:
   build:
-    uses: OpenAstronomy/github-actions-workflows/.github/workflows/publish.yml@v2
+    uses: ./.github/workflows/publish.yml
     with:
-      upload_to_pypi: ${{ (github.event_name == 'release') && (github.event.action == 'released') }}
+      upload_to_pypi: false
       targets: |
         # Linux wheels
         - cp3*-manylinux_x86_64
@@ -23,6 +21,3 @@ jobs:
         - cp3*-win_amd64
       sdist: true
       test_command: python -c "from drizzle import cdrizzle"
-    secrets:
-      pypi_token: ${{ secrets.PYPI_PASSWORD_STSCI_MAINTAINER }}
-
