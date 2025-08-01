@@ -104,7 +104,7 @@ shrink_image_section(PyArrayObject *pixmap, int *xmin, int *xmax, int *ymin,
  */
 int
 interpolate_point(struct driz_param_t *par, double xin, double yin,
-                       double *xout, double *yout) {
+                  double *xout, double *yout) {
     int i0, j0, nx2, ny2;
     npy_intp *ndim;
     double x, y, x1, y1, f00, f01, f10, f11, g00, g01, g10, g11;
