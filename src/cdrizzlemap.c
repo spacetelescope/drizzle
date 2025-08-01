@@ -104,7 +104,7 @@ shrink_image_section(PyArrayObject *pixmap, int *xmin, int *xmax, int *ymin,
  */
 int
 interpolate_point(struct driz_param_t *par, double xin, double yin,
-                  double *xout, double *yout) {
+                       double *xout, double *yout) {
     int i0, j0, nx2, ny2;
     npy_intp *ndim;
     double x, y, x1, y1, f00, f01, f10, f11, g00, g01, g10, g11;
@@ -178,10 +178,10 @@ interpolate_point(struct driz_param_t *par, double xin, double yin,
  *         four x points, then four y points.
  */
 int
-interpolate_four_points(struct driz_param_t *par,
-			int ixcen, int iycen, double h,
-			double *x1, double *x2, double *x3, double *x4,
-			double *y1, double *y2, double *y3, double *y4) {
+interpolate_four_points(struct driz_param_t *par, int ixcen, int iycen,
+                        double h, double *x1, double *x2, double *x3,
+                        double *x4, double *y1, double *y2, double *y3,
+                        double *y4) {
     int i, j, nx2, ny2;
     double fac;
     npy_intp *ndim;
@@ -205,30 +205,30 @@ interpolate_four_points(struct driz_param_t *par,
      * center point, given by i=j=1 below. Loop ordered for speed
      * based on numpy array order.
      */
+    ixcen -= 1;
+    iycen -= 1;
     assert(h <= 1);
-    assert(ixcen >= 1 && iycen >= 1 && ixcen <= nx2 && iycen <= ny2);
+    assert(ixcen >= 0 && iycen >= 0 && ixcen < nx2 && iycen < ny2);
 
-    for (j = 0; j <= 2; j++) {
-      for (i = 0; i <= 2; i++) {
-	p = get_pixmap(pixmap, i + ixcen - 1, j + iycen - 1);
-	if (i == 1 && j == 1) {
-	  fac = (1 - h) * (1 - h);
-	} else {
-	  if (i == 1 || j == 1) {
-	    fac = (1 - h) * h;
-	  } else {
-	    fac = h * h;
-	  }
-	}
-	f[i][j] = p[0] * fac;
-	g[i][j] = p[1] * fac;
-      }
+    for (j = 0; j <= 2; ++j) {
+        for (i = 0; i <= 2; ++i) {
+            p = get_pixmap(pixmap, i + ixcen, j + iycen);
+            if (i == 1 && j == 1) {
+                fac = (1 - h) * (1 - h);
+            } else if (i == 1 || j == 1) {
+                fac = (1 - h) * h;
+            } else {
+                fac = h * h;
+            }
+            f[i][j] = p[0] * fac;
+            g[i][j] = p[1] * fac;
+        }
     }
 
     /* We return the vertices of a square going clockwise in the
      * original pixel grid.
      * Order in y: +h, +h, -h, -h; order in x: -h, +h, +h, -h
-    */
+     */
 
     *x1 = f[0][1] + f[1][1] + f[0][2] + f[1][2];
     *y1 = g[0][1] + g[1][1] + g[0][2] + g[1][2];
@@ -242,17 +242,16 @@ interpolate_four_points(struct driz_param_t *par,
     *x4 = f[0][0] + f[1][0] + f[0][1] + f[1][1];
     *y4 = g[0][0] + g[1][0] + g[0][1] + g[1][1];
 
-    if (npy_isnan(*x1) || npy_isnan(*y1) ||
-	npy_isnan(*x2) || npy_isnan(*y2) ||
-	npy_isnan(*x3) || npy_isnan(*y3) ||
-	npy_isnan(*x4) || npy_isnan(*y4)) return 1;
+    if (npy_isnan(*x1) || npy_isnan(*y1) || npy_isnan(*x2) || npy_isnan(*y2) ||
+        npy_isnan(*x3) || npy_isnan(*y3) || npy_isnan(*x4) || npy_isnan(*y4)) {
+        return 1;
+    }
 
     return 0;
 }
 
 /** ---------------------------------------------------------------------------
  * Map an integer pixel position from the input to the output image.
- * Fall back on interpolation if the value at the point is undefined
  *
  * pixmap: The mapping of the pixel centers from input to output image
  * i - The index of the x coordinate
@@ -260,7 +259,6 @@ interpolate_four_points(struct driz_param_t *par,
  * x - X-coordinate of the point on the output image (output)
  * y - Y-coordinate of the point on the output image (output)
  */
-
 int
 map_pixel(PyArrayObject *pixmap, int i, int j, double *x, double *y) {
     double *pv = (double *)PyArray_GETPTR3(pixmap, j, i, 0);
