@@ -115,8 +115,8 @@ sgarea(const double x1, const double y1, const double x2, const double y2) {
         return 0.0;
     }
 
-    xlo = MAX(xlo, 0.0);
-    xhi = MIN(xhi, 1.0);
+    // xlo = MAX(xlo, 0.0);
+    // xhi = MIN(xhi, 1.0);
 
     /* Now look at y */
     // double slope = dy / dx;
