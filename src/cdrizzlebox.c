@@ -115,27 +115,30 @@ sgarea(const double x1, const double y1, const double x2, const double y2) {
         return 0.0;
     }
 
-    // xlo = MAX(xlo, 0.0);
-    // xhi = MIN(xhi, 1.0);
+    xlo = MAX(xlo, 0.0);
+    xhi = MIN(xhi, 1.0);
 
     /* Now look at y */
-    // double slope = dy / dx;
-    // ylo = y1 + slope * (xlo - x1);
-    // yhi = y1 + slope * (xhi - x1);
+    double slope = dy / dx;
+    ylo = y1 + slope * (xlo - x1);
+    yhi = y1 + slope * (xhi - x1);
 
-    if (xlo < 0.0) {
-        xlo = 0.0;
-        ylo = y1 + (dy / dx) * (xlo - x1);
-    } else {
-        ylo = (sgn_dx > 0.0) ? y1 : y2;
-    }
+    /* Alternative code that may be more stable under certain circumstances */
+    /*
+        if (xlo < 0.0) {
+            xlo = 0.0;
+            ylo = y1 + (dy / dx) * (xlo - x1);
+        } else {
+            ylo = (sgn_dx > 0.0) ? y1 : y2;
+        }
 
-    if (xhi > 1.0) {
-        xhi = 1.0;
-        yhi = y1 + (dy / dx) * (xhi - x1);
-    } else {
-        yhi = (sgn_dx > 0.0) ? y2 : y1;
-    }
+        if (xhi > 1.0) {
+            xhi = 1.0;
+            yhi = y1 + (dy / dx) * (xhi - x1);
+        } else {
+            yhi = (sgn_dx > 0.0) ? y2 : y1;
+        }
+    */
 
     /* Trap segment entirely below axis */
     if (ylo <= 0.0 && yhi <= 0.0) {
