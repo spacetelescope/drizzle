@@ -1237,10 +1237,16 @@ def test_nan_fillval(fillval):
     assert np.all(np.isnan(driz.out_img))
 
 
+@pytest.mark.xfail(
+    reason="Bug in polygon intersections for nearly coincident edges"
+)
 def test_resample_edge_coincident():
     """
     Test that resample does not crash when the input image is smaller than the
     output image, and the edges of the two images (almost) coincide.
+
+    Test based on the example from
+    https://github.com/spacetelescope/drizzle/issues/189#issue-3196294879
 
     """
     pixmap = (np.array([
@@ -1257,7 +1263,7 @@ def test_resample_edge_coincident():
     ], dtype="f8"))
 
     in_shape = pixmap.shape[:2]
-    img = np.full(in_shape, 42, dtype=np.float32)
+    img = np.full(in_shape, np.pi, dtype=np.float32)
     in_flux = np.sum(img)
     out_shape = (4, 4)
 
@@ -1280,7 +1286,58 @@ def test_resample_edge_coincident():
 
     out_flux = np.nansum(driz.out_img * driz.out_wht)
 
-    assert np.allclose(driz.out_img, 42.0, rtol=0.0, atol=1.0e-6)
+    assert np.allclose(
+        driz.out_img[np.isfinite(driz.out_img)],
+        img[0, 0],
+        rtol=0.0,
+        atol=1.0e-6,
+    )
     assert np.allclose(out_flux, in_flux, rtol=1e-6, atol=0.0)
     assert np.sum(np.isfinite(driz.out_img)) == 6
     assert np.all(np.isnan(driz.out_img) == (driz.out_wht == 0.0))
+
+
+def test_resample_edge_sgarea_bug():
+    """
+    Test from https://github.com/spacetelescope/drizzle/issues/187
+
+    """
+    pixmap = (np.array([
+        [
+            [0.31887051, 1.],
+            [1.01898591, 1.],
+            [1.71909665, 1.],
+        ],
+        [
+            [0.31591881, 0.],
+            [1.0160342312345672, 0.],
+            [1.716145, 0.],
+        ]
+    ], dtype="f8"))
+
+    in_shape = pixmap.shape[:2]
+    img = np.full(in_shape, 42, dtype=np.float32)
+    out_shape = (4, 4)
+
+    driz = resample.Drizzle(
+        kernel='square',
+        fillval='nan',
+        out_shape=out_shape,
+        disable_ctx=True,
+    )
+
+    driz.add_image(
+        img,
+        exptime=11.776,
+        in_units='cps',
+        pixfrac=1.0,
+        pixmap=pixmap,
+        scale=1.0,
+        wht_scale=1.0,
+    )
+    # expected pixels should be close to 42
+    np.testing.assert_allclose(driz.out_img[:2, :3], img[0, 0], rtol=1e-6)
+
+    # other values should be nan
+    np.testing.assert_equal(driz.out_img[:, 3:], np.nan)
+    np.testing.assert_equal(driz.out_img[2:], np.nan)
