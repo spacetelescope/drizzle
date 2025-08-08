@@ -355,7 +355,10 @@ def test_resample_kernel(tmpdir, kernel, test_image_type, max_diff_atol):
             scale=pscale_ratio,
         )
     else:
-        with pytest.warns(Warning):
+        with pytest.warns(
+            Warning,
+            match=f"Kernel '{kernel}' is not a flux-conserving kernel"
+        ):
             driz.add_image(
                 insci,
                 exptime=1.0,
@@ -486,7 +489,10 @@ def test_zero_input_weight(kernel, fc):
             fillstr='INDEF',
         )
     else:
-        with pytest.warns(Warning):
+        with pytest.warns(
+            Warning,
+            match=f"Kernel '{kernel}' is not a flux-conserving kernel"
+        ):
             cdrizzle.tdriz(
                 insci,
                 inwht,
@@ -760,7 +766,10 @@ def test_flux_conservation_nondistorted(kernel, fc):
             wtscale=1.0,
         )
     else:
-        with pytest.warns(Warning):
+        with pytest.warns(
+            Warning,
+            match=f"Kernel '{kernel}' is not a flux-conserving kernel"
+        ):
             cdrizzle.tdriz(
                 in_sci,
                 in_wht,
@@ -848,7 +857,10 @@ def test_flux_conservation_distorted(kernel, fc):
             wtscale=1.0,
         )
     else:
-        with pytest.warns(Warning):
+        with pytest.warns(
+            Warning,
+            match=f"Kernel '{kernel}' is not a flux-conserving kernel"
+        ):
             cdrizzle.tdriz(
                 in_sci,
                 in_wht,
