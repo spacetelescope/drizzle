@@ -1235,3 +1235,52 @@ def test_nan_fillval(fillval):
     )
 
     assert np.all(np.isnan(driz.out_img))
+
+
+def test_resample_edge_coincident():
+    """
+    Test that resample does not crash when the input image is smaller than the
+    output image, and the edges of the two images (almost) coincide.
+
+    """
+    pixmap = (np.array([
+        [
+            [0.31, 1.0],
+            [1.01, 1.0],
+            [2.01, 1.0],
+        ],
+        [
+            [0.31, 0.],
+            [1.01, 0.],
+            [1.71, 0.],
+        ]
+    ], dtype="f8"))
+
+    in_shape = pixmap.shape[:2]
+    img = np.full(in_shape, 42, dtype=np.float32)
+    in_flux = np.sum(img)
+    out_shape = (4, 4)
+
+    driz = resample.Drizzle(
+        kernel='square',
+        fillval='nan',
+        out_shape=out_shape,
+        disable_ctx=True,
+    )
+
+    driz.add_image(
+        img,
+        exptime=11.776,
+        in_units='cps',
+        pixfrac=1.0,
+        pixmap=pixmap,
+        scale=1.0,
+        wht_scale=1.0,
+    )
+
+    out_flux = np.nansum(driz.out_img * driz.out_wht)
+
+    assert np.allclose(driz.out_img, 42.0, rtol=0.0, atol=1.0e-6)
+    assert np.allclose(out_flux, in_flux, rtol=1e-6, atol=0.0)
+    assert np.sum(np.isfinite(driz.out_img)) == 6
+    assert np.all(np.isnan(driz.out_img) == (driz.out_wht == 0.0))
