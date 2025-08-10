@@ -286,6 +286,7 @@ def test_drizzle_defaults():
     assert driz.out_img[1, 2] == 1
     assert (driz.out_img[2, 1] - 2.0) < 1.0e-14
 
+
 @pytest.mark.parametrize(
     'kernel,test_image_type,max_diff_atol',
     [
@@ -1281,3 +1282,69 @@ def test_resample_edge_sgarea_bug():
     # other values should be nan
     np.testing.assert_equal(driz.out_img[:, 3:], np.nan)
     np.testing.assert_equal(driz.out_img[2:], np.nan)
+
+
+def test_resample_edge_collinear():
+    """
+    Test that resample does not crash when the input image is smaller than the
+    output image, and the edges of the two images are nearly collinear.
+
+    Test based on the example from
+    https://github.com/spacetelescope/drizzle/issues/189#issue-3196294879
+
+    """
+    pixmap = (np.array([
+        [
+            [0.31, 1.0],
+            [1.01, 1.0],
+            [2.01, 1.0],
+        ],
+        [
+            [0.31, 0.],
+            [1.01, 0.],
+            [1.71, 0.],
+        ]
+    ], dtype="f8"))
+
+    in_shape = pixmap.shape[:2]
+    img = np.full(in_shape, np.pi, dtype=np.float32)
+    in_flux = np.sum(img)
+    out_shape = (4, 4)
+
+    driz = resample.Drizzle(
+        kernel='square',
+        fillval='nan',
+        out_shape=out_shape,
+        disable_ctx=True,
+    )
+
+    driz.add_image(
+        img,
+        exptime=11.776,
+        in_units='cps',
+        pixfrac=1.0,
+        pixmap=pixmap,
+        scale=1.0,
+        wht_scale=1.0,
+    )
+
+    out_flux = np.nansum(driz.out_img * driz.out_wht)
+
+    # Given this pixmap, the entire input image should fit within the output
+    # image. There should be at least 7 pixels with finite values in the output
+    # image. We can get more than 7 pixels with finite values due to rounding
+    # errors when computing polygon intersections (those "extra" pixels should)
+    # have very small weights.
+    assert np.sum(driz.out_wht > 1e-30) == 7
+    assert np.sum(np.isfinite(driz.out_img)) >= 7
+    # output image intensity must be equal to the input image intensity:
+    assert np.allclose(
+        driz.out_img[np.isfinite(driz.out_img)],
+        img[0, 0],
+        rtol=0,
+        atol=1e-6
+    )
+    # flux in the output image should be equal to the flux in the input image:
+    assert np.allclose(out_flux, in_flux, rtol=1e-6, atol=0.0)
+    # area of the signal in the input image:
+    assert np.allclose(np.sum(driz.out_wht), 6.0, rtol=0, atol=1.0e-6)

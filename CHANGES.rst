@@ -21,10 +21,17 @@ Release Notes
   optimized and simplified related code. [#175]
 
 
+2.1.1 (unreleased)
+==================
+
+- Fixed a bug in polygon intersection algorithm that could result in
+  incorrect output when the input polygons have nearly collinear edges. [#194]
+
+
 2.0.2 (unreleased)
 ==================
 
-- Fix a bug in ``resample.Drizzle`` due to which initially, before adding
+- Fixed a bug in ``resample.Drizzle`` due to which initially, before adding
   the first image, ``Drizzle.output_img`` is not filled with ``NaN`` when
   ``fillval`` is either ``INDEF``, ``NAN``, ``None`` *and* the ``Drizzle``
   object was initialized with ``out_img=None``. [#170]

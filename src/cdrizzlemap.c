@@ -19,6 +19,22 @@ static const double VERTEX_ATOL = 1.0e-12;
 static const double APPROX_ZERO = 1.0e3 * DBL_MIN;
 static const double MAX_INV_ERR = 0.03;
 
+void
+debug_print_polygon(const struct polygon *p, char *msg) {
+    int i;
+    if (msg) {
+        printf("%s\n", msg);
+    }
+    printf("Polygon with %d vertices:\n", p->npv);
+    for (i = 0; i < p->npv; ++i) {
+        printf("  Vertex %d: (%.20f, %.20f)\n", i, p->v[i].x, p->v[i].y);
+    }
+    printf("\n");
+    fflush(stdout);
+}
+
+void rotate_polygon(struct polygon *p, int pos);
+
 /** ---------------------------------------------------------------------------
  * Find the tighest bounding box around valid (finite) pixmap values.
  *
@@ -441,6 +457,38 @@ is_point_strictly_in_hp(const struct vertex pt, const struct vertex v_,
 }
 
 /**
+ * Rotates the vertices of a polygon by a specified number of positions.
+ *
+ * This function shifts the vertices of the given polygon `p` by `pos`
+ * positions. For each rotation, the first vertex is moved to the end of the
+ * vertex array, effectively rotating the polygon's vertex order. The operation
+ * is performed in-place and repeated `pos` times.
+ *
+ * @param p   Pointer to the polygon structure to be rotated. The polygon is
+ *            expected to have an array of vertices `v` and a count `npv`.
+ * @param pos Number of positions to rotate the polygon's vertices.
+ */
+void
+rotate_polygon(struct polygon *p, int pos) {
+    int i, k, m;
+    double x, y;
+
+    for (i = 0; i < pos; ++i) {
+        // rotate polygon p by pos vertices
+        // (move first pos vertices to the end of the polygon)
+        x = p->v[0].x;
+        y = p->v[0].y;
+        for (k = 0; k < p->npv - 1; ++k) {
+            m = mod(k + 1, p->npv);
+            p->v[k].x = p->v[m].x;
+            p->v[k].y = p->v[m].y;
+        }
+        p->v[p->npv - 1].x = x;
+        p->v[p->npv - 1].y = y;
+    }
+}
+
+/**
  * Append a vertex to a polygon.
  *
  * Append a vertex to the polygon's list of vertices and increment
@@ -617,12 +665,16 @@ clip_polygon_to_window(const struct polygon *p, const struct polygon *wnd,
                 // compute intersection point:
                 // https://en.wikipedia.org/wiki/Line–line_intersection
                 d = area(dp, dw);  // d != 0 because (v2_inside != v1_inside)
+
                 app_ = area(*pv, *pv_);
                 aww_ = area(*wv, *wv_);
+
                 vi.x = (app_ * dw.x - aww_ * dp.x) / d;
                 vi.y = (app_ * dw.y - aww_ * dp.y) / d;
 
-                append_vertex(ppout, vi);
+                if (isfinite(vi.x) && isfinite(vi.y)) {
+                    append_vertex(ppout, vi);
+                }
                 if (v2_inside) {
                     // outside to inside:
                     append_vertex(ppout, *pv);
@@ -631,6 +683,7 @@ clip_polygon_to_window(const struct polygon *p, const struct polygon *wnd,
                 // both edge vertices are inside
                 append_vertex(ppout, *pv);
             }
+
             // nothing to do when both edge vertices are outside
 
             // advance polygon edge:
