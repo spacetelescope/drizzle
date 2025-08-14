@@ -4,7 +4,8 @@
 Release Notes
 =============
 
-2.1.1 (unreleased)
+
+2.1.1 (2025-08-14)
 ==================
 
 - Fix a bug in the Cython code for ``tdriz()`` due to which the code would
