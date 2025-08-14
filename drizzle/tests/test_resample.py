@@ -1235,3 +1235,49 @@ def test_nan_fillval(fillval):
     )
 
     assert np.all(np.isnan(driz.out_img))
+
+
+def test_resample_edge_sgarea_bug():
+    """
+    Test from https://github.com/spacetelescope/drizzle/issues/187
+
+    """
+    pixmap = (np.array([
+        [
+            [0.31887051, 1.],
+            [1.01898591, 1.],
+            [1.71909665, 1.],
+        ],
+        [
+            [0.31591881, 0.],
+            [1.0160342312345672, 0.],
+            [1.716145, 0.],
+        ]
+    ], dtype="f8"))
+
+    in_shape = pixmap.shape[:2]
+    img = np.full(in_shape, 42, dtype=np.float32)
+    out_shape = (4, 4)
+
+    driz = resample.Drizzle(
+        kernel='square',
+        fillval='nan',
+        out_shape=out_shape,
+        disable_ctx=True,
+    )
+
+    driz.add_image(
+        img,
+        exptime=11.776,
+        in_units='cps',
+        pixfrac=1.0,
+        pixmap=pixmap,
+        scale=1.0,
+        wht_scale=1.0,
+    )
+    # expected pixels should be close to 42
+    np.testing.assert_allclose(driz.out_img[:2, :3], img[0, 0], rtol=1e-6)
+
+    # other values should be nan
+    np.testing.assert_equal(driz.out_img[:, 3:], np.nan)
+    np.testing.assert_equal(driz.out_img[2:], np.nan)
