@@ -10,10 +10,6 @@ Release Notes
 - Fix a bug in the Cython code for ``tdriz()`` due to which the code would
   raise an error for sub-second exposure times. [#192]
 
-
-2.1.1 (unreleased)
-==================
-
 - Fixed a numerical instability in the new and old "boxer" algorithm in #175
   (withdrawn release 2.1.0). [#191]
 
