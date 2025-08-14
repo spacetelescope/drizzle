@@ -260,3 +260,27 @@ def test_intersection_case01():
     cp = clip_polygon(p, wnd)
 
     assert _is_poly_eq(cp, cp_ref)
+
+
+def test_intersection_case02():
+    # a real case of failure reported in #189
+    p = [
+        (-0.04000000000000009104, 1.5),
+        (2.73499999999999943157, 1.5),
+        (1.83500000000000018652, -0.5),
+        (-0.03999999999999998002, -0.5),
+    ]
+    wnd = [
+        (-0.5, -0.5), (3.5, -0.5), (3.5, 3.5), (-0.5, 3.5)
+    ]
+
+    cp_ref = [
+        (-0.04, 1.5),
+        (-0.04, -0.5),
+        (1.835, -0.5),
+        (2.735, 1.5),
+    ]
+
+    cp = clip_polygon(p, wnd)
+
+    assert _is_poly_eq(cp, cp_ref)
