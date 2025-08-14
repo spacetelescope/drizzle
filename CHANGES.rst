@@ -4,6 +4,12 @@
 Release Notes
 =============
 
+2.1.1 (unreleased)
+==================
+
+- Fix a bug in the Cython code for ``tdriz()`` due to which the code would
+  raise an error for sub-second exposure times. [#192]
+
 
 2.0.2 (unreleased)
 ==================

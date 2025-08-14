@@ -1150,7 +1150,7 @@ def test_resample_get_shape_from_pixmap():
         exptime=0.0,
     )
 
-    driz.add_image(in_sci, weight_map=in_wht, exptime=1.0, pixmap=pixmap)
+    driz.add_image(in_sci, weight_map=in_wht, exptime=0.1, pixmap=pixmap)
     assert driz.out_img.shape == in_shape
 
 

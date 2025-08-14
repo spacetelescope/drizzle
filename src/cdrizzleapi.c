@@ -230,19 +230,29 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords) {
     p.fill_value = fill_value;
     p.error = &error;
 
-    if (driz_error_check(&error, "xmin must be >= 0", p.xmin >= 0)) goto _exit;
-    if (driz_error_check(&error, "ymin must be >= 0", p.ymin >= 0)) goto _exit;
-    if (driz_error_check(&error, "xmax must be > xmin", p.xmax > p.xmin))
+    if (driz_error_check(&error, "xmin must be >= 0", p.xmin >= 0)) {
         goto _exit;
-    if (driz_error_check(&error, "ymax must be > ymin", p.ymax > p.ymin))
+    }
+    if (driz_error_check(&error, "ymin must be >= 0", p.ymin >= 0)) {
         goto _exit;
-    if (driz_error_check(&error, "scale must be > 0", p.scale > 0.0))
+    }
+    if (driz_error_check(&error, "xmax must be > xmin", p.xmax > p.xmin)) {
         goto _exit;
-    if (driz_error_check(&error, "exposure time must be > 0", p.exposure_time))
+    }
+    if (driz_error_check(&error, "ymax must be > ymin", p.ymax > p.ymin)) {
         goto _exit;
+    }
+    if (driz_error_check(&error, "scale must be > 0", p.scale > 0.0f)) {
+        goto _exit;
+    }
+    if (driz_error_check(&error, "exposure time must be > 0",
+                         p.exposure_time > 0.0f)) {
+        goto _exit;
+    }
     if (driz_error_check(&error, "weight scale must be > 0",
-                         p.weight_scale > 0.0))
+                         p.weight_scale > 0.0f)) {
         goto _exit;
+    }
 
     get_dimensions(p.pixmap, psize);
     if (psize[0] != isize[0] || psize[1] != isize[1]) {
