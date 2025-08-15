@@ -14,6 +14,8 @@ Release Notes
 - Fixed a numerical instability in the new and old "boxer" algorithm in #175
   (withdrawn release 2.1.0). [#191]
 
+- Use ``astropy``'s ``pixel_to_pixel()`` in ``utils.calc_pixmap()``. [#161]
+
 
 2.1.0 (2025-02-20; withdrawn)
 =============================
