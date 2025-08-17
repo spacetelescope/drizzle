@@ -571,18 +571,6 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords) {
         goto _exit;
     }
 
-    get_dimensions(p.pixmap, psize);
-    if (psize[0] != isize[0] || psize[1] != isize[1]) {
-        if (snprintf(
-                warn_msg, 128,
-                "Pixel map dimensions (%d, %d) != input dimensions (%d, %d).",
-                psize[0], psize[1], isize[0], isize[1]) < 1) {
-            strcpy(warn_msg, "Pixel map dimensions != input dimensions.");
-        }
-        driz_error_set_message(&error, warn_msg);
-        goto _exit;
-    }
-
     if (dobox(&p)) {
         goto _exit;
     }
