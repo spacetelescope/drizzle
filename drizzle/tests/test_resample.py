@@ -1470,7 +1470,10 @@ def test_drizzle_weights_squared(kernel, fc):
         assert driz.out_img is None
         assert driz.total_exptime == 0.0
 
-        with pytest.warns(Warning):
+        with pytest.warns(
+            Warning,
+            match=f"Kernel '{kernel}' is not a flux-conserving kernel"
+        ):
             driz.add_image(
                 data=in_sci1,
                 exptime=1.0,
@@ -1478,6 +1481,10 @@ def test_drizzle_weights_squared(kernel, fc):
                 weight_map=in_wht1,
                 data2=[in_sci1_sq],
             )
+        with pytest.warns(
+            Warning,
+            match=f"Kernel '{kernel}' is not a flux-conserving kernel"
+        ):
             driz.add_image(
                 data=in_sci2,
                 exptime=1.0,
@@ -1843,3 +1850,147 @@ def test_drizzle_weights_squared_array_shape_mismatch():
     assert np.allclose(np.nansum(driz.out_img2[0]), 2.0 * np.nansum(driz.out_img2[1]))
     assert np.allclose(np.nansum(driz.out_img2[0]), 2.0 * np.nansum(driz.out_img2[2]))
     assert np.allclose(0.0, np.nansum(driz.out_img2[3]))
+
+
+@pytest.mark.parametrize(
+    "kernel_fc, pscale_ratio",
+    (
+        x for x in product(
+            [
+                ('square', True),
+                ('point', True),
+                ('turbo', True),
+                ('lanczos2', False),
+                ('lanczos3', False),
+                ('gaussian', False),
+            ],
+            [0.9, 1.0, 1.2],
+        )
+    )
+)
+def test_drizzle_var_identical_to_nonvar(kernel_fc, pscale_ratio):
+    """ Test that the resampled science image using code with support for
+    variance-propagation is identical to the resampled science image
+    using code without support for variance-propagation (original code).
+    """
+    kernel, fc = kernel_fc
+    if kernel.startswith("lanczos") and pscale_ratio != 1.0:
+        pytest.skip(
+            f"Kernel '{kernel}' does not support pscale != 1.0 or "
+            "pixfrac != 1.0"
+        )
+    amplitude = 100.0
+    inwcs = wcs_from_file("j8bt06nyq_flt.fits", ext=1)
+    insci = amplitude * np.random.random(inwcs.array_shape).astype(np.float32)
+    inwht = np.ones_like(insci)
+    output_wcs, _ = wcs_from_file(
+        "reference_square_image.fits",
+        ext=1,
+        return_data=True
+    )
+
+    pixmap = utils.calc_pixmap(
+        inwcs,
+        output_wcs,
+    )
+
+    driz1 = resample.Drizzle(
+        kernel=kernel,
+        fillval="NaN",
+        out_shape=output_wcs.array_shape,
+        exptime=0.0,
+        begin_ctx_id=0,
+        max_ctx_id=1,
+        disable_ctx=False,
+    )
+
+    driz2 = resample.Drizzle(
+        kernel=kernel,
+        fillval="NaN",
+        out_shape=output_wcs.array_shape,
+        exptime=0.0,
+        begin_ctx_id=0,
+        max_ctx_id=1,
+        disable_ctx=False,
+    )
+
+    if fc:
+        driz1.add_image(
+            insci,
+            exptime=13.0,
+            pixmap=pixmap,
+            weight_map=inwht,
+            scale=pscale_ratio,
+            xmin=10,
+            ymin=10,
+            xmax=output_wcs.array_shape[0] - 10,
+            ymax=output_wcs.array_shape[1] - 10,
+        )
+        driz2.add_image(
+            insci,
+            data2=insci,
+            exptime=13.0,
+            pixmap=pixmap,
+            weight_map=inwht,
+            scale=pscale_ratio,
+            xmin=10,
+            ymin=10,
+            xmax=output_wcs.array_shape[0] - 10,
+            ymax=output_wcs.array_shape[1] - 10,
+        )
+    else:
+        with pytest.warns(
+            Warning,
+            match=f"Kernel '{kernel}' is not a flux-conserving kernel"
+        ):
+            driz1.add_image(
+                insci,
+                exptime=13.0,
+                pixmap=pixmap,
+                weight_map=inwht,
+                scale=pscale_ratio,
+                xmin=10,
+                ymin=10,
+                xmax=output_wcs.array_shape[0] - 10,
+                ymax=output_wcs.array_shape[1] - 10,
+            )
+
+        with pytest.warns(
+            Warning,
+            match=f"Kernel '{kernel}' is not a flux-conserving kernel"
+        ):
+            driz2.add_image(
+                insci,
+                data2=insci,
+                exptime=13.0,
+                pixmap=pixmap,
+                weight_map=inwht,
+                scale=pscale_ratio,
+                xmin=10,
+                ymin=10,
+                xmax=output_wcs.array_shape[0] - 10,
+                ymax=output_wcs.array_shape[1] - 10,
+            )
+
+    v = np.abs(driz1.out_img - driz2.out_img)
+    print(kernel, pscale_ratio, np.nanmax(v), np.nanmin(v), np.nanmean(v))
+
+    assert np.allclose(
+        driz1.out_img,
+        driz2.out_img,
+        rtol=0.0,
+        atol=5.0 * amplitude * np.finfo(np.float32).eps,
+        equal_nan=True
+    ), "Resampled science images are not identical."
+
+    assert np.allclose(
+        driz1.out_wht,
+        driz2.out_wht,
+        rtol=0.0,
+        atol=5.0 * amplitude * np.finfo(np.float32).eps,
+        equal_nan=True
+    ), "Resampled weight images are not identical."
+
+    assert np.all(
+        driz1.out_ctx == driz2.out_ctx
+    ), "Context images are not identical."
