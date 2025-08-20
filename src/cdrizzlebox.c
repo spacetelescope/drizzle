@@ -559,14 +559,15 @@ do_kernel_point_var(struct driz_param_t *p) {
                        that we DON'T scale by the Jacobian as it hasn't been
                        calculated */
                     if (p->weights) {
-                        dow = get_pixel(p->weights, i, j) * p->weight_scale;
+                        dow = (float)get_pixel(p->weights, i, j) *
+                              p->weight_scale;
                     } else {
-                        dow = 1.0;
+                        dow = 1.0f;
                     }
 
                     /* If we are creating or modifying the context image,
                        we do so here. */
-                    if (p->output_context && dow > 0.0) {
+                    if (p->output_context && dow > 0.0f) {
                         set_bit(p->output_context, ii, jj, bv);
                     }
 
@@ -729,7 +730,7 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
 
                         /* If we are create or modifying the context image, we
                            do so here. */
-                        if (p->output_context && dow > 0.0) {
+                        if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
 
@@ -907,7 +908,7 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
 
                         /* If we are create or modifying the context image, we
                            do so here. */
-                        if (p->output_context && dow > 0.0) {
+                        if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
 
@@ -1075,7 +1076,7 @@ do_kernel_turbo_var(struct driz_param_t *p) {
 
                             /* If we are create or modifying the context image,
                                we do so here. */
-                            if (p->output_context && dow > 0.0) {
+                            if (p->output_context && dow > 0.0f) {
                                 set_bit(p->output_context, ii, jj, bv);
                             }
 
@@ -1149,6 +1150,7 @@ do_kernel_square_var(struct driz_param_t *p) {
             driz_error_set(p->error, PyExc_RuntimeError,
                            "'output_data2' must be a valid pointer when "
                            "'data2' is valid.");
+            free(d2);
             return 1;
         }
         for (i = 0; i < ndata2; ++i) {
@@ -1156,6 +1158,7 @@ do_kernel_square_var(struct driz_param_t *p) {
                 driz_error_set(
                     p->error, PyExc_RuntimeError,
                     "Some arrays in 'output_data2' have invalid pointers.");
+                free(d2);
                 return 1;
             }
         }
@@ -1228,10 +1231,10 @@ do_kernel_square_var(struct driz_param_t *p) {
                            (xout[0] - xout[2]) * (yout[1] - yout[3]));
 
             /* Allow for stretching because of scale change */
-            d = get_pixel(p->data, i, j) * scale2;
+            d = (float)get_pixel(p->data, i, j) * scale2;
             for (k = 0; k < ndata2; ++k) {
                 if (p->data2[k]) {
-                    d2[k] = get_pixel(p->data2[k], i, j) * scale4;
+                    d2[k] = (float)get_pixel(p->data2[k], i, j) * scale4;
                 } else {
                     d2[k] = 0.0f;
                 }
@@ -1267,15 +1270,12 @@ do_kernel_square_var(struct driz_param_t *p) {
 
                         /* If we are creating or modifying the context image we
                             do so here */
-                        if (p->output_context && dow > 0.0) {
+                        if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
-                        // if (update_handler(p, ii, jj, d, dow, d2)) {
-                        //     free(d2);
-                        //     return 1;
-                        // }
 
                         if (update_data_var(p, ii, jj, d, dow, d2)) {
+                            free(d2);
                             return 1;
                         }
                     }
@@ -1291,6 +1291,7 @@ do_kernel_square_var(struct driz_param_t *p) {
     }
 
     driz_log_message("ending do_kernel_square");
+    free(d2);
     return 0;
 }
 
@@ -1354,20 +1355,21 @@ do_kernel_point(struct driz_param_t *p) {
 
                 } else {
                     /* Allow for stretching because of scale change */
-                    d = get_pixel(p->data, i, j) * scale2;
+                    d = (float)get_pixel(p->data, i, j) * scale2;
 
                     /* Scale the weighting mask by the scale factor.  Note that
                        we DON'T scale by the Jacobian as it hasn't been
                        calculated */
                     if (p->weights) {
-                        dow = get_pixel(p->weights, i, j) * p->weight_scale;
+                        dow = (float)get_pixel(p->weights, i, j) *
+                              p->weight_scale;
                     } else {
-                        dow = 1.0;
+                        dow = 1.0f;
                     }
 
                     /* If we are creating or modifying the context image,
                        we do so here. */
-                    if (p->output_context && dow > 0.0) {
+                    if (p->output_context && dow > 0.0f) {
                         set_bit(p->output_context, ii, jj, bv);
                     }
 
@@ -1492,7 +1494,7 @@ do_kernel_gaussian(struct driz_param_t *p) {
 
                         /* If we are create or modifying the context image, we
                            do so here. */
-                        if (p->output_context && dow > 0.0) {
+                        if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
 
@@ -1628,7 +1630,7 @@ do_kernel_lanczos(struct driz_param_t *p) {
 
                         /* If we are create or modifying the context image, we
                            do so here. */
-                        if (p->output_context && dow > 0.0) {
+                        if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
 
@@ -1757,7 +1759,7 @@ do_kernel_turbo(struct driz_param_t *p) {
 
                             /* If we are create or modifying the context image,
                                we do so here. */
-                            if (p->output_context && dow > 0.0) {
+                            if (p->output_context && dow > 0.0f) {
                                 set_bit(p->output_context, ii, jj, bv);
                             }
 
@@ -1914,7 +1916,7 @@ do_kernel_square(struct driz_param_t *p) {
 
                         /* If we are creating or modifying the context image we
                             do so here */
-                        if (p->output_context && dow > 0.0) {
+                        if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
 

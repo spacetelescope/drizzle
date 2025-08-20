@@ -1973,7 +1973,6 @@ def test_drizzle_var_identical_to_nonvar(kernel_fc, pscale_ratio):
             )
 
     v = np.abs(driz1.out_img - driz2.out_img)
-    print(kernel, pscale_ratio, np.nanmax(v), np.nanmin(v), np.nanmean(v))
 
     assert np.allclose(
         driz1.out_img,
