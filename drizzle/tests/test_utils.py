@@ -5,7 +5,6 @@ import pytest
 from numpy.testing import assert_almost_equal, assert_equal
 
 from astropy.wcs import FITSFixedWarning
-
 from drizzle.tests.helpers import wcs_from_file
 from drizzle.utils import (
     _estimate_pixel_scale,
