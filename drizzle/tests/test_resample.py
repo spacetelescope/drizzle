@@ -1972,8 +1972,6 @@ def test_drizzle_var_identical_to_nonvar(kernel_fc, pscale_ratio):
                 ymax=output_wcs.array_shape[1] - 10,
             )
 
-    v = np.abs(driz1.out_img - driz2.out_img)
-
     assert np.allclose(
         driz1.out_img,
         driz2.out_img,
