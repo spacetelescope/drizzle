@@ -1,7 +1,10 @@
+import warnings
+
 import numpy as np
 import pytest
 from numpy.testing import assert_almost_equal, assert_equal
 
+from astropy.wcs import FITSFixedWarning
 from drizzle.tests.helpers import wcs_from_file
 from drizzle.utils import (
     _estimate_pixel_scale,
@@ -166,7 +169,9 @@ def test_estimate_pixel_scale_ratio():
 
 def test_estimate_pixel_scale_no_refpix():
     # create a WCS without higher order (polynomial) distortions:
-    w = wcs_from_file("j8bt06nyq_sip_flt.fits", ext=1)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=FITSFixedWarning)
+        w = wcs_from_file("j8bt06nyq_sip_flt.fits", ext=1)
     w.sip = None
     w.det2im1 = None
     w.det2im2 = None

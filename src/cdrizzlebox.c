@@ -18,16 +18,19 @@
  * ii:  x coordinate in output images
  * jj:  y coordinate in output images
  * d:   new contribution to weighted flux
- * vc:  previous value of counts
  * dow: new contribution to weighted counts
  */
 
 inline_macro static int
 update_data(struct driz_param_t *p, const integer_t ii, const integer_t jj,
-            const float d, const float vc, const float dow) {
+            const float d, const float dow) {
     double vc_plus_dow;
+    float vc;
 
     if (dow == 0.0f) return 0;
+
+    // get previous output image weight:
+    vc = get_pixel(p->output_counts, ii, jj);
 
     vc_plus_dow = vc + dow;
 
@@ -60,6 +63,70 @@ update_data(struct driz_param_t *p, const integer_t ii, const integer_t jj,
     } else {
         set_pixel(p->output_counts, ii, jj, vc_plus_dow);
     }
+
+    return 0;
+}
+
+/** ---------------------------------------------------------------------------
+ * Update the flux, variance, and counts in the output image using a weighted
+ * average.
+ *
+ * p:   structure containing options, input, and output
+ * ii:  x coordinate in output images
+ * jj:  y coordinate in output images
+ * d:   new contribution to weighted flux
+ * vc:  previous value of counts
+ * dow: new contribution to weighted counts
+ * d2:  array of data2 values that need to be co-added using squared weights
+ *      (i.e., variance arrays)
+ */
+inline_macro static int
+update_data_var(struct driz_param_t *p, const integer_t ii, const integer_t jj,
+                const float d, const float dow, float *d2) {
+    double vc_plus_dow, vc_plus_dow2;
+    double v, vc2, dow2;
+    float vc;
+    int i;
+    PyArrayObject **arr2;
+
+    if (oob_output_pixel(p, ii, jj)) {
+        driz_error_format_message(
+            p->error, "OOB in accessing output data [%d,%d]", ii, jj);
+        return 1;
+    }
+
+    if (dow == 0.0f) {
+        return 0;
+    }
+
+    // get previous output image weight:
+    vc = get_pixel(p->output_counts, ii, jj);
+
+    // new output image weight:
+    vc_plus_dow = vc + dow;
+
+    if (vc == 0.0f) {
+        set_pixel(p->output_data, ii, jj, d);
+        if (d2 && (arr2 = p->output_data2)) {
+            for (i = 0; i < p->ndata2; ++i) {
+                set_pixel(arr2[i], ii, jj, d2[i]);
+            }
+        }
+    } else {
+        v = (get_pixel(p->output_data, ii, jj) * vc + dow * d) / vc_plus_dow;
+        set_pixel(p->output_data, ii, jj, v);
+        if (d2 && (arr2 = p->output_data2)) {
+            dow2 = dow * dow;
+            vc2 = vc * vc;
+            vc_plus_dow2 = vc_plus_dow * vc_plus_dow;
+            for (i = 0; i < p->ndata2; ++i) {
+                v = (get_pixel(arr2[i], ii, jj) * vc2 + dow2 * d2[i]) /
+                    vc_plus_dow2;
+                set_pixel(arr2[i], ii, jj, v);
+            }
+        }
+    }
+    set_pixel(p->output_counts, ii, jj, vc_plus_dow);
 
     return 0;
 }
@@ -395,11 +462,851 @@ over(const integer_t i, const integer_t j, const double xmin, const double xmax,
  */
 
 static int
+do_kernel_point_var(struct driz_param_t *p) {
+    struct scanner s;
+    integer_t i, j, ii, jj, k;
+    integer_t osize[2];
+    float scale2, scale4, d, dow, *d2 = NULL;
+    integer_t bv;
+    int xmin, xmax, ymin, ymax, n;
+    int ndata2;
+
+    ndata2 = p->ndata2;
+
+    scale2 = p->scale * p->scale;
+    bv = compute_bit_value(p->uuid);
+
+    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
+
+    p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
+    p->nmiss = p->nskip * (p->xmax - p->xmin);
+
+    /* This is the outer loop over all the lines in the input image */
+    get_dimensions(p->output_data, osize);
+
+    if (ndata2 > 0) {
+        scale4 = scale2 * scale2;
+
+        if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
+            driz_error_set(p->error, PyExc_MemoryError,
+                           "Memory allocation failed.");
+            return 1;
+        }
+        if (!p->output_data2) {
+            driz_error_set(p->error, PyExc_RuntimeError,
+                           "'output_data2' must be a valid pointer when "
+                           "'data2' is valid.");
+            free(d2);
+            return 1;
+        }
+        for (i = 0; i < ndata2; ++i) {
+            if (!p->output_data2[i]) {
+                driz_error_set(
+                    p->error, PyExc_RuntimeError,
+                    "Some arrays in 'output_data2' have invalid pointers.");
+                free(d2);
+                return 1;
+            }
+        }
+    }
+
+    for (j = ymin; j <= ymax; ++j) {
+        /* Check the overlap with the output */
+        n = get_scanline_limits(&s, j, &xmin, &xmax);
+        if (n == 1) {
+            // scan ended (y reached the top vertex/edge)
+            p->nskip += (ymax + 1 - j);
+            p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
+            break;
+        } else if (n == 2 || n == 3) {
+            // pixel centered on y is outside of scanner's limits or image
+            // [0, height - 1] OR: limits (x1, x2) are equal (line width is
+            // 0)
+            p->nmiss += (p->xmax - p->xmin);
+            ++p->nskip;
+            continue;
+        } else {
+            // limits (x1, x2) are equal (line width is 0)
+            p->nmiss += (p->xmax - p->xmin) - (xmax + 1 - xmin);
+        }
+
+        for (i = xmin; i <= xmax; ++i) {
+            double ox, oy;
+
+            if (map_pixel(p->pixmap, i, j, &ox, &oy)) {
+                ++p->nmiss;
+
+            } else {
+                ii = fortran_round(ox);
+                jj = fortran_round(oy);
+
+                /* Check it is on the output image */
+                if (ii < 0 || ii >= osize[0] || jj < 0 || jj >= osize[1]) {
+                    ++p->nmiss;
+
+                } else {
+                    /* Allow for stretching because of scale change */
+                    d = get_pixel(p->data, i, j) * scale2;
+                    for (k = 0; k < ndata2; ++k) {
+                        if (p->data2[k]) {
+                            d2[k] = get_pixel(p->data2[k], i, j) * scale4;
+                        } else {
+                            d2[k] = 0.0f;
+                        }
+                    }
+
+                    /* Scale the weighting mask by the scale factor.  Note
+                       that we DON'T scale by the Jacobian as it hasn't been
+                       calculated */
+                    if (p->weights) {
+                        dow = (float)get_pixel(p->weights, i, j) *
+                              p->weight_scale;
+                    } else {
+                        dow = 1.0f;
+                    }
+
+                    /* If we are creating or modifying the context image,
+                       we do so here. */
+                    if (p->output_context && dow > 0.0f) {
+                        set_bit(p->output_context, ii, jj, bv);
+                    }
+
+                    if (update_data_var(p, ii, jj, d, dow, d2)) {
+                        free(d2);
+                        return 1;
+                    }
+                }
+            }
+        }
+    }
+
+    free(d2);
+    return 0;
+}
+
+/** ---------------------------------------------------------------------------
+ * This kernel assumes the flux is distributed acrass a gaussian around the
+ * center of an input pixel
+ *
+ * p: structure containing options, input, and output
+ */
+
+static int
+do_kernel_gaussian_var(struct driz_param_t *p) {
+    struct scanner s;
+    integer_t bv, i, j, ii, jj, k, nxi, nxa, nyi, nya, nhit;
+    integer_t osize[2];
+    float d, dow, *d2 = NULL;
+    double gaussian_efac, gaussian_es;
+    double pfo, ac, scale2, scale4, xxi, xxa, yyi, yya, w, ddx, ddy, r2, dover;
+    const double nsig = 2.5;
+    int xmin, xmax, ymin, ymax, n;
+    int ndata2;
+
+    ndata2 = p->ndata2;
+
+    /* Added in V2.9 - make sure pfo doesn't get less than 1.2
+       divided by the scale so that there are never holes in the
+       output */
+
+    pfo = nsig * p->pixel_fraction / 2.3548 / p->scale;
+    pfo = CLAMP_ABOVE(pfo, 1.2 / p->scale);
+
+    ac = 1.0 / (p->pixel_fraction * p->pixel_fraction);
+    scale2 = p->scale * p->scale;
+    bv = compute_bit_value(p->uuid);
+
+    gaussian_efac = (2.3548 * 2.3548) * scale2 * ac / 2.0;
+    gaussian_es = gaussian_efac / M_PI;
+
+    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
+
+    p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
+    p->nmiss = p->nskip * (p->xmax - p->xmin);
+
+    /* This is the outer loop over all the lines in the input image */
+
+    get_dimensions(p->output_data, osize);
+
+    if (ndata2 > 0) {
+        scale4 = scale2 * scale2;
+        if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
+            driz_error_set(p->error, PyExc_MemoryError,
+                           "Memory allocation failed.");
+            return 1;
+        }
+        if (!p->output_data2) {
+            driz_error_set(p->error, PyExc_RuntimeError,
+                           "'output_data2' must be a valid pointer when "
+                           "'data2' is valid.");
+            free(d2);
+            return 1;
+        }
+        for (i = 0; i < ndata2; ++i) {
+            if (!p->output_data2[i]) {
+                driz_error_set(
+                    p->error, PyExc_RuntimeError,
+                    "Some arrays in 'output_data2' have invalid pointers.");
+                free(d2);
+                return 1;
+            }
+        }
+    }
+
+    for (j = ymin; j <= ymax; ++j) {
+        /* Check the overlap with the output */
+        n = get_scanline_limits(&s, j, &xmin, &xmax);
+        if (n == 1) {
+            // scan ended (y reached the top vertex/edge)
+            p->nskip += (ymax + 1 - j);
+            p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
+            break;
+        } else if (n == 2 || n == 3) {
+            // pixel centered on y is outside of scanner's limits or image [0,
+            // height - 1] OR: limits (x1, x2) are equal (line width is 0)
+            p->nmiss += (p->xmax - p->xmin);
+            ++p->nskip;
+            continue;
+        } else {
+            // limits (x1, x2) are equal (line width is 0)
+            p->nmiss += (p->xmax - p->xmin) - (xmax + 1 - xmin);
+        }
+
+        for (i = xmin; i <= xmax; ++i) {
+            double ox, oy;
+
+            if (map_pixel(p->pixmap, i, j, &ox, &oy)) {
+                nhit = 0;
+
+            } else {
+                /* Offset within the subset */
+                xxi = ox - pfo;
+                xxa = ox + pfo;
+                yyi = oy - pfo;
+                yya = oy + pfo;
+
+                nxi = MAX(fortran_round(xxi), 0);
+                nxa = MIN(fortran_round(xxa), osize[0] - 1);
+                nyi = MAX(fortran_round(yyi), 0);
+                nya = MIN(fortran_round(yya), osize[1] - 1);
+
+                nhit = 0;
+
+                /* Allow for stretching because of scale change */
+                d = get_pixel(p->data, i, j) * scale2;
+                for (k = 0; k < ndata2; ++k) {
+                    if (p->data2[k]) {
+                        d2[k] = get_pixel(p->data2[k], i, j) * scale4;
+                    } else {
+                        d2[k] = 0.0f;
+                    }
+                }
+
+                /* Scale the weighting mask by the scale factor and inversely by
+                   the Jacobian to ensure conservation of weight in the output
+                 */
+                if (p->weights) {
+                    w = get_pixel(p->weights, i, j) * p->weight_scale;
+                } else {
+                    w = 1.0;
+                }
+
+                /* Loop over output pixels which could be affected */
+                for (jj = nyi; jj <= nya; ++jj) {
+                    ddy = oy - (double)jj;
+                    for (ii = nxi; ii <= nxa; ++ii) {
+                        ddx = ox - (double)ii;
+                        /* Radial distance */
+                        r2 = ddx * ddx + ddy * ddy;
+
+                        /* Weight is a scaled Gaussian function of radial
+                           distance */
+                        dover = gaussian_es * exp(-r2 * gaussian_efac);
+
+                        /* Count the hits */
+                        ++nhit;
+
+                        dow = (float)dover * w;
+
+                        /* If we are create or modifying the context image, we
+                           do so here. */
+                        if (p->output_context && dow > 0.0f) {
+                            set_bit(p->output_context, ii, jj, bv);
+                        }
+
+                        if (update_data_var(p, ii, jj, d, dow, d2)) {
+                            free(d2);
+                            return 1;
+                        }
+                    }
+                }
+            }
+
+            /* Count cases where the pixel is off the output image */
+            if (nhit == 0) ++p->nmiss;
+        }
+    }
+
+    free(d2);
+    return 0;
+}
+
+/** ---------------------------------------------------------------------------
+ * This kernel assumes flux of input pixel is distributed according to lanczos
+ * function
+ *
+ * p: structure containing options, input, and output
+ */
+
+static int
+do_kernel_lanczos_var(struct driz_param_t *p) {
+    struct scanner s;
+    integer_t bv, i, j, ii, jj, k, nxi, nxa, nyi, nya, nhit, ix, iy;
+    integer_t osize[2];
+    float scale2, scale4, d, dow, *d2 = NULL;
+    double pfo, xx, yy, xxi, xxa, yyi, yya, w, dx, dy, dover;
+    int kernel_order;
+    struct lanczos_param_t lanczos;
+    const size_t nlut = 512;
+    const float del = 0.01;
+    int xmin, xmax, ymin, ymax, n;
+    int ndata2;
+
+    ndata2 = p->ndata2;
+
+    dx = 1.0;
+    dy = 1.0;
+
+    scale2 = p->scale * p->scale;
+    kernel_order = (p->kernel == kernel_lanczos2) ? 2 : 3;
+    pfo = (double)kernel_order * p->pixel_fraction / p->scale;
+    bv = compute_bit_value(p->uuid);
+
+    if ((lanczos.lut = malloc(nlut * sizeof(float))) == NULL) {
+        driz_error_set_message(p->error, "Out of memory");
+        return driz_error_is_set(p->error);
+    }
+
+    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
+
+    /* Set up a look-up-table for Lanczos-style interpolation
+       kernels */
+    create_lanczos_lut(kernel_order, nlut, del, lanczos.lut);
+    lanczos.sdp = p->scale / del / p->pixel_fraction;
+    lanczos.nlut = nlut;
+
+    p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
+    p->nmiss = p->nskip * (p->xmax - p->xmin);
+
+    /* This is the outer loop over all the lines in the input image */
+
+    get_dimensions(p->output_data, osize);
+
+    if (ndata2 > 0) {
+        scale4 = scale2 * scale2;
+
+        if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
+            driz_error_set(p->error, PyExc_MemoryError,
+                           "Memory allocation failed.");
+            free(lanczos.lut);
+            return 1;
+        }
+        if (!p->output_data2) {
+            driz_error_set(p->error, PyExc_RuntimeError,
+                           "'output_data2' must be a valid pointer when "
+                           "'data2' is valid.");
+            free(lanczos.lut);
+            free(d2);
+            return 1;
+        }
+        for (i = 0; i < ndata2; ++i) {
+            if (!p->output_data2[i]) {
+                driz_error_set(
+                    p->error, PyExc_RuntimeError,
+                    "Some arrays in 'output_data2' have invalid pointers.");
+                free(lanczos.lut);
+                free(d2);
+                return 1;
+            }
+        }
+    }
+
+    for (j = ymin; j <= ymax; ++j) {
+        /* Check the overlap with the output */
+        n = get_scanline_limits(&s, j, &xmin, &xmax);
+        if (n == 1) {
+            // scan ended (y reached the top vertex/edge)
+            p->nskip += (ymax + 1 - j);
+            p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
+            break;
+        } else if (n == 2 || n == 3) {
+            // pixel centered on y is outside of scanner's limits or image [0,
+            // height - 1] OR: limits (x1, x2) are equal (line width is 0)
+            p->nmiss += (p->xmax - p->xmin);
+            ++p->nskip;
+            continue;
+        } else {
+            // limits (x1, x2) are equal (line width is 0)
+            p->nmiss += (p->xmax - p->xmin) - (xmax + 1 - xmin);
+        }
+
+        for (i = xmin; i <= xmax; ++i) {
+            if (map_pixel(p->pixmap, i, j, &xx, &yy)) {
+                nhit = 0;
+
+            } else {
+                xxi = xx - dx - pfo;
+                xxa = xx - dx + pfo;
+                yyi = yy - dy - pfo;
+                yya = yy - dy + pfo;
+
+                nxi = MAX(fortran_round(xxi), 0);
+                nxa = MIN(fortran_round(xxa), osize[0] - 1);
+                nyi = MAX(fortran_round(yyi), 0);
+                nya = MIN(fortran_round(yya), osize[1] - 1);
+
+                nhit = 0;
+
+                /* Allow for stretching because of scale change */
+                d = get_pixel(p->data, i, j) * scale2;
+                for (k = 0; k < ndata2; ++k) {
+                    if (p->data2[k]) {
+                        d2[k] = get_pixel(p->data2[k], i, j) * scale4;
+                    } else {
+                        d2[k] = 0.0f;
+                    }
+                }
+
+                /* Scale the weighting mask by the scale factor and inversely by
+                   the Jacobian to ensure conservation of weight in the output
+                 */
+                if (p->weights) {
+                    w = get_pixel(p->weights, i, j) * p->weight_scale;
+                } else {
+                    w = 1.0;
+                }
+
+                /* Loop over output pixels which could be affected */
+                for (jj = nyi; jj <= nya; ++jj) {
+                    for (ii = nxi; ii <= nxa; ++ii) {
+                        /* X and Y offsets */
+                        ix =
+                            fortran_round(fabs(xx - (double)ii) * lanczos.sdp) +
+                            1;
+                        iy =
+                            fortran_round(fabs(yy - (double)jj) * lanczos.sdp) +
+                            1;
+
+                        /* Weight is product of Lanczos function values in X and
+                         * Y */
+                        dover = lanczos.lut[ix] * lanczos.lut[iy];
+
+                        /* Count the hits */
+                        ++nhit;
+
+                        dow = (float)(dover * w);
+
+                        /* If we are create or modifying the context image, we
+                           do so here. */
+                        if (p->output_context && dow > 0.0f) {
+                            set_bit(p->output_context, ii, jj, bv);
+                        }
+
+                        if (update_data_var(p, ii, jj, d, dow, d2)) {
+                            free(d2);
+                            free(lanczos.lut);
+                            return 1;
+                        }
+                    }
+                }
+            }
+
+            /* Count cases where the pixel is off the output image */
+            if (nhit == 0) ++p->nmiss;
+        }
+    }
+
+    free(d2);
+    free(lanczos.lut);
+    lanczos.lut = NULL;
+
+    return 0;
+}
+
+/** ---------------------------------------------------------------------------
+ * This kernel assumes the input flux is evenly distributed over a rectangle
+ * whose sides are aligned with the ouput pixel. Called turbo because it is
+ * fast, but approximate.
+ *
+ * p: structure containing options, input, and output
+ */
+
+static int
+do_kernel_turbo_var(struct driz_param_t *p) {
+    struct scanner s;
+    integer_t bv, i, j, ii, jj, k, nxi, nxa, nyi, nya, nhit, iis, iie, jjs, jje;
+    integer_t osize[2];
+    float d, dow, *d2 = NULL;
+    double pfo, scale2, scale4, ac;
+    double xxi, xxa, yyi, yya, w, dover;
+    int xmin, xmax, ymin, ymax, n;
+    int ndata2;
+
+    ndata2 = p->ndata2;
+
+    driz_log_message("starting do_kernel_turbo");
+    bv = compute_bit_value(p->uuid);
+    ac = 1.0 / (p->pixel_fraction * p->pixel_fraction);
+    pfo = p->pixel_fraction / p->scale / 2.0;
+    scale2 = p->scale * p->scale;
+
+    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
+
+    p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
+    p->nmiss = p->nskip * (p->xmax - p->xmin);
+
+    /* This is the outer loop over all the lines in the input image */
+
+    get_dimensions(p->output_data, osize);
+
+    if (ndata2 > 0) {
+        scale4 = scale2 * scale2;
+
+        if (!(d2 = (float *)malloc(ndata2 * sizeof(float)))) {
+            driz_error_set(p->error, PyExc_MemoryError,
+                           "Memory allocation failed.");
+            return 1;
+        }
+        if (!p->output_data2) {
+            driz_error_set(p->error, PyExc_RuntimeError,
+                           "'output_data2' must be a valid pointer when "
+                           "'data2' is valid.");
+            return 1;
+        }
+        for (i = 0; i < ndata2; ++i) {
+            if (!p->output_data2[i]) {
+                driz_error_set(
+                    p->error, PyExc_RuntimeError,
+                    "Some arrays in 'output_data2' have invalid pointers.");
+                return 1;
+            }
+        }
+    }
+
+    for (j = ymin; j <= ymax; ++j) {
+        /* Check the overlap with the output */
+        n = get_scanline_limits(&s, j, &xmin, &xmax);
+
+        if (n == 1) {
+            // scan ended (y reached the top vertex/edge)
+            p->nskip += (ymax + 1 - j);
+            p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
+            break;
+        } else if (n == 2 || n == 3) {
+            // pixel centered on y is outside of scanner's limits or image [0,
+            // height - 1] OR: limits (x1, x2) are equal (line width is 0)
+            p->nmiss += (p->xmax - p->xmin);
+            ++p->nskip;
+            continue;
+        } else {
+            // limits (x1, x2) are equal (line width is 0)
+            p->nmiss += (p->xmax - p->xmin) - (xmax + 1 - xmin);
+        }
+
+        for (i = xmin; i <= xmax; ++i) {
+            double ox, oy;
+
+            if (map_pixel(p->pixmap, i, j, &ox, &oy)) {
+                nhit = 0;
+
+            } else {
+                /* Offset within the subset */
+                xxi = ox - pfo;
+                xxa = ox + pfo;
+                yyi = oy - pfo;
+                yya = oy + pfo;
+
+                nxi = fortran_round(xxi);
+                nxa = fortran_round(xxa);
+                nyi = fortran_round(yyi);
+                nya = fortran_round(yya);
+                iis = MAX(nxi,
+                          0); /* Needed to be set to 0 to avoid edge effects */
+                iie = MIN(nxa, osize[0] - 1);
+                jjs = MAX(nyi,
+                          0); /* Needed to be set to 0 to avoid edge effects */
+                jje = MIN(nya, osize[1] - 1);
+
+                nhit = 0;
+
+                /* Allow for stretching because of scale change */
+                d = (float)get_pixel(p->data, i, j) * scale2;
+                for (k = 0; k < ndata2; ++k) {
+                    if (p->data2[k]) {
+                        d2[k] = (float)get_pixel(p->data2[k], i, j) * scale4;
+                    } else {
+                        d2[k] = 0.0f;
+                    }
+                }
+
+                /* Scale the weighting mask by the scale factor and inversely by
+                   the Jacobian to ensure conservation of weight in the output.
+                 */
+                if (p->weights) {
+                    w = get_pixel(p->weights, i, j) * p->weight_scale;
+                } else {
+                    w = 1.0;
+                }
+
+                /* Loop over the output pixels which could be affected */
+                for (jj = jjs; jj <= jje; ++jj) {
+                    for (ii = iis; ii <= iie; ++ii) {
+                        /* Calculate the overlap using the simpler "aligned" box
+                           routine */
+                        dover = over(ii, jj, xxi, xxa, yyi, yya);
+
+                        if (dover > 0.0) {
+                            /* Correct for the pixfrac area factor */
+                            dover *= scale2 * ac;
+
+                            /* Count the hits */
+                            ++nhit;
+
+                            dow = (float)(dover * w);
+
+                            /* If we are create or modifying the context image,
+                               we do so here. */
+                            if (p->output_context && dow > 0.0f) {
+                                set_bit(p->output_context, ii, jj, bv);
+                            }
+
+                            if (update_data_var(p, ii, jj, d, dow, d2)) {
+                                return 1;
+                            }
+                        }
+                    }
+                }
+            }
+
+            /* Count cases where the pixel is off the output image */
+            if (nhit == 0) ++p->nmiss;
+        }
+    }
+
+    driz_log_message("ending do_kernel_turbo");
+    return 0;
+}
+
+/** ---------------------------------------------------------------------------
+ * This module does the actual mapping of input flux to output images. It works
+ * by calculating the positions of the four corners of a quadrilateral on the
+ * output grid corresponding to the corners of the input pixel and then working
+ * out exactly how much of each pixel in the output is covered, or not.
+ *
+ * p: structure containing options, input, and output
+ */
+
+int
+do_kernel_square_var(struct driz_param_t *p) {
+    integer_t bv, i, j, ii, jj, k, min_ii, max_ii, min_jj, max_jj, nhit;
+    integer_t osize[2], mapsize[2];
+    float scale2, scale4, d, dow, *d2 = NULL;
+    double dh, jaco, dover, w;
+
+    double xin[4], yin[4], xout[4], yout[4];
+    int ndata2;
+
+    ndata2 = p->ndata2;
+
+    struct scanner s;
+    int xmin, xmax, ymin, ymax, n;
+
+    driz_log_message("starting do_kernel_square");
+    dh = 0.5 * p->pixel_fraction;
+    bv = compute_bit_value(p->uuid);
+    scale2 = p->scale * p->scale;
+
+    /* Next the "classic" drizzle square kernel...  this is different
+       because we have to transform all four corners of the shrunken
+       pixel */
+    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
+
+    p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
+    p->nmiss = p->nskip * (p->xmax - p->xmin);
+
+    /* This is the outer loop over all the lines in the input image */
+    get_dimensions(p->output_data, osize);
+    get_dimensions(p->pixmap, mapsize);
+
+    if (ndata2 > 0) {
+        scale4 = scale2 * scale2;
+
+        if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
+            driz_error_set(p->error, PyExc_MemoryError,
+                           "Memory allocation failed.");
+            return 1;
+        }
+        if (!p->output_data2) {
+            driz_error_set(p->error, PyExc_RuntimeError,
+                           "'output_data2' must be a valid pointer when "
+                           "'data2' is valid.");
+            free(d2);
+            return 1;
+        }
+        for (i = 0; i < ndata2; ++i) {
+            if (!p->output_data2[i]) {
+                driz_error_set(
+                    p->error, PyExc_RuntimeError,
+                    "Some arrays in 'output_data2' have invalid pointers.");
+                free(d2);
+                return 1;
+            }
+        }
+    }
+
+    for (j = ymin; j <= ymax; ++j) {
+        /* Check the overlap with the output */
+        n = get_scanline_limits(&s, j, &xmin, &xmax);
+        if (n == 1) {
+            // scan ended (y reached the top vertex/edge)
+            p->nskip += (ymax + 1 - j);
+            p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
+            break;
+        } else if (n == 2 || n == 3) {
+            // pixel centered on y is outside of scanner's limits or image [0,
+            // height - 1] OR: limits (x1, x2) are equal (line width is 0)
+            p->nmiss += (p->xmax - p->xmin);
+            ++p->nskip;
+            continue;
+        } else {
+            // limits (x1, x2) are equal (line width is 0)
+            p->nmiss += (p->xmax - p->xmin) - (xmax + 1 - xmin);
+        }
+
+        /* Set the input corner positions */
+        yin[1] = yin[0] = (double)j + dh;
+        yin[3] = yin[2] = (double)j - dh;
+
+        for (i = xmin; i <= xmax; ++i) {
+            nhit = 0;
+
+            // xin[3] = xin[0] = (double)i - dh;
+            // xin[2] = xin[1] = (double)i + dh;
+
+            // for (ii = 0; ii < 4; ++ii) {
+            //     if (interpolate_point(p, xin[ii], yin[ii], xout + ii,
+            //                           yout + ii)) {
+            //         goto _miss;
+            //     }
+            // }
+
+            /* Assuming we don't need to extrapolate, call a more
+             * efficient interpolator that takes advantage of the fact
+             * that pixfrac<1 and that we are using a square grid.
+             */
+            if (i > 0 && i < mapsize[0] - 2 && j > 0 && j < mapsize[1] - 2) {
+                if (interpolate_four_points(p, i, j, dh, xout, xout + 1,
+                                            xout + 2, xout + 3, yout, yout + 1,
+                                            yout + 2, yout + 3))
+                    goto _miss;
+            } else {
+                xin[3] = xin[0] = (double)i - dh;
+                xin[2] = xin[1] = (double)i + dh;
+                for (ii = 0; ii < 4; ++ii) {
+                    if (interpolate_point(p, xin[ii], yin[ii], xout + ii,
+                                          yout + ii))
+                        goto _miss;
+                }
+            }
+
+            /* Work out the area of the quadrilateral on the output
+             * grid.  If the points are in clockwise order we get a
+             * postive area.  If they are in anticlockwise order, jaco
+             * will be negative, but so will the areas computed by
+             * boxer, so it doesn't actually matter once we divide it
+             * out.
+             */
+
+            jaco = 0.5f * ((xout[1] - xout[3]) * (yout[0] - yout[2]) -
+                           (xout[0] - xout[2]) * (yout[1] - yout[3]));
+
+            /* Allow for stretching because of scale change */
+            d = (float)get_pixel(p->data, i, j) * scale2;
+            for (k = 0; k < ndata2; ++k) {
+                if (p->data2[k]) {
+                    d2[k] = (float)get_pixel(p->data2[k], i, j) * scale4;
+                } else {
+                    d2[k] = 0.0f;
+                }
+            }
+
+            /* Scale the weighting mask by the scale factor and inversely by
+               the Jacobian to ensure conservation of weight in the output */
+            if (p->weights) {
+                w = get_pixel(p->weights, i, j) * p->weight_scale / jaco;
+            } else {
+                w = 1.0 / jaco;
+            }
+
+            /* Loop over output pixels which could be affected */
+            min_jj = MAX(fortran_round(min_doubles(yout, 4)), 0);
+            max_jj = MIN(fortran_round(max_doubles(yout, 4)), osize[1] - 1);
+            min_ii = MAX(fortran_round(min_doubles(xout, 4)), 0);
+            max_ii = MIN(fortran_round(max_doubles(xout, 4)), osize[0] - 1);
+
+            for (jj = min_jj; jj <= max_jj; ++jj) {
+                for (ii = min_ii; ii <= max_ii; ++ii) {
+                    /* Call boxer to calculate overlap */
+                    // dover = compute_area((double)ii, (double)jj, xout, yout);
+                    dover = boxer((double)ii, (double)jj, xout, yout);
+
+                    /* Could be positive or negative, depending on the sign of
+                     * jaco */
+                    if (dover != 0.0) {
+                        dow = (float)(dover * w);
+
+                        /* Count the hits */
+                        ++nhit;
+
+                        /* If we are creating or modifying the context image we
+                            do so here */
+                        if (p->output_context && dow > 0.0f) {
+                            set_bit(p->output_context, ii, jj, bv);
+                        }
+
+                        if (update_data_var(p, ii, jj, d, dow, d2)) {
+                            free(d2);
+                            return 1;
+                        }
+                    }
+                }
+            }
+
+        /* Count cases where the pixel is off the output image */
+        _miss:
+            if (nhit == 0) {
+                ++p->nmiss;
+            }
+        }
+    }
+
+    driz_log_message("ending do_kernel_square");
+    free(d2);
+    return 0;
+}
+
+/** ---------------------------------------------------------------------------
+ * The kernel assumes all the flux in an input pixel is at the center
+ *
+ * p: structure containing options, input, and output
+ */
+
+static int
 do_kernel_point(struct driz_param_t *p) {
     struct scanner s;
     integer_t i, j, ii, jj;
     integer_t osize[2];
-    float scale2, vc, d, dow;
+    float scale2, d, dow;
     integer_t bv;
     int xmin, xmax, ymin, ymax, n;
 
@@ -447,27 +1354,26 @@ do_kernel_point(struct driz_param_t *p) {
                     ++p->nmiss;
 
                 } else {
-                    vc = get_pixel(p->output_counts, ii, jj);
-
                     /* Allow for stretching because of scale change */
-                    d = get_pixel(p->data, i, j) * scale2;
+                    d = (float)get_pixel(p->data, i, j) * scale2;
 
                     /* Scale the weighting mask by the scale factor.  Note that
                        we DON'T scale by the Jacobian as it hasn't been
                        calculated */
                     if (p->weights) {
-                        dow = get_pixel(p->weights, i, j) * p->weight_scale;
+                        dow = (float)get_pixel(p->weights, i, j) *
+                              p->weight_scale;
                     } else {
-                        dow = 1.0;
+                        dow = 1.0f;
                     }
 
                     /* If we are creating or modifying the context image,
                        we do so here. */
-                    if (p->output_context && dow > 0.0) {
+                    if (p->output_context && dow > 0.0f) {
                         set_bit(p->output_context, ii, jj, bv);
                     }
 
-                    if (update_data(p, ii, jj, d, vc, dow)) {
+                    if (update_data(p, ii, jj, d, dow)) {
                         return 1;
                     }
                 }
@@ -490,7 +1396,7 @@ do_kernel_gaussian(struct driz_param_t *p) {
     struct scanner s;
     integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit;
     integer_t osize[2];
-    float vc, d, dow;
+    float d, dow;
     double gaussian_efac, gaussian_es;
     double pfo, ac, scale2, xxi, xxa, yyi, yya, w, ddx, ddy, r2, dover;
     const double nsig = 2.5;
@@ -584,16 +1490,15 @@ do_kernel_gaussian(struct driz_param_t *p) {
                         /* Count the hits */
                         ++nhit;
 
-                        vc = get_pixel(p->output_counts, ii, jj);
                         dow = (float)dover * w;
 
                         /* If we are create or modifying the context image, we
                            do so here. */
-                        if (p->output_context && dow > 0.0) {
+                        if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
 
-                        if (update_data(p, ii, jj, d, vc, dow)) {
+                        if (update_data(p, ii, jj, d, dow)) {
                             return 1;
                         }
                     }
@@ -620,7 +1525,7 @@ do_kernel_lanczos(struct driz_param_t *p) {
     struct scanner s;
     integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit, ix, iy;
     integer_t osize[2];
-    float scale2, vc, d, dow;
+    float scale2, d, dow;
     double pfo, xx, yy, xxi, xxa, yyi, yya, w, dx, dy, dover;
     int kernel_order;
     struct lanczos_param_t lanczos;
@@ -641,13 +1546,13 @@ do_kernel_lanczos(struct driz_param_t *p) {
         return driz_error_is_set(p->error);
     }
 
+    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
+
     /* Set up a look-up-table for Lanczos-style interpolation
        kernels */
     create_lanczos_lut(kernel_order, nlut, del, lanczos.lut);
     lanczos.sdp = p->scale / del / p->pixel_fraction;
     lanczos.nlut = nlut;
-
-    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -721,16 +1626,16 @@ do_kernel_lanczos(struct driz_param_t *p) {
                         /* Count the hits */
                         ++nhit;
 
-                        vc = get_pixel(p->output_counts, ii, jj);
                         dow = (float)(dover * w);
 
                         /* If we are create or modifying the context image, we
                            do so here. */
-                        if (p->output_context && dow > 0.0) {
+                        if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
 
-                        if (update_data(p, ii, jj, d, vc, dow)) {
+                        if (update_data(p, ii, jj, d, dow)) {
+                            free(lanczos.lut);
                             return 1;
                         }
                     }
@@ -743,8 +1648,6 @@ do_kernel_lanczos(struct driz_param_t *p) {
     }
 
     free(lanczos.lut);
-    lanczos.lut = NULL;
-
     return 0;
 }
 
@@ -761,7 +1664,7 @@ do_kernel_turbo(struct driz_param_t *p) {
     struct scanner s;
     integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit, iis, iie, jjs, jje;
     integer_t osize[2];
-    float vc, d, dow;
+    float d, dow;
     double pfo, scale2, ac;
     double xxi, xxa, yyi, yya, w, dover;
     int xmin, xmax, ymin, ymax, n;
@@ -827,7 +1730,7 @@ do_kernel_turbo(struct driz_param_t *p) {
                 nhit = 0;
 
                 /* Allow for stretching because of scale change */
-                d = get_pixel(p->data, i, j) * (float)scale2;
+                d = (float)get_pixel(p->data, i, j) * scale2;
 
                 /* Scale the weighting mask by the scale factor and inversely by
                    the Jacobian to ensure conservation of weight in the output.
@@ -852,16 +1755,15 @@ do_kernel_turbo(struct driz_param_t *p) {
                             /* Count the hits */
                             ++nhit;
 
-                            vc = get_pixel(p->output_counts, ii, jj);
                             dow = (float)(dover * w);
 
                             /* If we are create or modifying the context image,
                                we do so here. */
-                            if (p->output_context && dow > 0.0) {
+                            if (p->output_context && dow > 0.0f) {
                                 set_bit(p->output_context, ii, jj, bv);
                             }
 
-                            if (update_data(p, ii, jj, d, vc, dow)) {
+                            if (update_data(p, ii, jj, d, dow)) {
                                 return 1;
                             }
                         }
@@ -891,7 +1793,7 @@ int
 do_kernel_square(struct driz_param_t *p) {
     integer_t bv, i, j, ii, jj, min_ii, max_ii, min_jj, max_jj, nhit;
     integer_t osize[2], mapsize[2];
-    float scale2, vc, d, dow;
+    float scale2, d, dow;
     double dh, jaco, dover, w;
     double xin[4], yin[4], xout[4], yout[4];
 
@@ -1007,8 +1909,6 @@ do_kernel_square(struct driz_param_t *p) {
                     /* Could be positive or negative, depending on the sign of
                      * jaco */
                     if (dover != 0.0) {
-                        vc = get_pixel(p->output_counts, ii, jj);
-
                         dow = (float)(dover * w);
 
                         /* Count the hits */
@@ -1016,11 +1916,11 @@ do_kernel_square(struct driz_param_t *p) {
 
                         /* If we are creating or modifying the context image we
                             do so here */
-                        if (p->output_context && dow > 0.0) {
+                        if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
 
-                        if (update_data(p, ii, jj, d, vc, dow)) {
+                        if (update_data(p, ii, jj, d, dow)) {
                             return 1;
                         }
                     }
@@ -1050,6 +1950,10 @@ static kernel_handler_t kernel_handler_map[] = {
     do_kernel_square, do_kernel_gaussian, do_kernel_point,
     do_kernel_turbo,  do_kernel_lanczos,  do_kernel_lanczos};
 
+static kernel_handler_t kernel_var_handler_map[] = {
+    do_kernel_square_var, do_kernel_gaussian_var, do_kernel_point_var,
+    do_kernel_turbo_var,  do_kernel_lanczos_var,  do_kernel_lanczos_var};
+
 /** ---------------------------------------------------------------------------
  * The executive function which calls the kernel which does the actual drizzling
  *
@@ -1063,7 +1967,11 @@ dobox(struct driz_param_t *p) {
 
     /* Set up a function pointer to handle the appropriate kernel */
     if (p->kernel < kernel_LAST) {
-        kernel_handler = kernel_handler_map[p->kernel];
+        if (p->ndata2 > 0) {
+            kernel_handler = kernel_var_handler_map[p->kernel];
+        } else {
+            kernel_handler = kernel_handler_map[p->kernel];
+        }
 
         if (kernel_handler != NULL) {
             kernel_handler(p);

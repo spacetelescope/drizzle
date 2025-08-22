@@ -5,6 +5,14 @@ Release Notes
 =============
 
 
+2.2.0 (unreleased)
+==================
+
+- Added support for resampling and co-adding images using squared weights.
+  This can be helpful when resampling variance arrays for the purpose of
+  performing propagation of uncertainties. [#163]
+
+
 2.1.1 (2025-08-14)
 ==================
 
@@ -14,19 +22,15 @@ Release Notes
 - Fixed a numerical instability in the new and old "boxer" algorithm in #175
   (withdrawn release 2.1.0). [#191]
 
+- Fixed a bug in polygon intersection algorithm that could result in
+  incorrect output when the input polygons have nearly collinear edges. [#194]
+
 
 2.1.0 (2025-02-20; withdrawn)
 =============================
 
 - Restored faster "boxer" overlap for square kernel, improving resample speed;
   optimized and simplified related code. [#175]
-
-
-2.1.1 (unreleased)
-==================
-
-- Fixed a bug in polygon intersection algorithm that could result in
-  incorrect output when the input polygons have nearly collinear edges. [#194]
 
 
 2.0.2 (unreleased)
