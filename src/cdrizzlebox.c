@@ -11,6 +11,8 @@
 #include <math.h>
 #include <stdlib.h>
 
+static const double lut_delta = 0.003; /* spacing of Lanczos LUT */
+
 /** ---------------------------------------------------------------------------
  * Update the flux and counts in the output image using a weighted average
  *
@@ -543,8 +545,8 @@ do_kernel_point_var(struct driz_param_t *p) {
                 ++p->nmiss;
 
             } else {
-                ii = fortran_round(ox);
-                jj = fortran_round(oy);
+                ii = nintd(ox);
+                jj = nintd(oy);
 
                 /* Check it is on the output image */
                 if (ii < 0 || ii >= osize[0] || jj < 0 || jj >= osize[1]) {
@@ -604,7 +606,7 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
     integer_t osize[2];
     float d, dow, *d2 = NULL;
     double gaussian_efac, gaussian_es;
-    double pfo, ac, scale2, scale4, xxi, xxa, yyi, yya, w, ddx, ddy, r2, dover;
+    double pfo, ac, scale2, scale4, w, ddx, ddy, r2, dover;
     const double nsig = 2.5;
     int xmin, xmax, ymin, ymax, n;
     int ndata2;
@@ -688,15 +690,10 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
 
             } else {
                 /* Offset within the subset */
-                xxi = ox - pfo;
-                xxa = ox + pfo;
-                yyi = oy - pfo;
-                yya = oy + pfo;
-
-                nxi = MAX(fortran_round(xxi), 0);
-                nxa = MIN(fortran_round(xxa), osize[0] - 1);
-                nyi = MAX(fortran_round(yyi), 0);
-                nya = MIN(fortran_round(yya), osize[1] - 1);
+                nxi = MAX(nintd(ox - pfo), 0);
+                nxa = MIN(nintd(ox + pfo), osize[0] - 1);
+                nyi = MAX(nintd(oy - pfo), 0);
+                nya = MIN(nintd(oy + pfo), osize[1] - 1);
 
                 nhit = 0;
 
@@ -771,41 +768,43 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
 static int
 do_kernel_lanczos_var(struct driz_param_t *p) {
     struct scanner s;
-    integer_t bv, i, j, ii, jj, k, nxi, nxa, nyi, nya, nhit, ix, iy;
+    integer_t bv, i, j, ii, jj, k, nxi, nxa, nyi, nya, nhit;
     integer_t osize[2];
     float scale2, scale4, d, dow, *d2 = NULL;
-    double pfo, xx, yy, xxi, xxa, yyi, yya, w, dx, dy, dover;
+    double pfo, xx, yy, w, dover;
     int kernel_order;
-    struct lanczos_param_t lanczos;
-    const size_t nlut = 512;
-    const float del = 0.01;
+    size_t nlut;
+    size_t ix, iy;
+    double sdp;
+    double *lut = NULL;
     int xmin, xmax, ymin, ymax, n;
     int ndata2;
 
-    ndata2 = p->ndata2;
+    if (fabs(p->pixel_fraction - 1.0) > 1.0e-5) {
+        // TODO: log a warning that pixfrac is ignored and assumed to be 1.0
+    }
 
-    dx = 1.0;
-    dy = 1.0;
+    ndata2 = p->ndata2;
 
     scale2 = p->scale * p->scale;
     kernel_order = (p->kernel == kernel_lanczos2) ? 2 : 3;
-    pfo = (double)kernel_order * p->pixel_fraction / p->scale;
+    pfo = (double)kernel_order / p->scale;
+
     bv = compute_bit_value(p->uuid);
 
-    if ((lanczos.lut = malloc(nlut * sizeof(float))) == NULL) {
+    /* Set up a look-up-table for Lanczos-style interpolation
+       kernels */
+    nlut = (size_t)ceil(kernel_order / lut_delta) + 3;
+    if ((lut = malloc(nlut * sizeof(double))) == NULL) {
         driz_error_set_message(p->error, "Out of memory");
         return driz_error_is_set(p->error);
     }
+    create_lanczos_lut(kernel_order, nlut, lut_delta, lut);
+    sdp = p->scale / lut_delta;
 
     if (init_image_scanner(p, &s, &ymin, &ymax)) {
         return 1;
     }
-
-    /* Set up a look-up-table for Lanczos-style interpolation
-       kernels */
-    create_lanczos_lut(kernel_order, nlut, del, lanczos.lut);
-    lanczos.sdp = p->scale / del / p->pixel_fraction;
-    lanczos.nlut = nlut;
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -820,14 +819,14 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
         if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
             driz_error_set(p->error, PyExc_MemoryError,
                            "Memory allocation failed.");
-            free(lanczos.lut);
+            free(lut);
             return 1;
         }
         if (!p->output_data2) {
             driz_error_set(p->error, PyExc_RuntimeError,
                            "'output_data2' must be a valid pointer when "
                            "'data2' is valid.");
-            free(lanczos.lut);
+            free(lut);
             free(d2);
             return 1;
         }
@@ -836,7 +835,7 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
                 driz_error_set(
                     p->error, PyExc_RuntimeError,
                     "Some arrays in 'output_data2' have invalid pointers.");
-                free(lanczos.lut);
+                free(lut);
                 free(d2);
                 return 1;
             }
@@ -867,15 +866,10 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
                 nhit = 0;
 
             } else {
-                xxi = xx - dx - pfo;
-                xxa = xx - dx + pfo;
-                yyi = yy - dy - pfo;
-                yya = yy - dy + pfo;
-
-                nxi = MAX(fortran_round(xxi), 0);
-                nxa = MIN(fortran_round(xxa), osize[0] - 1);
-                nyi = MAX(fortran_round(yyi), 0);
-                nya = MIN(fortran_round(yya), osize[1] - 1);
+                nxi = MAX((integer_t)floor(xx - pfo) + 1, 0);
+                nxa = MIN((integer_t)floor(xx + pfo), osize[0] - 1);
+                nyi = MAX((integer_t)floor(yy - pfo) + 1, 0);
+                nya = MIN((integer_t)floor(yy + pfo), osize[1] - 1);
 
                 nhit = 0;
 
@@ -902,19 +896,18 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
                 for (jj = nyi; jj <= nya; ++jj) {
                     for (ii = nxi; ii <= nxa; ++ii) {
                         /* X and Y offsets */
-                        ix =
-                            fortran_round(fabs(xx - (double)ii) * lanczos.sdp) +
-                            1;
-                        iy =
-                            fortran_round(fabs(yy - (double)jj) * lanczos.sdp) +
-                            1;
-
-                        /* Weight is product of Lanczos function values in X and
-                         * Y */
-                        dover = lanczos.lut[ix] * lanczos.lut[iy];
+                        ix = nintd(fabs((xx - (double)ii) * sdp));
+                        iy = nintd(fabs((yy - (double)jj) * sdp));
+                        if (ix >= nlut || iy >= nlut) {
+                            continue;
+                        }
 
                         /* Count the hits */
                         ++nhit;
+
+                        /* Weight is product of Lanczos function values in X and
+                         * Y */
+                        dover = lut[ix] * lut[iy];
 
                         dow = (float)(dover * w);
 
@@ -926,7 +919,7 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
 
                         if (update_data_var(p, ii, jj, d, dow, d2)) {
                             free(d2);
-                            free(lanczos.lut);
+                            free(lut);
                             return 1;
                         }
                     }
@@ -941,8 +934,7 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
     }
 
     free(d2);
-    free(lanczos.lut);
-    lanczos.lut = NULL;
+    free(lut);
 
     return 0;
 }
@@ -958,7 +950,7 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
 static int
 do_kernel_turbo_var(struct driz_param_t *p) {
     struct scanner s;
-    integer_t bv, i, j, ii, jj, k, nxi, nxa, nyi, nya, nhit, iis, iie, jjs, jje;
+    integer_t bv, i, j, ii, jj, k, nhit, iis, iie, jjs, jje;
     integer_t osize[2];
     float d, dow, *d2 = NULL;
     double pfo, scale2, scale4, ac;
@@ -1042,16 +1034,10 @@ do_kernel_turbo_var(struct driz_param_t *p) {
                 yyi = oy - pfo;
                 yya = oy + pfo;
 
-                nxi = fortran_round(xxi);
-                nxa = fortran_round(xxa);
-                nyi = fortran_round(yyi);
-                nya = fortran_round(yya);
-                iis = MAX(nxi,
-                          0); /* Needed to be set to 0 to avoid edge effects */
-                iie = MIN(nxa, osize[0] - 1);
-                jjs = MAX(nyi,
-                          0); /* Needed to be set to 0 to avoid edge effects */
-                jje = MIN(nya, osize[1] - 1);
+                iis = MAX(nintd(xxi), 0);
+                iie = MIN(nintd(xxa), osize[0] - 1);
+                jjs = MAX(nintd(yyi), 0);
+                jje = MIN(nintd(yya), osize[1] - 1);
 
                 nhit = 0;
 
@@ -1271,10 +1257,10 @@ do_kernel_square_var(struct driz_param_t *p) {
             }
 
             /* Loop over output pixels which could be affected */
-            min_jj = MAX(fortran_round(min_doubles(yout, 4)), 0);
-            max_jj = MIN(fortran_round(max_doubles(yout, 4)), osize[1] - 1);
-            min_ii = MAX(fortran_round(min_doubles(xout, 4)), 0);
-            max_ii = MIN(fortran_round(max_doubles(xout, 4)), osize[0] - 1);
+            min_jj = MAX(nintd(min_doubles(yout, 4)), 0);
+            max_jj = MIN(nintd(max_doubles(yout, 4)), osize[1] - 1);
+            min_ii = MAX(nintd(min_doubles(xout, 4)), 0);
+            max_ii = MIN(nintd(max_doubles(xout, 4)), osize[0] - 1);
 
             for (jj = min_jj; jj <= max_jj; ++jj) {
                 for (ii = min_ii; ii <= max_ii; ++ii) {
@@ -1370,8 +1356,8 @@ do_kernel_point(struct driz_param_t *p) {
                 ++p->nmiss;
 
             } else {
-                ii = fortran_round(ox);
-                jj = fortran_round(oy);
+                ii = nintd(ox);
+                jj = nintd(oy);
 
                 /* Check it is on the output image */
                 if (ii < 0 || ii >= osize[0] || jj < 0 || jj >= osize[1]) {
@@ -1422,7 +1408,7 @@ do_kernel_gaussian(struct driz_param_t *p) {
     integer_t osize[2];
     float d, dow;
     double gaussian_efac, gaussian_es;
-    double pfo, ac, scale2, xxi, xxa, yyi, yya, w, ddx, ddy, r2, dover;
+    double pfo, ac, scale2, w, ddx, ddy, r2, dover;
     const double nsig = 2.5;
     int xmin, xmax, ymin, ymax, n;
 
@@ -1477,15 +1463,10 @@ do_kernel_gaussian(struct driz_param_t *p) {
 
             } else {
                 /* Offset within the subset */
-                xxi = ox - pfo;
-                xxa = ox + pfo;
-                yyi = oy - pfo;
-                yya = oy + pfo;
-
-                nxi = MAX(fortran_round(xxi), 0);
-                nxa = MIN(fortran_round(xxa), osize[0] - 1);
-                nyi = MAX(fortran_round(yyi), 0);
-                nya = MIN(fortran_round(yya), osize[1] - 1);
+                nxi = MAX(nintd(ox - pfo), 0);
+                nxa = MIN(nintd(ox + pfo), osize[0] - 1);
+                nyi = MAX(nintd(oy - pfo), 0);
+                nya = MIN(nintd(oy + pfo), osize[1] - 1);
 
                 nhit = 0;
 
@@ -1551,38 +1532,40 @@ do_kernel_gaussian(struct driz_param_t *p) {
 static int
 do_kernel_lanczos(struct driz_param_t *p) {
     struct scanner s;
-    integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit, ix, iy;
+    integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit;
     integer_t osize[2];
     float scale2, d, dow;
-    double pfo, xx, yy, xxi, xxa, yyi, yya, w, dx, dy, dover;
+    double pfo, xx, yy, w, dover;
     int kernel_order;
-    struct lanczos_param_t lanczos;
-    const size_t nlut = 512;
-    const float del = 0.01;
+    size_t nlut;
+    size_t ix, iy;
+    double sdp;
+    double *lut = NULL;
     int xmin, xmax, ymin, ymax, n;
 
-    dx = 1.0;
-    dy = 1.0;
+    if (fabs(p->pixel_fraction - 1.0) > 1.0e-5) {
+        // TODO: log a warning that pixfrac is ignored and assumed to be 1.0
+    }
 
     scale2 = p->scale * p->scale;
     kernel_order = (p->kernel == kernel_lanczos2) ? 2 : 3;
-    pfo = (double)kernel_order * p->pixel_fraction / p->scale;
+    pfo = (double)kernel_order / p->scale;
+
     bv = compute_bit_value(p->uuid);
 
-    if ((lanczos.lut = malloc(nlut * sizeof(float))) == NULL) {
+    /* Set up a look-up-table for Lanczos-style interpolation
+       kernels */
+    nlut = (size_t)ceil(kernel_order / lut_delta) + 1;
+    if ((lut = malloc(nlut * sizeof(double))) == NULL) {
         driz_error_set_message(p->error, "Out of memory");
         return driz_error_is_set(p->error);
     }
+    create_lanczos_lut(kernel_order, nlut, lut_delta, lut);
+    sdp = p->scale / lut_delta;
 
     if (init_image_scanner(p, &s, &ymin, &ymax)) {
         return 1;
     }
-
-    /* Set up a look-up-table for Lanczos-style interpolation
-       kernels */
-    create_lanczos_lut(kernel_order, nlut, del, lanczos.lut);
-    lanczos.sdp = p->scale / del / p->pixel_fraction;
-    lanczos.nlut = nlut;
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -1614,15 +1597,10 @@ do_kernel_lanczos(struct driz_param_t *p) {
                 nhit = 0;
 
             } else {
-                xxi = xx - dx - pfo;
-                xxa = xx - dx + pfo;
-                yyi = yy - dy - pfo;
-                yya = yy - dy + pfo;
-
-                nxi = MAX(fortran_round(xxi), 0);
-                nxa = MIN(fortran_round(xxa), osize[0] - 1);
-                nyi = MAX(fortran_round(yyi), 0);
-                nya = MIN(fortran_round(yya), osize[1] - 1);
+                nxi = MAX((integer_t)floor(xx - pfo) + 1, 0);
+                nxa = MIN((integer_t)floor(xx + pfo), osize[0] - 1);
+                nyi = MAX((integer_t)floor(yy - pfo) + 1, 0);
+                nya = MIN((integer_t)floor(yy + pfo), osize[1] - 1);
 
                 nhit = 0;
 
@@ -1642,19 +1620,18 @@ do_kernel_lanczos(struct driz_param_t *p) {
                 for (jj = nyi; jj <= nya; ++jj) {
                     for (ii = nxi; ii <= nxa; ++ii) {
                         /* X and Y offsets */
-                        ix =
-                            fortran_round(fabs(xx - (double)ii) * lanczos.sdp) +
-                            1;
-                        iy =
-                            fortran_round(fabs(yy - (double)jj) * lanczos.sdp) +
-                            1;
-
-                        /* Weight is product of Lanczos function values in X and
-                         * Y */
-                        dover = lanczos.lut[ix] * lanczos.lut[iy];
+                        ix = nintd(fabs((xx - (double)ii) * sdp));
+                        iy = nintd(fabs((yy - (double)jj) * sdp));
+                        if (ix >= nlut || iy >= nlut) {
+                            continue;
+                        }
 
                         /* Count the hits */
                         ++nhit;
+
+                        /* Weight is product of Lanczos function values in X and
+                         * Y */
+                        dover = lut[ix] * lut[iy];
 
                         dow = (float)(dover * w);
 
@@ -1665,7 +1642,7 @@ do_kernel_lanczos(struct driz_param_t *p) {
                         }
 
                         if (update_data(p, ii, jj, d, dow)) {
-                            free(lanczos.lut);
+                            free(lut);
                             return 1;
                         }
                     }
@@ -1679,7 +1656,7 @@ do_kernel_lanczos(struct driz_param_t *p) {
         }
     }
 
-    free(lanczos.lut);
+    free(lut);
     return 0;
 }
 
@@ -1750,16 +1727,10 @@ do_kernel_turbo(struct driz_param_t *p) {
                 yyi = oy - pfo;
                 yya = oy + pfo;
 
-                nxi = fortran_round(xxi);
-                nxa = fortran_round(xxa);
-                nyi = fortran_round(yyi);
-                nya = fortran_round(yya);
-                iis = MAX(nxi,
-                          0); /* Needed to be set to 0 to avoid edge effects */
-                iie = MIN(nxa, osize[0] - 1);
-                jjs = MAX(nyi,
-                          0); /* Needed to be set to 0 to avoid edge effects */
-                jje = MIN(nya, osize[1] - 1);
+                iis = MAX(nintd(xxi), 0);
+                iie = MIN(nintd(xxa), osize[0] - 1);
+                jjs = MAX(nintd(yyi), 0);
+                jje = MIN(nintd(yya), osize[1] - 1);
 
                 nhit = 0;
 
@@ -1935,10 +1906,10 @@ do_kernel_square(struct driz_param_t *p) {
             }
 
             /* Loop over output pixels which could be affected */
-            min_jj = MAX(fortran_round(min_doubles(yout, 4)), 0);
-            max_jj = MIN(fortran_round(max_doubles(yout, 4)), osize[1] - 1);
-            min_ii = MAX(fortran_round(min_doubles(xout, 4)), 0);
-            max_ii = MIN(fortran_round(max_doubles(xout, 4)), osize[0] - 1);
+            min_jj = MAX(nintd(min_doubles(yout, 4)), 0);
+            max_jj = MIN(nintd(max_doubles(yout, 4)), osize[1] - 1);
+            min_ii = MAX(nintd(min_doubles(xout, 4)), 0);
+            max_ii = MIN(nintd(max_doubles(xout, 4)), osize[0] - 1);
 
             for (jj = min_jj; jj <= max_jj; ++jj) {
                 for (ii = min_ii; ii <= max_ii; ++ii) {

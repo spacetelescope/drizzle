@@ -267,23 +267,22 @@ bool2str(bool_t value) {
  NUMERICAL UTILITIES
 */
 void
-create_lanczos_lut(const int kernel_order, const size_t npix, const float del,
-                   float *lanczos_lut) {
-    size_t i;
-    const float forder = (float)kernel_order;
-    float poff;
+create_lanczos_lut(const int kernel_order, const size_t npix, const double del,
+                   double *lanczos_lut) {
+    double order = (double)kernel_order;
+    double poff, x, r;
 
     assert(lanczos_lut);
-    assert(kernel_order < 6);
 
     /* Set the first value to avoid arithmetic problems */
     lanczos_lut[0] = 1.0;
 
-    for (i = 1; i < npix; ++i) {
-        poff = M_PI * (float)i * del;
-        if (poff < M_PI * forder) {
-            lanczos_lut[i] =
-                sin(poff) / poff * sin(poff / forder) / (poff / forder);
+    for (size_t i = 1; i < npix; ++i) {
+        x = (double)i * del;
+        if (x <= order) {
+            poff = M_PI * x;
+            r = poff / order;
+            lanczos_lut[i] = sin(poff) * sin(r) / (poff * r);
         } else {
             lanczos_lut[i] = 0.0;
         }

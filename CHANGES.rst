@@ -12,6 +12,15 @@ Release Notes
   This can be helpful when resampling variance arrays for the purpose of
   performing propagation of uncertainties. [#163, #199]
 
+- Fixed a bug in drizzle-resampling with Lanczos kernels that could result in
+  decreased accuracy of resampled image. Improved discrete approximation to
+  the Lanczos kernel. [#198]
+
+- Fixed a bug in resampling using "blot" with Lanczos interpolation due to which
+  kernel window for 5th-order kernel was incorrectly set to the same as for
+  3rd-order kernel. Improved discrete approximation to the Lanczos
+  kernel. [#198]
+
 
 2.1.1 (2025-08-14)
 ==================

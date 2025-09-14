@@ -13,6 +13,8 @@
 #include <numpy/npy_math.h>
 #include <numpy/arrayobject.h>
 
+static const double lut_delta = 0.003; /* spacing of Lanczos LUT */
+
 /** ---------------------------------------------------------------------------
  * Signature for functions that perform blotting interpolation.
  */
@@ -625,8 +627,8 @@ interpolate_sinc_(PyArrayObject *data, const integer_t firstt,
     }
 
     for (i = 0; i < npts; ++i) {
-        nx = fortran_round(x[i]);
-        ny = fortran_round(y[i]);
+        nx = nintf(x[i]);
+        ny = nintf(y[i]);
         if (nx < 0 || nx >= isize[0] || ny < 0 || ny >= isize[1]) {
             value[i] = 0.0;
             continue;
@@ -793,9 +795,9 @@ interpolate_lanczos(const void *state, PyArrayObject *data, const float x,
     (void)error;
 
     integer_t ixs, iys, ixe, iye;
-    integer_t xoff, yoff;
-    float luty, sum;
-    integer_t nbox;
+    size_t xoff, yoff;
+    double luty, sum;
+    float nbox;
     integer_t i, j;
     const struct lanczos_param_t *lanczos =
         (const struct lanczos_param_t *)state;
@@ -805,18 +807,14 @@ interpolate_lanczos(const void *state, PyArrayObject *data, const float x,
     assert(state);
     INTERPOLATION_ASSERTS;
 
-    nbox = lanczos->nbox;
+    nbox = (float)lanczos->nbox;
 
     /* First check for being close to the edge and, if so, return the
        missing value */
-    ixs = (integer_t)(x)-nbox;
-    ixe = (integer_t)(x) + nbox;
-    iys = (integer_t)(y)-nbox;
-    iye = (integer_t)(y) + nbox;
-    if (ixs < 0 || ixe >= isize[0] || iys < 0 || iye >= isize[1]) {
-        *value = lanczos->misval;
-        return 0;
-    }
+    ixs = MAX((integer_t)floorf(x - nbox) + 1, 0);
+    ixe = MIN((integer_t)floorf(x + nbox), isize[0] - 1);
+    iys = MAX((integer_t)floorf(y - nbox) + 1, 0);
+    iye = MIN((integer_t)floorf(y + nbox), isize[1] - 1);
 
     /* Don't divide-by-zero errors */
     assert(lanczos->space != 0.0);
@@ -824,19 +822,23 @@ interpolate_lanczos(const void *state, PyArrayObject *data, const float x,
     /* Loop over the box, which is assumed to be scaled appropriately */
     sum = 0.0;
     for (j = iys; j <= iye; ++j) {
-        yoff = (integer_t)(fabs((y - (float)j) / lanczos->space));
-        assert(yoff >= 0 && yoff < lanczos->nlut);
+        yoff = (size_t)fabs(((double)y - (double)j) / lanczos->space);
+        if (yoff >= lanczos->nlut) {
+            continue;
+        }
 
         luty = lanczos->lut[yoff];
         for (i = ixs; i <= ixe; ++i) {
-            xoff = (integer_t)(fabs((x - (float)i) / lanczos->space));
-            assert(xoff >= 0 && xoff < lanczos->nlut);
+            xoff = (size_t)(fabs(((double)x - (double)i) / lanczos->space));
+            if (xoff >= lanczos->nlut) {
+                continue;
+            }
 
-            sum += get_pixel(data, i, j) * lanczos->lut[xoff] * luty;
+            sum += (double)get_pixel(data, i, j) * lanczos->lut[xoff] * luty;
         }
     }
 
-    *value = sum;
+    *value = (float)sum;
     return 0;
 }
 
@@ -865,8 +867,8 @@ interp_function *interp_function_map[interp_LAST] = {
 
 int
 doblot(struct driz_param_t *p) {
-    const size_t nlut = 2048;
-    const float space = 0.01;
+    int order;
+    size_t nlut;
     integer_t isize[2], osize[2];
     float scale2, xo, yo, v;
     integer_t i, j;
@@ -893,17 +895,18 @@ doblot(struct driz_param_t *p) {
     /* Some interpolation functions need some pre-calculated state */
     if (p->interpolation == interp_lanczos3 ||
         p->interpolation == interp_lanczos5) {
-        if ((lanczos.lut = (float *)malloc(nlut * sizeof(float))) == NULL) {
+        order = (p->interpolation == interp_lanczos3) ? 3 : 5;
+        nlut = (size_t)ceil((double)order / lut_delta) + 1;
+        if ((lanczos.lut = (double *)malloc(nlut * sizeof(double))) == NULL) {
             driz_error_set_message(p->error, "Out of memory");
             goto doblot_exit_;
         }
 
-        create_lanczos_lut(p->interpolation == interp_lanczos3 ? 3 : 5, nlut,
-                           space, lanczos.lut);
+        create_lanczos_lut(order, nlut, lut_delta, lanczos.lut);
 
-        lanczos.nbox = (integer_t)(3.0 / p->kscale);
+        lanczos.nbox = (integer_t)(order / p->kscale);
         lanczos.nlut = nlut;
-        lanczos.space = space;
+        lanczos.space = lut_delta;
         lanczos.misval = p->misval;
 
         state = &lanczos;
@@ -939,8 +942,8 @@ doblot(struct driz_param_t *p) {
                                           j);
                 return 1;
             } else {
-                xo = get_pixmap(p->pixmap, i, j)[0];
-                yo = get_pixmap(p->pixmap, i, j)[1];
+                xo = (float)get_pixmap(p->pixmap, i, j)[0];
+                yo = (float)get_pixmap(p->pixmap, i, j)[1];
             }
 
             if (npy_isnan(xo) || npy_isnan(yo)) {

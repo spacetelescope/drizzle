@@ -99,7 +99,14 @@ def wcs_from_file(filename, ext=None, return_data=False, crpix_shift=None,
         hdr["CRPIX1"] += crpix_shift[0]
         hdr["CRPIX2"] += crpix_shift[1]
 
+    # this is to avoid warnings about naxis mismatch
+    # "FITSFixedWarning: The WCS transformation has more axes (2) than the
+    # image it is associated with (0)" which, unfortunately, we cannot turn off.
+    if hdul and hdul[ext].data is None:
+        hdul[ext].data = np.empty(get_shape(hdr)[::-1], dtype=np.float32)
+
     result = fits_wcs.WCS(hdr, hdul)
+
     shape = get_shape(hdr)
     result.array_shape = shape
 
