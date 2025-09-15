@@ -899,7 +899,7 @@ def test_flux_conservation_distorted(kernel, fc):
 @pytest.mark.parametrize("pscale_ratio", [0.55, 1.0, 1.2])
 def test_flux_conservation_distorted_distributed_sources(nrcb5_stars, kernel, pscale_ratio):
     """ test aperture photometry """
-    insci, inwht, dq, invar, stars, wcs = nrcb5_stars
+    insci, inwht, _, invar, stars, wcs = nrcb5_stars
 
     suffix = f"{pscale_ratio}".replace(".", "p")
     output_wcs = wcs_from_file(f"nrcb5_output_wcs_psr_{suffix}.hdr")
