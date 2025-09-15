@@ -27,7 +27,9 @@ update_data(struct driz_param_t *p, const integer_t ii, const integer_t jj,
     double vc_plus_dow;
     float vc;
 
-    if (dow == 0.0f) return 0;
+    if (dow == 0.0f) {
+        return 0;
+    }
 
     // get previous output image weight:
     vc = get_pixel(p->output_counts, ii, jj);
@@ -450,7 +452,9 @@ over(const integer_t i, const integer_t j, const double xmin, const double xmax,
     dx = MIN(xmax, (double)(i) + 0.5) - MAX(xmin, (double)(i)-0.5);
     dy = MIN(ymax, (double)(j) + 0.5) - MAX(ymin, (double)(j)-0.5);
 
-    if (dx > 0.0 && dy > 0.0) return dx * dy;
+    if (dx > 0.0 && dy > 0.0) {
+        return dx * dy;
+    }
 
     return 0.0;
 }
@@ -476,7 +480,9 @@ do_kernel_point_var(struct driz_param_t *p) {
     scale2 = p->scale * p->scale;
     bv = compute_bit_value(p->uuid);
 
-    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
+    if (init_image_scanner(p, &s, &ymin, &ymax)) {
+        return 1;
+    }
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -619,7 +625,9 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
     gaussian_efac = (2.3548 * 2.3548) * scale2 * ac / 2.0;
     gaussian_es = gaussian_efac / M_PI;
 
-    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
+    if (init_image_scanner(p, &s, &ymin, &ymax)) {
+        return 1;
+    }
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -743,7 +751,9 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
             }
 
             /* Count cases where the pixel is off the output image */
-            if (nhit == 0) ++p->nmiss;
+            if (nhit == 0) {
+                ++p->nmiss;
+            }
         }
     }
 
@@ -787,7 +797,9 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
         return driz_error_is_set(p->error);
     }
 
-    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
+    if (init_image_scanner(p, &s, &ymin, &ymax)) {
+        return 1;
+    }
 
     /* Set up a look-up-table for Lanczos-style interpolation
        kernels */
@@ -922,7 +934,9 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
             }
 
             /* Count cases where the pixel is off the output image */
-            if (nhit == 0) ++p->nmiss;
+            if (nhit == 0) {
+                ++p->nmiss;
+            }
         }
     }
 
@@ -960,7 +974,9 @@ do_kernel_turbo_var(struct driz_param_t *p) {
     pfo = p->pixel_fraction / p->scale / 2.0;
     scale2 = p->scale * p->scale;
 
-    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
+    if (init_image_scanner(p, &s, &ymin, &ymax)) {
+        return 1;
+    }
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -1089,7 +1105,9 @@ do_kernel_turbo_var(struct driz_param_t *p) {
             }
 
             /* Count cases where the pixel is off the output image */
-            if (nhit == 0) ++p->nmiss;
+            if (nhit == 0) {
+                ++p->nmiss;
+            }
         }
     }
 
@@ -1129,7 +1147,9 @@ do_kernel_square_var(struct driz_param_t *p) {
     /* Next the "classic" drizzle square kernel...  this is different
        because we have to transform all four corners of the shrunken
        pixel */
-    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
+    if (init_image_scanner(p, &s, &ymin, &ymax)) {
+        return 1;
+    }
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -1207,15 +1227,17 @@ do_kernel_square_var(struct driz_param_t *p) {
             if (i > 0 && i < mapsize[0] - 2 && j > 0 && j < mapsize[1] - 2) {
                 if (interpolate_four_points(p, i, j, dh, xout, xout + 1,
                                             xout + 2, xout + 3, yout, yout + 1,
-                                            yout + 2, yout + 3))
+                                            yout + 2, yout + 3)) {
                     goto _miss;
+                }
             } else {
                 xin[3] = xin[0] = (double)i - dh;
                 xin[2] = xin[1] = (double)i + dh;
                 for (ii = 0; ii < 4; ++ii) {
                     if (interpolate_point(p, xin[ii], yin[ii], xout + ii,
-                                          yout + ii))
+                                          yout + ii)) {
                         goto _miss;
+                    }
                 }
             }
 
@@ -1313,7 +1335,9 @@ do_kernel_point(struct driz_param_t *p) {
     scale2 = p->scale * p->scale;
     bv = compute_bit_value(p->uuid);
 
-    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
+    if (init_image_scanner(p, &s, &ymin, &ymax)) {
+        return 1;
+    }
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -1416,7 +1440,9 @@ do_kernel_gaussian(struct driz_param_t *p) {
     gaussian_efac = (2.3548 * 2.3548) * scale2 * ac / 2.0;
     gaussian_es = gaussian_efac / M_PI;
 
-    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
+    if (init_image_scanner(p, &s, &ymin, &ymax)) {
+        return 1;
+    }
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -1506,7 +1532,9 @@ do_kernel_gaussian(struct driz_param_t *p) {
             }
 
             /* Count cases where the pixel is off the output image */
-            if (nhit == 0) ++p->nmiss;
+            if (nhit == 0) {
+                ++p->nmiss;
+            }
         }
     }
 
@@ -1546,7 +1574,9 @@ do_kernel_lanczos(struct driz_param_t *p) {
         return driz_error_is_set(p->error);
     }
 
-    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
+    if (init_image_scanner(p, &s, &ymin, &ymax)) {
+        return 1;
+    }
 
     /* Set up a look-up-table for Lanczos-style interpolation
        kernels */
@@ -1643,7 +1673,9 @@ do_kernel_lanczos(struct driz_param_t *p) {
             }
 
             /* Count cases where the pixel is off the output image */
-            if (nhit == 0) ++p->nmiss;
+            if (nhit == 0) {
+                ++p->nmiss;
+            }
         }
     }
 
@@ -1675,7 +1707,9 @@ do_kernel_turbo(struct driz_param_t *p) {
     pfo = p->pixel_fraction / p->scale / 2.0;
     scale2 = p->scale * p->scale;
 
-    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
+    if (init_image_scanner(p, &s, &ymin, &ymax)) {
+        return 1;
+    }
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -1772,7 +1806,9 @@ do_kernel_turbo(struct driz_param_t *p) {
             }
 
             /* Count cases where the pixel is off the output image */
-            if (nhit == 0) ++p->nmiss;
+            if (nhit == 0) {
+                ++p->nmiss;
+            }
         }
     }
 
@@ -1808,7 +1844,9 @@ do_kernel_square(struct driz_param_t *p) {
     /* Next the "classic" drizzle square kernel...  this is different
        because we have to transform all four corners of the shrunken
        pixel */
-    if (init_image_scanner(p, &s, &ymin, &ymax)) return 1;
+    if (init_image_scanner(p, &s, &ymin, &ymax)) {
+        return 1;
+    }
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -1860,15 +1898,17 @@ do_kernel_square(struct driz_param_t *p) {
             if (i > 0 && i < mapsize[0] - 2 && j > 0 && j < mapsize[1] - 2) {
                 if (interpolate_four_points(p, i, j, dh, xout, xout + 1,
                                             xout + 2, xout + 3, yout, yout + 1,
-                                            yout + 2, yout + 3))
+                                            yout + 2, yout + 3)) {
                     goto _miss;
+                }
             } else {
                 xin[3] = xin[0] = (double)i - dh;
                 xin[2] = xin[1] = (double)i + dh;
                 for (ii = 0; ii < 4; ++ii) {
                     if (interpolate_point(p, xin[ii], yin[ii], xout + ii,
-                                          yout + ii))
+                                          yout + ii)) {
                         goto _miss;
+                    }
                 }
             }
 

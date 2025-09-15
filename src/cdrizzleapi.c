@@ -697,8 +697,12 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords) {
         goto _exit;
     }
 
-    if (xmax == 0) xmax = osize[0];
-    if (ymax == 0) ymax = osize[1];
+    if (xmax == 0) {
+        xmax = osize[0];
+    }
+    if (ymax == 0) {
+        ymax = osize[1];
+    }
 
     driz_param_init(&p);
 
@@ -718,20 +722,31 @@ tblot(PyObject *obj, PyObject *args, PyObject *keywords) {
     p.pixmap = map;
     p.error = &error;
 
-    if (driz_error_check(&error, "xmin must be >= 0", p.xmin >= 0)) goto _exit;
-    if (driz_error_check(&error, "ymin must be >= 0", p.ymin >= 0)) goto _exit;
-    if (driz_error_check(&error, "xmax must be > xmin", p.xmax > p.xmin))
+    if (driz_error_check(&error, "xmin must be >= 0", p.xmin >= 0)) {
         goto _exit;
-    if (driz_error_check(&error, "ymax must be > ymin", p.ymax > p.ymin))
+    }
+    if (driz_error_check(&error, "ymin must be >= 0", p.ymin >= 0)) {
         goto _exit;
-    if (driz_error_check(&error, "scale must be > 0", p.scale > 0.0))
+    }
+    if (driz_error_check(&error, "xmax must be > xmin", p.xmax > p.xmin)) {
         goto _exit;
-    if (driz_error_check(&error, "kscale must be > 0", p.kscale > 0.0))
+    }
+    if (driz_error_check(&error, "ymax must be > ymin", p.ymax > p.ymin)) {
         goto _exit;
-    if (driz_error_check(&error, "exposure time must be > 0", p.ef > 0.0))
+    }
+    if (driz_error_check(&error, "scale must be > 0", p.scale > 0.0)) {
         goto _exit;
+    }
+    if (driz_error_check(&error, "kscale must be > 0", p.kscale > 0.0)) {
+        goto _exit;
+    }
+    if (driz_error_check(&error, "exposure time must be > 0", p.ef > 0.0)) {
+        goto _exit;
+    }
 
-    if (doblot(&p)) goto _exit;
+    if (doblot(&p)) {
+        goto _exit;
+    }
 
 _exit:
     driz_log_message("ending tblot");
@@ -741,8 +756,9 @@ _exit:
     Py_DECREF(map);
 
     if (driz_error_is_set(&error)) {
-        if (strcmp(driz_error_get_message(&error), "<PYTHON>") != 0)
+        if (strcmp(driz_error_get_message(&error), "<PYTHON>") != 0) {
             PyErr_SetString(PyExc_Exception, driz_error_get_message(&error));
+        }
         return NULL;
     } else {
         return Py_BuildValue("i", istat);
@@ -961,7 +977,9 @@ initcdrizzle(void) {
     (void)Py_InitModule("cdrizzle", cdrizzle_methods);
 
     /* Check for errors */
-    if (PyErr_Occurred()) Py_FatalError("can't initialize module cdrizzle");
+    if (PyErr_Occurred()) {
+        Py_FatalError("can't initialize module cdrizzle");
+    }
 
     import_array();
 }
@@ -983,7 +1001,9 @@ PyInit_cdrizzle(void) {
     m = PyModule_Create(&moduledef);
 
     /* Check for errors */
-    if (PyErr_Occurred()) Py_FatalError("can't initialize module cdrizzle");
+    if (PyErr_Occurred()) {
+        Py_FatalError("can't initialize module cdrizzle");
+    }
 
     import_array();
     return m;
