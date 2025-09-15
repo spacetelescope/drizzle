@@ -13,5 +13,6 @@ UseTab: Never
 AlignConsecutiveMacros: true
 ReflowComments: true
 SpaceBeforeParens: ControlStatements
+InsertBraces: true
 
 ...

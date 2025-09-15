@@ -965,7 +965,9 @@ doblot(struct driz_param_t *p) {
 
 doblot_exit_:
     driz_log_message("ending doblot");
-    if (lanczos.lut) free(lanczos.lut);
+    if (lanczos.lut) {
+        free(lanczos.lut);
+    }
 
     return driz_error_is_set(p->error);
 }

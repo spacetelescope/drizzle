@@ -175,7 +175,9 @@ interpolate_point(struct driz_param_t *par, double xin, double yin,
     *xout = f00 * x1 * y1 + f10 * x * y1 + f01 * x1 * y + f11 * x * y;
     *yout = g00 * x1 * y1 + g10 * x * y1 + g01 * x1 * y + g11 * x * y;
 
-    if (npy_isnan(*xout) || npy_isnan(*yout)) return 1;
+    if (npy_isnan(*xout) || npy_isnan(*yout)) {
+        return 1;
+    }
 
     return 0;
 }
@@ -393,10 +395,18 @@ invert_pixmap(struct driz_param_t *par, double xout, double yout, double *xin,
         y1 = ymax - gr * dy;
         y2 = ymin + gr * dy;
 
-        if (eval_inversion(par, x1, y1, xout, yout, &d11)) return 1;
-        if (eval_inversion(par, x1, y2, xout, yout, &d12)) return 1;
-        if (eval_inversion(par, x2, y1, xout, yout, &d21)) return 1;
-        if (eval_inversion(par, x2, y2, xout, yout, &d22)) return 1;
+        if (eval_inversion(par, x1, y1, xout, yout, &d11)) {
+            return 1;
+        }
+        if (eval_inversion(par, x1, y2, xout, yout, &d12)) {
+            return 1;
+        }
+        if (eval_inversion(par, x2, y1, xout, yout, &d21)) {
+            return 1;
+        }
+        if (eval_inversion(par, x2, y2, xout, yout, &d22)) {
+            return 1;
+        }
 
         if (d11 < d12 && d11 < d21 && d11 < d22) {
             xmax = x2;
@@ -419,7 +429,9 @@ invert_pixmap(struct driz_param_t *par, double xout, double yout, double *xin,
     *xin = 0.5 * (xmin + xmax);
     *yin = 0.5 * (ymin + ymax);
 
-    if (niter == nmax_iter) return 1;
+    if (niter == nmax_iter) {
+        return 1;
+    }
 
     return 0;
 }
@@ -528,7 +540,9 @@ simplify_polygon(struct polygon *p) {
     struct vertex dp, dq, *pv, *pv_, *pvnxt;
     int k;
 
-    if (p->npv < 3) return;
+    if (p->npv < 3) {
+        return;
+    }
 
     pqhull.npv = 0;
 
@@ -573,7 +587,9 @@ orient_ccw(struct polygon *p) {
     int k, m;
     struct vertex v1, v2, cm = {0, 0};
 
-    if (p->npv < 3) return;
+    if (p->npv < 3) {
+        return;
+    }
 
     // center of mass:
     for (k = 0; k < p->npv; ++k) {

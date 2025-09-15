@@ -415,7 +415,9 @@ weighted_sum_vectors(const integer_t npix, const float *a /*[npix]*/,
     assert(b);
     assert(c);
 
-    while (c != c_end) *(c++) = *(a++) * w1 + *(b++) * w2;
+    while (c != c_end) {
+        *(c++) = *(a++) * w1 + *(b++) * w2;
+    }
 }
 
 /**
@@ -430,8 +432,11 @@ static inline_macro double
 min_doubles(const double *a, const integer_t size) {
     const double *end = a + size;
     double value = MAX_DOUBLE;
-    for (; a != end; ++a)
-        if (*a < value) value = *a;
+    for (; a != end; ++a) {
+        if (*a < value) {
+            value = *a;
+        }
+    }
     return value;
 }
 
@@ -439,8 +444,11 @@ static inline_macro double
 max_doubles(const double *a, const integer_t size) {
     const double *end = a + size;
     double value = MIN_DOUBLE;
-    for (; a != end; ++a)
-        if (*a > value) value = *a;
+    for (; a != end; ++a) {
+        if (*a > value) {
+            value = *a;
+        }
+    }
     return value;
 }
 

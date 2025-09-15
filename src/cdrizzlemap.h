@@ -98,10 +98,10 @@ struct scanner {
 int interpolate_point(struct driz_param_t *par, double xin, double yin,
                       double *xout, double *yout);
 
-int interpolate_four_points(struct driz_param_t *par,
-			    int ixcen, int iycen, double h,
-			    double *x1, double *x2, double *x3, double *x4,
-			    double *y1, double *y2, double *y3, double *y4);
+int interpolate_four_points(struct driz_param_t *par, int ixcen, int iycen,
+                            double h, double *x1, double *x2, double *x3,
+                            double *x4, double *y1, double *y2, double *y3,
+                            double *y4);
 
 int map_point(struct driz_param_t *par, double xin, double yin, double *xout,
               double *yout);
