@@ -391,7 +391,7 @@ was: FILALU
 void create_lanczos_lut(const int kernel_order, const size_t npix,
                         const float del, float *lanczos_lut);
 
-void put_fill(struct driz_param_t *p);
+void put_fill(struct driz_param_t *p, int fill, int fill2);
 
 /**
  Calculate the refractive index of MgF2 for a given C wavelength (in

@@ -10,7 +10,7 @@ Release Notes
 
 - Added support for resampling and co-adding images using squared weights.
   This can be helpful when resampling variance arrays for the purpose of
-  performing propagation of uncertainties. [#163]
+  performing propagation of uncertainties. [#163, #199]
 
 
 2.1.1 (2025-08-14)

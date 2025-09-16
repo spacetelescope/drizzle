@@ -291,12 +291,27 @@ create_lanczos_lut(const int kernel_order, const size_t npix, const float del,
 }
 
 void
-put_fill(struct driz_param_t *p) {
-    integer_t i, j, k, osize[2], osize2[2];
+put_fill(struct driz_param_t *p, int fill, int fill2) {
+    integer_t i, j, k, osize[2], osize2[2], csize[2];
 
     assert(p);
+    if (!p->output_data2) {
+        fill2 = 0;
+    }
+    if (!fill && !fill2) {
+        return;
+    }
+
     get_dimensions(p->output_data, osize);
-    if (p->output_data2) {
+    get_dimensions(p->output_counts, csize);
+    if (osize[0] != csize[0] || osize[1] != csize[1]) {
+        driz_error_set(p->error, PyExc_ValueError,
+                       "Mismatch between output_data and output_counts "
+                       "array size.");
+        return;
+    }
+
+    if (fill2) {
         for (k = 0; k < p->ndata2; ++k) {
             get_dimensions(p->output_data2[k], osize2);
             if ((osize2[0] != osize[0]) || (osize2[1] != osize[1])) {
@@ -307,23 +322,34 @@ put_fill(struct driz_param_t *p) {
             }
         }
     }
-    for (j = 0; j < osize[1]; ++j) {
-        for (i = 0; i < osize[0]; ++i) {
-            if (oob_pixel(p->output_counts, i, j)) {
-                driz_error_format_message(p->error,
-                                          "OOB in output_counts[%d,%d]", i, j);
-                return;
 
-            } else if (oob_pixel(p->output_data, i, j)) {
-                driz_error_format_message(p->error, "OOB in output_data[%d,%d]",
-                                          i, j);
-                return;
-
-            } else if (get_pixel(p->output_counts, i, j) == 0.0) {
-                set_pixel(p->output_data, i, j, p->fill_value);
-                if (p->output_data2) {
+    if (fill && !fill2) {
+        for (j = 0; j < osize[1]; ++j) {
+            for (i = 0; i < osize[0]; ++i) {
+                if (get_pixel(p->output_counts, i, j) == 0.0) {
+                    set_pixel(p->output_data, i, j, p->fill_value);
+                }
+            }
+        }
+    } else if (!fill && fill2) {
+        for (j = 0; j < osize[1]; ++j) {
+            for (i = 0; i < osize[0]; ++i) {
+                if (get_pixel(p->output_counts, i, j) == 0.0) {
                     for (k = 0; k < p->ndata2; ++k) {
                         set_pixel(p->output_data2[k], i, j, p->fill_value2);
+                    }
+                }
+            }
+        }
+    } else { /* fill && fill2 */
+        for (j = 0; j < osize[1]; ++j) {
+            for (i = 0; i < osize[0]; ++i) {
+                if (get_pixel(p->output_counts, i, j) == 0.0) {
+                    set_pixel(p->output_data, i, j, p->fill_value);
+                    if (p->output_data2) {
+                        for (k = 0; k < p->ndata2; ++k) {
+                            set_pixel(p->output_data2[k], i, j, p->fill_value2);
+                        }
                     }
                 }
             }

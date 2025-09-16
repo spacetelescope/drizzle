@@ -577,7 +577,7 @@ tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords) {
 
     /* Put in the fill values (if defined) */
     if (do_fill) {
-        put_fill(&p);
+        put_fill(&p, do_fill, do_fill2);
     }
 
 _exit:
