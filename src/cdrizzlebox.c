@@ -1671,7 +1671,7 @@ do_kernel_lanczos(struct driz_param_t *p) {
 static int
 do_kernel_turbo(struct driz_param_t *p) {
     struct scanner s;
-    integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit, iis, iie, jjs, jje;
+    integer_t bv, i, j, ii, jj, nhit, iis, iie, jjs, jje;
     integer_t osize[2];
     float d, dow;
     double pfo, scale2, ac;
