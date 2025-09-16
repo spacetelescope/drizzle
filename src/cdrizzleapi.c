@@ -190,7 +190,9 @@ _exit_on_err:
 }
 
 static PyObject *
-tdriz(PyObject *obj UNUSED_PARAM, PyObject *args, PyObject *keywords) {
+tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
+    (void)self;
+
     const char *kwlist[] = {
         "input",   "weights", "pixmap",   "output", "counts",   "context",
         "input2",  "output2", "uniqid",   "xmin",   "xmax",     "ymin",
@@ -621,7 +623,9 @@ _exit:
  */
 
 static PyObject *
-tblot(PyObject *obj, PyObject *args, PyObject *keywords) {
+tblot(PyObject *self, PyObject *args, PyObject *keywords) {
+    (void)self;
+
     const char *kwlist[] = {"source",  "pixmap", "output", "xmin",   "xmax",
                             "ymin",    "ymax",   "scale",  "kscale", "interp",
                             "exptime", "misval", "sinscl", NULL};
@@ -771,10 +775,11 @@ _exit:
 
 static PyObject *
 test_cdrizzle(PyObject *self, PyObject *args) {
+    (void)self;
+
     PyObject *data, *weights, *pixmap, *output_data, *output_counts,
         *output_context;
     PyArrayObject *dat, *wei, *map, *odat, *ocnt, *ocon;
-
     int argc = 1;
     char *argv[] = {"utest_cdrizzle", NULL};
 
@@ -825,6 +830,8 @@ test_cdrizzle(PyObject *self, PyObject *args) {
 
 static PyObject *
 invert_pixmap_wrap(PyObject *self, PyObject *args) {
+    (void)self;
+
     PyObject *pixmap, *xyout, *bbox;
     PyArrayObject *xyout_arr, *pixmap_arr, *bbox_arr;
     struct driz_param_t par;
@@ -890,6 +897,8 @@ invert_pixmap_wrap(PyObject *self, PyObject *args) {
 
 static PyObject *
 clip_polygon_wrap(PyObject *self, PyObject *args) {
+    (void)self;
+
     int k;
     PyObject *pin, *qin;
     PyArrayObject *pin_arr, *qin_arr;
@@ -947,18 +956,20 @@ clip_polygon_wrap(PyObject *self, PyObject *args) {
 #pragma clang diagnostic ignored "-Wcast-function-type-mismatch"
 #endif
 static struct PyMethodDef cdrizzle_methods[] = {
-    {"tdriz", (PyCFunction)tdriz, METH_VARARGS | METH_KEYWORDS,
+    {"tdriz", (PyCFunction)(void (*)(void))tdriz, METH_VARARGS | METH_KEYWORDS,
      "tdriz(image, weights, pixmap, output, counts, context, image2, "
      "output2, uniqid, xmin, xmax, ymin, ymax, scale, pixfrac, kernel, "
      "in_units, expscale, wtscale, fillstr, fillstr2)"},
-    {"tblot", (PyCFunction)tblot, METH_VARARGS | METH_KEYWORDS,
+    {"tblot", (PyCFunction)(void (*)(void))(PyCFunctionWithKeywords)tblot,
+     METH_VARARGS | METH_KEYWORDS,
      "tblot(image, pixmap, output, xmin, xmax, ymin, ymax, scale, kscale, "
      "interp, exptime, misval, sinscl)"},
-    {"test_cdrizzle", test_cdrizzle, METH_VARARGS,
+    {"test_cdrizzle", (PyCFunction)test_cdrizzle, METH_VARARGS,
      "test_cdrizzle(data, weights, pixmap, output_data, output_counts)"},
-    {"invert_pixmap", invert_pixmap_wrap, METH_VARARGS,
+    {"invert_pixmap", (PyCFunction)invert_pixmap_wrap, METH_VARARGS,
      "invert_pixmap(pixmap, xyout, bbox)"},
-    {"clip_polygon", clip_polygon_wrap, METH_VARARGS, "clip_polygon(p, q)"},
+    {"clip_polygon", (PyCFunction)clip_polygon_wrap, METH_VARARGS,
+     "clip_polygon(p, q)"},
     {NULL, NULL} /* sentinel */
 };
 #if defined(__GNUC__)

@@ -200,22 +200,25 @@ interpolate_four_points(struct driz_param_t *par, int ixcen, int iycen,
                         double h, double *x1, double *x2, double *x3,
                         double *x4, double *y1, double *y2, double *y3,
                         double *y4) {
-    int i, j, nx2, ny2;
-    double fac;
+    int i, j;
+#if !defined(NDEBUG)
     npy_intp *ndim;
+    int nx2, ny2;
+#endif
+    double fac;
     double f[3][3], g[3][3];
     double *p;
-    PyArrayObject *pixmap;
-
-    pixmap = par->pixmap;
+    PyArrayObject *pixmap = par->pixmap;
 
     /* Bilinear interpolation from
        https://en.wikipedia.org/wiki/Bilinear_interpolation#On_the_unit_square
     */
 
+#if !defined(NDEBUG)
     ndim = PyArray_DIMS(pixmap);
     nx2 = (int)ndim[1] - 2;
     ny2 = (int)ndim[0] - 2;
+#endif
 
     /* This is written specifically for the case where I am enclosed
      * by nine pixels.  Since the increments are the same in x and y,

@@ -257,11 +257,14 @@ ii_bipoly5(const float *coeff /* [len_coeff][len_coeff] */,
  */
 
 static int
-interpolate_nearest_neighbor(const void *state UNUSED_PARAM,
-                             PyArrayObject *data, const float x, const float y,
+interpolate_nearest_neighbor(const void *state, PyArrayObject *data,
+                             const float x, const float y,
                              /* Output parameters */
-                             float *value,
-                             struct driz_error_t *error UNUSED_PARAM) {
+                             float *value, struct driz_error_t *error) {
+    /* Unused parameters: */
+    (void)state;
+    (void)error;
+
     integer_t isize[2];
     get_dimensions(data, isize);
 
@@ -282,10 +285,14 @@ interpolate_nearest_neighbor(const void *state UNUSED_PARAM,
  */
 
 static int
-interpolate_bilinear(const void *state UNUSED_PARAM, PyArrayObject *data,
-                     const float x, const float y,
+interpolate_bilinear(const void *state, PyArrayObject *data, const float x,
+                     const float y,
                      /* Output parameters */
-                     float *value, struct driz_error_t *error UNUSED_PARAM) {
+                     float *value, struct driz_error_t *error) {
+    /* Unused parameters: */
+    (void)state;
+    (void)error;
+
     integer_t nx, ny;
     float sx, tx, sy, ty, f00;
     integer_t isize[2];
@@ -345,10 +352,14 @@ interpolate_bilinear(const void *state UNUSED_PARAM, PyArrayObject *data,
  */
 
 static int
-interpolate_poly3(const void *state UNUSED_PARAM, PyArrayObject *data,
-                  const float x, const float y,
+interpolate_poly3(const void *state, PyArrayObject *data, const float x,
+                  const float y,
                   /* Output parameters */
-                  float *value, struct driz_error_t *error UNUSED_PARAM) {
+                  float *value, struct driz_error_t *error) {
+    /* Unused parameters: */
+    (void)state;
+    (void)error;
+
     integer_t nx, ny;
     const integer_t rowleh = 4;
     const integer_t nterms = 4;
@@ -451,10 +462,13 @@ interpolate_poly3(const void *state UNUSED_PARAM, PyArrayObject *data,
  */
 
 static int
-interpolate_poly5(const void *state UNUSED_PARAM, PyArrayObject *data,
-                  const float x, const float y,
+interpolate_poly5(const void *state, PyArrayObject *data, const float x,
+                  const float y,
                   /* Output parameters */
-                  float *value, struct driz_error_t *error UNUSED_PARAM) {
+                  float *value, struct driz_error_t *error) {
+    (void)state;
+    (void)error;
+
     integer_t nx, ny;
     const integer_t rowleh = 6;
     const integer_t nterms = 6;
@@ -554,7 +568,10 @@ interpolate_sinc_(PyArrayObject *data, const integer_t firstt,
                   const float *y /*[npts]*/, const float mindx,
                   const float mindy, const float sinscl,
                   /* Output parameters */
-                  float *value, struct driz_error_t *error UNUSED_PARAM) {
+                  float *value, struct driz_error_t *error) {
+    /* Unused parameters: */
+    (void)error;
+
     const integer_t nconv = INTERPOLATE_SINC_NCONV;
     const integer_t nsinc = (nconv - 1) / 2;
     /* TODO: This is to match Fortan, but is probably technically less precise
@@ -771,7 +788,10 @@ static int
 interpolate_lanczos(const void *state, PyArrayObject *data, const float x,
                     const float y,
                     /* Output parameters */
-                    float *value, struct driz_error_t *error UNUSED_PARAM) {
+                    float *value, struct driz_error_t *error) {
+    /* Unused parameters: */
+    (void)error;
+
     integer_t ixs, iys, ixe, iye;
     integer_t xoff, yoff;
     float luty, sum;

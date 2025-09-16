@@ -54,12 +54,6 @@ void driz_error_unset(struct driz_error_t *error);
 #define CLAMP_ABOVE(x, low)  (((x) < low) ? (low) : (x))
 #define CLAMP_BELOW(x, high) (((x) > high) ? (high) : (x))
 
-#ifdef __GNUC__
-#define UNUSED_PARAM __attribute__((unused))
-#else
-#define UNUSED_PARAM
-#endif
-
 #define MAX_DOUBLE 1.7976931348623158e+308
 #define MIN_DOUBLE 2.2250738585072014e-308
 
