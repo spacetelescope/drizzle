@@ -794,7 +794,7 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
 
     /* Set up a look-up-table for Lanczos-style interpolation
        kernels */
-    nlut = (size_t)ceil(kernel_order / lut_delta) + 3;
+    nlut = (size_t)ceil(kernel_order / lut_delta) + 1;
     if ((lut = malloc(nlut * sizeof(double))) == NULL) {
         driz_error_set_message(p->error, "Out of memory");
         return driz_error_is_set(p->error);
