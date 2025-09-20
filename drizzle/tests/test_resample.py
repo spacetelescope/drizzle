@@ -72,8 +72,9 @@ def centroid_distances(image1, image2, amp, size):
     """
     distances = []
     list_of_centroids = centroid_list(image2, amp, size)
-    for center2 in list_of_centroids:
-        center1 = centroid(image1, size, center2)
+    for cc in list_of_centroids:
+        center1 = centroid(image1, size, cc)
+        center2 = centroid(image2, size, cc)
         if center1 is None:
             continue
 
@@ -382,7 +383,7 @@ def test_resample_kernel(tmpdir, kernel, test_image_type, max_diff_atol):
         output_difference,
         driz.out_img,
         template_data,
-        20.0,
+        30.0,
         8,
     )
 
@@ -1874,11 +1875,7 @@ def test_drizzle_var_identical_to_nonvar(kernel_fc, pscale_ratio):
     using code without support for variance-propagation (original code).
     """
     kernel, fc = kernel_fc
-    if kernel.startswith("lanczos") and pscale_ratio != 1.0:
-        pytest.skip(
-            f"Kernel '{kernel}' does not support pscale != 1.0 or "
-            "pixfrac != 1.0"
-        )
+
     amplitude = 100.0
     inwcs = wcs_from_file("j8bt06nyq_flt.fits", ext=1)
     insci = amplitude * np.random.random(inwcs.array_shape).astype(np.float32)

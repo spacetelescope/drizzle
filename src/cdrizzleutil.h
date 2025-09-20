@@ -104,10 +104,10 @@ enum e_interp_t {
 /* Lanczos values */
 struct lanczos_param_t {
     size_t nlut;
-    float *lut;
+    double *lut;
     double sdp;
     integer_t nbox;
-    float space;
+    double space;
     float misval;
 };
 
@@ -383,7 +383,7 @@ Note that no checking is done to see whether the values are sensible.
 was: FILALU
 */
 void create_lanczos_lut(const int kernel_order, const size_t npix,
-                        const float del, float *lanczos_lut);
+                        const double del, double *lanczos_lut);
 
 void put_fill(struct driz_param_t *p, int fill, int fill2);
 
@@ -418,8 +418,14 @@ weighted_sum_vectors(const integer_t npix, const float *a /*[npix]*/,
  Round to nearest integer in a way that mimics fortrans NINT
 */
 static inline_macro integer_t
-fortran_round(const double x) {
-    return (x >= 0) ? (integer_t)floor(x + .5) : (integer_t)-floor(.5 - x);
+nintd(const double x) {
+    return (integer_t)round(x);
+    // return (x >= 0) ? (integer_t)floor(x + .5) : (integer_t)-floor(.5 - x);
+}
+static inline_macro integer_t
+nintf(const float x) {
+    return (integer_t)roundf(x);
+    // return (x >= 0) ? (integer_t)floorf(x + .5) : (integer_t)-floorf(.5 - x);
 }
 
 static inline_macro double
