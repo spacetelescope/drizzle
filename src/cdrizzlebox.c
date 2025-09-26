@@ -733,8 +733,8 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
 
                         dow = (float)dover * w;
 
-                        /* If we are create or modifying the context image, we
-                           do so here. */
+                        /* If we are creating or modifying the context image,
+                           we do so here. */
                         if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
@@ -781,7 +781,9 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
     int ndata2;
 
     if (fabs(p->pixel_fraction - 1.0) > 1.0e-5) {
-        // TODO: log a warning that pixfrac is ignored and assumed to be 1.0
+        py_warning(
+            "In lanczos kernel, pixel_fraction is ignored and "
+            "assumed to be 1.0");
     }
 
     ndata2 = p->ndata2;
@@ -911,8 +913,8 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
 
                         dow = (float)(dover * w);
 
-                        /* If we are create or modifying the context image, we
-                           do so here. */
+                        /* If we are creating or modifying the context image,
+                           we do so here. */
                         if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
@@ -1076,8 +1078,8 @@ do_kernel_turbo_var(struct driz_param_t *p) {
 
                             dow = (float)(dover * w);
 
-                            /* If we are create or modifying the context image,
-                               we do so here. */
+                            /* If we are creating or modifying the context
+                               image, we do so here. */
                             if (p->output_context && dow > 0.0f) {
                                 set_bit(p->output_context, ii, jj, bv);
                             }
@@ -1499,8 +1501,8 @@ do_kernel_gaussian(struct driz_param_t *p) {
 
                         dow = (float)dover * w;
 
-                        /* If we are create or modifying the context image, we
-                           do so here. */
+                        /* If we are creating or modifying the context image,
+                           we do so here. */
                         if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
@@ -1544,7 +1546,9 @@ do_kernel_lanczos(struct driz_param_t *p) {
     int xmin, xmax, ymin, ymax, n;
 
     if (fabs(p->pixel_fraction - 1.0) > 1.0e-5) {
-        // TODO: log a warning that pixfrac is ignored and assumed to be 1.0
+        py_warning(
+            "In lanczos kernel, pixel_fraction is ignored and "
+            "assumed to be 1.0");
     }
 
     scale2 = p->scale * p->scale;
@@ -1635,8 +1639,8 @@ do_kernel_lanczos(struct driz_param_t *p) {
 
                         dow = (float)(dover * w);
 
-                        /* If we are create or modifying the context image, we
-                           do so here. */
+                        /* If we are creating or modifying the context image,
+                           we do so here. */
                         if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
@@ -1762,8 +1766,8 @@ do_kernel_turbo(struct driz_param_t *p) {
 
                             dow = (float)(dover * w);
 
-                            /* If we are create or modifying the context image,
-                               we do so here. */
+                            /* If we are creating or modifying the context
+                               image, we do so here. */
                             if (p->output_context && dow > 0.0f) {
                                 set_bit(p->output_context, ii, jj, bv);
                             }

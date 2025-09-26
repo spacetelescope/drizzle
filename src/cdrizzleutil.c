@@ -14,6 +14,7 @@
 /*****************************************************************
  ERROR HANDLING
 */
+
 void
 driz_error_init(struct driz_error_t *error) {
     assert(error);
@@ -91,6 +92,19 @@ driz_error_unset(struct driz_error_t *error) {
     assert(error);
 
     driz_error_init(error);
+}
+
+void
+py_warning(const char *format, ...) {
+    char warn_msg[MAX_DRIZ_ERROR_LEN];
+    va_list argp;
+    va_start(argp, format);
+    if (vsnprintf(warn_msg, MAX_DRIZ_ERROR_LEN, format, argp) < 1) {
+        strcpy(warn_msg, "Warning message formatting error.");
+    }
+    va_end(argp);
+
+    PyErr_WarnEx(PyExc_Warning, warn_msg, 1);
 }
 
 /*****************************************************************
