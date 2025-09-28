@@ -21,6 +21,11 @@ Release Notes
   3rd-order kernel. Improved discrete approximation to the Lanczos
   kernel. [#198]
 
+- Argument ``scale`` of the ``add_image()`` method has been deprecated
+  and split into two arguments: ``iscale`` that is multiplied with each input
+  image before resampling and ``kscale`` used to compute appropriate
+  resampling kernel size. [#203]
+
 
 2.1.1 (2025-08-14)
 ==================

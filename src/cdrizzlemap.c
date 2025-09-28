@@ -779,8 +779,11 @@ init_scanner(struct polygon *p, struct driz_param_t *par, struct scanner *s) {
     if (p->npv < 3) {
         // not a polygon
         s->overlap_valid = 0;
+        s->bounding_polygon.npv = 0;
         return 1;
     }
+
+    s->bounding_polygon = *p;
 
     // find minimum/minima:
     min_y = p->v[0].y;
@@ -1129,4 +1132,64 @@ _setup_scanner:
     *ymin = MAX(0, (int)(s->min_y + 0.5 + 2.0 * MAX_INV_ERR));
     *ymax = MIN(s->ymax, (int)(s->max_y + 2.0 * MAX_INV_ERR));
     return n;
+}
+
+/**
+ * Calculates the signed area of a polygon using the shoelace formula.
+ *
+ * The polygon is defined by its vertices in the `struct polygon` object.
+ * The area will be positive if the vertices are ordered counterclockwise,
+ * and negative if they are ordered clockwise.
+ *
+ * @param p Pointer to a `struct polygon` containing the vertices and their
+ * count.
+ * @return The signed area of the polygon as a double.
+ */
+static double
+polygon_area(const struct polygon *p) {
+    int k, j;
+    double a;
+
+    a = 0.0;
+    j = p->npv - 1;
+    for (k = 0; k < p->npv; k++) {
+        a += (p->v[j].x + p->v[k].x) * (p->v[j].y - p->v[k].y);
+        j = k;
+    }
+    return 0.5 * a;
+}
+
+/**
+ * Calculates the centroid (geometric center) of a polygon.
+ *
+ * The centroid is computed using the coordinates of the polygon's vertices.
+ * If the polygon is degenerate (area is approximately zero or has fewer than 3
+ * vertices), the function returns 1 and sets cx, cy to 0.0.
+ *
+ * @param[in]  p  Pointer to a polygon structure containing the vertices.
+ * @param[out] cx Pointer to double for centroid x-coordinate.
+ * @param[out] cy Pointer to double for centroid y-coordinate.
+ * @return 0 on success, 1 if the polygon is degenerate.
+ */
+int
+polygon_centroid(const struct polygon *p, double *cx, double *cy) {
+    int k, j;
+    double a, sum_x = 0.0, sum_y = 0.0, factor;
+
+    a = polygon_area(p);
+    if (fabs(a) < APPROX_ZERO || p->npv < 3) {
+        *cx = 0.0;
+        *cy = 0.0;
+        return 1;  // degenerate polygon
+    }
+    j = p->npv - 1;
+    for (k = 0; k < p->npv; k++) {
+        factor = (p->v[j].x * p->v[k].y - p->v[k].x * p->v[j].y);
+        sum_x += (p->v[j].x + p->v[k].x) * factor;
+        sum_y += (p->v[j].y + p->v[k].y) * factor;
+        j = k;
+    }
+    *cx = sum_x / (6.0 * a);
+    *cy = sum_y / (6.0 * a);
+    return 0;
 }

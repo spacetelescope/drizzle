@@ -870,7 +870,7 @@ doblot(struct driz_param_t *p) {
     int order;
     size_t nlut;
     integer_t isize[2], osize[2];
-    float scale2, xo, yo, v;
+    float xo, yo, v;
     integer_t i, j;
     interp_function *interpolate;
     struct sinc_param_t sinc;
@@ -904,7 +904,7 @@ doblot(struct driz_param_t *p) {
 
         create_lanczos_lut(order, nlut, lut_delta, lanczos.lut);
 
-        lanczos.nbox = (integer_t)(order / p->kscale);
+        lanczos.nbox = (integer_t)((float)order / p->kscale);
         lanczos.nlut = nlut;
         lanczos.space = lut_delta;
         lanczos.misval = p->misval;
@@ -930,8 +930,6 @@ doblot(struct driz_param_t *p) {
        correction to separate the distortion-induced scale change.
     */
 
-    /* Recalculate the area scaling factor */
-    scale2 = p->scale * p->scale;
     v = 1.0;
 
     for (j = 0; j < osize[1]; ++j) {
@@ -962,7 +960,7 @@ doblot(struct driz_param_t *p) {
                     goto doblot_exit_;
                 }
 
-                value = v * p->ef / scale2;
+                value = v * p->ef / p->iscale;
                 if (oob_pixel(p->output_data, i, j)) {
                     driz_error_format_message(
                         p->error, "OOB in output_data[%d,%d]", i, j);

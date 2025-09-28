@@ -1,6 +1,7 @@
 #ifndef CDRIZZLEBOX_H
 #define CDRIZZLEBOX_H
 
+#include "cdrizzlemap.h"
 #include "cdrizzleutil.h"
 
 /**
@@ -24,6 +25,8 @@ integer_t compute_bit_value(integer_t uuid);
 int dobox(struct driz_param_t *p);
 
 double compute_area(double is, double js, const double x[4], const double y[4]);
+int compute_kscale(struct driz_param_t *p, struct polygon *bounding_polygon,
+                   float *kscale);
 
 double boxer(double is, double js, const double x[4], const double y[4]);
 
