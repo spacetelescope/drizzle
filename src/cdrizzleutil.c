@@ -40,7 +40,8 @@ driz_error_set_message(struct driz_error_t *error, const char *message) {
     assert(error);
     assert(message);
 
-    strncpy(error->last_message, message, MAX_DRIZ_ERROR_LEN);
+    strncpy(error->last_message, message, MAX_DRIZ_ERROR_LEN - 1);
+    error->last_message[MAX_DRIZ_ERROR_LEN - 1] = '\0';
 }
 
 void
@@ -54,8 +55,9 @@ driz_error_format_message(struct driz_error_t *error, const char *format, ...) {
     assert(format);
 
     va_start(argp, format);
-    (void)vsnprintf(error->last_message, MAX_DRIZ_ERROR_LEN, format, argp);
+    (void)vsnprintf(error->last_message, MAX_DRIZ_ERROR_LEN - 1, format, argp);
     va_end(argp);
+    error->last_message[MAX_DRIZ_ERROR_LEN - 1] = '\0';
 }
 
 void
@@ -70,9 +72,10 @@ driz_error_set(struct driz_error_t *error, PyObject *type, const char *format,
     assert(format);
 
     va_start(argp, format);
-    (void)vsnprintf(error->last_message, MAX_DRIZ_ERROR_LEN, format, argp);
+    (void)vsnprintf(error->last_message, MAX_DRIZ_ERROR_LEN - 1, format, argp);
     va_end(argp);
 
+    error->last_message[MAX_DRIZ_ERROR_LEN - 1] = '\0';
     error->type = type;
 }
 
@@ -102,14 +105,17 @@ py_warning(PyObject *warning_type, const char *format, ...) {
     char warn_msg[MAX_DRIZ_ERROR_LEN];
     va_list argp;
     va_start(argp, format);
-    if (vsnprintf(warn_msg, MAX_DRIZ_ERROR_LEN, format, argp) < 1) {
-        strcpy(warn_msg, "Warning message formatting error.");
+    if (vsnprintf(warn_msg, MAX_DRIZ_ERROR_LEN - 1, format, argp) < 1) {
+        strncpy(warn_msg, "Warning message formatting error.",
+                MAX_DRIZ_ERROR_LEN - 1);
     }
     va_end(argp);
 
     if (!warning_type) {
         warning_type = PyExc_Warning;
     }
+
+    warn_msg[MAX_DRIZ_ERROR_LEN - 1] = '\0';
 
     PyErr_WarnEx(warning_type, warn_msg, 1);
 }
@@ -121,23 +127,19 @@ void
 driz_param_dump(struct driz_param_t *p) {
     assert(p);
 
-    printf(
-        "DRIZZLING PARAMETERS:\n"
-        "kernel:          %s\n"
-        "pixel_fraction:  %f\n"
-        "exposure_time:   %f\n"
-        "weight_scale:    %f\n"
-        "fill_value:      %f\n"
-        "fill_value2:     %f\n"
-        "do_fill:         %s\n"
-        "do_fill2:        %s\n"
-        "in_units:        %s\n"
-        "out_units:       %s\n"
-        "iscale:          %f\n",
-        "kscale:          %f\n", kernel_enum2str(p->kernel), p->pixel_fraction,
-        p->exposure_time, p->weight_scale, p->fill_value, p->fill_value2,
-        bool2str(p->do_fill), bool2str(p->do_fill2), unit_enum2str(p->in_units),
-        unit_enum2str(p->out_units), p->iscale, p->kscale);
+    printf("DRIZZLING PARAMETERS:\n");
+    printf("  kernel:          %s\n", kernel_enum2str(p->kernel));
+    printf("  pixel_fraction:  %f\n", p->pixel_fraction);
+    printf("  exposure_time:   %f\n", p->exposure_time);
+    printf("  weight_scale:    %f\n", p->weight_scale);
+    printf("  fill_value:      %f\n", p->fill_value);
+    printf("  fill_value2:     %f\n", p->fill_value2);
+    printf("  do_fill:         %s\n", bool2str(p->do_fill));
+    printf("  do_fill2:        %s\n", bool2str(p->do_fill2));
+    printf("  in_units:        %s\n", unit_enum2str(p->in_units));
+    printf("  out_units:       %s\n", unit_enum2str(p->out_units));
+    printf("  iscale:          %f\n", p->iscale);
+    printf("  kscale:          %f\n", p->kscale);
 }
 
 void
