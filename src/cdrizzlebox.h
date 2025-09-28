@@ -1,6 +1,7 @@
 #ifndef CDRIZZLEBOX_H
 #define CDRIZZLEBOX_H
 
+#include "cdrizzlemap.h"
 #include "cdrizzleutil.h"
 
 /**

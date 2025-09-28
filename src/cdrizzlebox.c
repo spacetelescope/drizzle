@@ -540,7 +540,7 @@ do_kernel_point_var(struct driz_param_t *p) {
     struct scanner s;
     integer_t i, j, ii, jj, k;
     integer_t osize[2];
-    float iscale2, d, dow, *d2 = NULL;
+    float d, dow, *d2 = NULL, iscale2 = 1.0f;
     integer_t bv;
     int xmin, xmax, ymin, ymax, n;
     int ndata2;
@@ -670,7 +670,7 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
     struct scanner s;
     integer_t bv, i, j, ii, jj, k, nxi, nxa, nyi, nya, nhit;
     integer_t osize[2];
-    float d, dow, *d2 = NULL, iscale2;
+    float d, dow, *d2 = NULL, iscale2 = 1.0f;
     double gaussian_efac, gaussian_es;
     double pfo, ac, w, ddx, ddy, r2, dover, kscale2;
     const double nsig = 2.5;
@@ -847,7 +847,7 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
     struct scanner s;
     integer_t bv, i, j, ii, jj, k, nxi, nxa, nyi, nya, nhit;
     integer_t osize[2];
-    float iscale2, d, dow, *d2 = NULL;
+    float d, dow, *d2 = NULL, iscale2 = 1.0f;
     double pfo, xx, yy, w, dover;
     int kernel_order;
     size_t nlut;
@@ -1042,7 +1042,7 @@ do_kernel_turbo_var(struct driz_param_t *p) {
     struct scanner s;
     integer_t bv, i, j, ii, jj, k, nhit, iis, iie, jjs, jje;
     integer_t osize[2];
-    float d, dow, *d2 = NULL, iscale2;
+    float d, dow, *d2 = NULL, iscale2 = 1.0f;
     double pfo, dover_scale, ac;
     double xxi, xxa, yyi, yya, w, dover;
     int xmin, xmax, ymin, ymax, n;
@@ -1216,7 +1216,7 @@ int
 do_kernel_square_var(struct driz_param_t *p) {
     integer_t bv, i, j, ii, jj, k, min_ii, max_ii, min_jj, max_jj, nhit;
     integer_t osize[2], mapsize[2];
-    float iscale2, d, dow, *d2 = NULL;
+    float d, dow, *d2 = NULL, iscale2 = 1.0f;
     double dh, jaco, dover, w;
 
     double xin[4], yin[4], xout[4], yout[4];
