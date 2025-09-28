@@ -93,6 +93,8 @@ struct scanner {
     //                  driz_param_t.
     int overlap_valid; /**< 1 if x/y min/max updated from polygon intersection
                           and 0 if carried over from driz_param_t */
+    struct polygon bounding_polygon; /**< bounding polygon in input image
+                                        outlining the scan region */
 };
 
 int interpolate_point(struct driz_param_t *par, double xin, double yin,
@@ -124,5 +126,7 @@ int get_scanline_limits(struct scanner *s, int y, int *x1, int *x2);
 
 int init_image_scanner(struct driz_param_t *par, struct scanner *s, int *ymin,
                        int *ymax);
+
+int polygon_centroid(const struct polygon *p, double *cx, double *cy);
 
 #endif /* CDRIZZLEMAP_H */

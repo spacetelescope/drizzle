@@ -38,7 +38,7 @@ const char *driz_error_get_message(struct driz_error_t *error);
 int driz_error_is_set(struct driz_error_t *error);
 void driz_error_unset(struct driz_error_t *error);
 
-void py_warning(const char *format, ...);
+void py_warning(PyObject *warning_type, const char *format, ...);
 
 /*****************************************************************
  CONVENIENCE MACROS
@@ -136,7 +136,9 @@ struct driz_param_t {
     integer_t out_ny;
 
     /* Scaling */
-    double scale;
+    float iscale;
+    float kscale; /* Scaling for kernel size. 0 or negative means it will be
+                     estimated from pixmap for t*/
 
     /* Image subset */
     integer_t xmin;
@@ -149,7 +151,6 @@ struct driz_param_t {
     float ef;
     float misval;
     float sinscl;
-    float kscale;
 
     /* Input images */
     PyArrayObject *data;
