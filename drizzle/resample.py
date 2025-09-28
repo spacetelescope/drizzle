@@ -2,6 +2,8 @@
 The `drizzle` module defines the `Drizzle` class, for combining input
 images into a single output image using the drizzle algorithm.
 """
+import warnings
+
 import numpy as np
 
 from drizzle import cdrizzle
@@ -599,9 +601,10 @@ class Drizzle:
 
         return plane_info
 
-    def add_image(self, data, exptime, pixmap, data2=None, dq=None, scale=1.0,
+    def add_image(self, data, exptime, pixmap, data2=None, dq=None,
+                  iscale=1.0, kscale=1.0,
                   weight_map=None, wht_scale=1.0, pixfrac=1.0, in_units='cps',
-                  xmin=None, xmax=None, ymin=None, ymax=None):
+                  xmin=None, xmax=None, ymin=None, ymax=None, **kwargs):
         """
         Resample and add an image to the cumulative output image. Also, update
         output total weight image and context images.
@@ -658,10 +661,32 @@ class Drizzle:
                 if you need it.
 
         scale : float, optional
-            The pixel scale of the input image. Conceptually, this is the
-            linear dimension of a side of a pixel in the input image, but it
-            is not limited to this and can be set to change how the drizzling
-            algorithm operates.
+            Deprecated: use ``iscale`` and ``kscale`` instead.
+            It is a factor used both to rescale input image data
+            by ``scale**2`` AND to compute the correct kernel size for some
+            kernels ("turbo", "gaussian", and "lanczos"). It is recommended
+            ``scale`` be set to pixel scale ratio: the linear dimension of
+            a side of an output pixel relative to the size of an input pixel
+            (or size of an output pixel in the input image's coordinate system).
+
+        iscale : float, optional
+            It is a multiplicative factor used to rescale input image data
+            by ``iscale``. It may make sense to rescale input image by
+            squared pixel scale ratio (the linear dimension of a side of an
+            output pixel as seen in the input image's coordinate frame)
+            depending on the units of the input image, i.e., counts vs
+            brightness.
+
+        kscale : float, None, optional
+            It is a factor used to compute the correct kernel size in output
+            image's coordinate system for some of the kernels
+            ("turbo", "gaussian", and "lanczos") from their nominal
+            sizes in input image pixels. For example, for the "lanczos3"
+            kernel, the nominal size is 3 input pixels. It is recommended that
+            ``kscale`` be set to pixel scale ratio: the linear dimension of
+            output pixel relative to the size of an input pixel. When
+            ``kscale`` is `None`, it will be estimated from ``pixmap`` but this
+            can impose a performance penalty.
 
         weight_map : 2D array, None, optional
             A 2D numpy array containing the pixel by pixel weighting.
@@ -723,6 +748,18 @@ class Drizzle:
             ignored and did not contribute to the output image.
 
         """
+        scale = kwargs.pop('scale', None)
+        if scale is not None:
+            warnings.warn(
+                "Argument 'scale' has been deprecated since version 3.0 and "
+                "it will be removed in a future release. "
+                "Use 'iscale' and 'kscale' instead and set iscale=kscale**2 "
+                "to achieve the same effect as with 'scale'.",
+                DeprecationWarning
+            )
+            iscale = scale * scale
+            kscale = scale
+
         # this enables initializer to not need output image shape at all and
         # set output image shape based on output coordinates from the pixmap.
         #
@@ -874,7 +911,9 @@ class Drizzle:
             xmax=xmax,
             ymin=ymin,
             ymax=ymax,
-            scale=scale,  # scales image intensity. usually equal to pixel scale
+            iscale=iscale,  # scales image intensity. usually equal to 1 or
+                            # (pixel scale ratio)**2
+            kscale=kscale,  # scales kernel size. usually equal to pixel scale ratio
             pixfrac=pixfrac,
             kernel=self._kernel,
             in_units=in_units,
@@ -922,7 +961,13 @@ def blot_image(data, pixmap, pix_ratio, exptime, output_pixel_shape,
         image ``(Nx, Ny)``.
 
     pix_ratio : float
-        Ratio of the input image pixel scale to the ouput image pixel scale.
+        Ratio of the input image pixel scale to the output image pixel scale as
+        used in the ``drizzle`` context: input is a distorted image that was
+        "drizzled" onto the output image. That is, it is the ratio of the
+        scale of the pixels in the input ``data`` argument to the scale of
+        pixels of the image array returned by ``blot_image()``.
+        **It is used to scale the input image intensities to account
+        for the change in pixel area.**
 
     exptime : float
         The exposure time of the input image.
@@ -950,7 +995,7 @@ def blot_image(data, pixmap, pix_ratio, exptime, output_pixel_shape,
     """
     out_img = np.zeros(output_pixel_shape[::-1], dtype=np.float32)
 
-    cdrizzle.tblot(data, pixmap, out_img, scale=pix_ratio, kscale=1.0,
+    cdrizzle.tblot(data, pixmap, out_img, iscale=pix_ratio**2, kscale=1.0,
                    interp=interp, exptime=exptime, misval=0.0, sinscl=sinscl)
 
     return out_img

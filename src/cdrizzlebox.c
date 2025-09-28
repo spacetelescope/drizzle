@@ -469,6 +469,74 @@ over(const integer_t i, const integer_t j, const double xmin, const double xmax,
     return 0.0;
 }
 
+/**
+ * @brief Computes the pixel scale ratio (kscale) at the centroid of a bounding
+ * polygon.
+ *
+ * This function estimates the pixel scale ratio (kscale) for a given region
+ * defined by a bounding polygon within a pixmap. The scale is computed at the
+ * centroid of the polygon by mapping the centroid to pixel coordinates, then
+ * calculating the local transformation matrix determinant using neighboring
+ * pixels.
+ *
+ * TODO: in the future, we could estimate kscale for each pixel - a varying
+ *       kscale across the input image that is more accurate for distorted
+ *       input images although this will have significant cost penalty.
+ *
+ * @param p Pointer to the driz_param_t structure containing pixmap and error
+ * information.
+ * @param bounding_polygon Pointer to the polygon structure representing the
+ * region of interest.
+ * @param kscale Pointer to a float where the computed pixel scale ratio will be
+ * stored.
+ *
+ * @return 0 on success, 1 on failure. On failure, an error message is set in
+ * p->error.
+ */
+int
+compute_kscale(struct driz_param_t *p, struct polygon *bounding_polygon,
+               float *kscale) {
+    integer_t i, j, nx, ny, mapsize[2];
+    double cx, cy;
+    double ox, oy, ox1, oy1, ox2, oy2;
+    double cd11, cd12, cd21, cd22;
+
+    if (polygon_centroid(bounding_polygon, &cx, &cy)) {
+        goto _error;
+    }
+    // estimate pixel scale ratio:
+    i = (integer_t)cx;
+    j = (integer_t)cy;
+
+    get_dimensions(p->pixmap, mapsize);
+    nx = mapsize[0];
+    ny = mapsize[1];
+
+    if (nx < 2 || ny < 2) {
+        goto _error;
+    }
+    i = MAX(MIN(i, nx - 2), 0);
+    j = MAX(MIN(j, ny - 2), 0);
+
+    if (map_pixel(p->pixmap, i, j, &ox, &oy) ||
+        map_pixel(p->pixmap, i + 1, j, &ox1, &oy1) ||
+        map_pixel(p->pixmap, i, j + 1, &ox2, &oy2)) {
+        goto _error;
+    }
+
+    cd11 = ox1 - ox;
+    cd12 = oy1 - oy;
+    cd21 = ox2 - ox;
+    cd22 = oy2 - oy;
+    *kscale = (float)sqrt(fabs(cd11 * cd22 - cd12 * cd21));
+
+    return 0;
+
+_error:
+    driz_error_set_message(p->error, "Unable to estimate kscale");
+    return 1;
+}
+
 /** ---------------------------------------------------------------------------
  * The kernel assumes all the flux in an input pixel is at the center
  *
@@ -480,14 +548,13 @@ do_kernel_point_var(struct driz_param_t *p) {
     struct scanner s;
     integer_t i, j, ii, jj, k;
     integer_t osize[2];
-    float scale2, scale4, d, dow, *d2 = NULL;
+    float iscale2, d, dow, *d2 = NULL;
     integer_t bv;
     int xmin, xmax, ymin, ymax, n, ndata2;
     unsigned int dqval = 0;
 
     ndata2 = p->ndata2;
 
-    scale2 = p->scale * p->scale;
     bv = compute_bit_value(p->uuid);
 
     if (init_image_scanner(p, &s, &ymin, &ymax)) {
@@ -501,7 +568,7 @@ do_kernel_point_var(struct driz_param_t *p) {
     get_dimensions(p->output_data, osize);
 
     if (ndata2 > 0) {
-        scale4 = scale2 * scale2;
+        iscale2 = p->iscale * p->iscale;
 
         if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
             driz_error_set(p->error, PyExc_MemoryError,
@@ -562,10 +629,10 @@ do_kernel_point_var(struct driz_param_t *p) {
 
                 } else {
                     /* Allow for stretching because of scale change */
-                    d = get_pixel(p->data, i, j) * scale2;
+                    d = get_pixel(p->data, i, j) * p->iscale;
                     for (k = 0; k < ndata2; ++k) {
                         if (p->data2[k]) {
-                            d2[k] = get_pixel(p->data2[k], i, j) * scale4;
+                            d2[k] = get_pixel(p->data2[k], i, j) * iscale2;
                         } else {
                             d2[k] = 0.0f;
                         }
@@ -575,8 +642,7 @@ do_kernel_point_var(struct driz_param_t *p) {
                        that we DON'T scale by the Jacobian as it hasn't been
                        calculated */
                     if (p->weights) {
-                        dow = (float)get_pixel(p->weights, i, j) *
-                              p->weight_scale;
+                        dow = get_pixel(p->weights, i, j) * p->weight_scale;
                     } else {
                         dow = 1.0f;
                     }
@@ -616,9 +682,9 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
     struct scanner s;
     integer_t bv, i, j, ii, jj, k, nxi, nxa, nyi, nya, nhit;
     integer_t osize[2];
-    float d, dow, *d2 = NULL;
+    float d, dow, *d2 = NULL, iscale2;
     double gaussian_efac, gaussian_es;
-    double pfo, ac, scale2, scale4, w, ddx, ddy, r2, dover;
+    double pfo, ac, w, ddx, ddy, r2, dover, kscale2;
     const double nsig = 2.5;
     int xmin, xmax, ymin, ymax, n, ndata2;
     unsigned int dqval = 0;
@@ -629,19 +695,28 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
        divided by the scale so that there are never holes in the
        output */
 
-    pfo = nsig * p->pixel_fraction / 2.3548 / p->scale;
-    pfo = CLAMP_ABOVE(pfo, 1.2 / p->scale);
-
-    ac = 1.0 / (p->pixel_fraction * p->pixel_fraction);
-    scale2 = p->scale * p->scale;
-    bv = compute_bit_value(p->uuid);
-
-    gaussian_efac = (2.3548 * 2.3548) * scale2 * ac / 2.0;
-    gaussian_es = gaussian_efac / M_PI;
-
     if (init_image_scanner(p, &s, &ymin, &ymax)) {
         return 1;
     }
+
+    /* if kscale is not defined, estimate it near the center of the
+       intersection polygon.
+     */
+    if (!isfinite(p->kscale) &&
+        compute_kscale(p, &s.bounding_polygon, &p->kscale)) {
+        return 1;
+    }
+
+    kscale2 = (double)p->kscale * (double)p->kscale;
+
+    pfo = nsig * p->pixel_fraction / 2.3548 / (double)p->kscale;
+    pfo = CLAMP_ABOVE(pfo, 1.2 / (double)p->kscale);
+
+    ac = 1.0 / (p->pixel_fraction * p->pixel_fraction);
+    bv = compute_bit_value(p->uuid);
+
+    gaussian_efac = (2.3548 * 2.3548) * kscale2 * ac / 2.0;
+    gaussian_es = gaussian_efac / M_PI;
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -651,7 +726,7 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
     get_dimensions(p->output_data, osize);
 
     if (ndata2 > 0) {
-        scale4 = scale2 * scale2;
+        iscale2 = p->iscale * p->iscale;
         if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
             driz_error_set(p->error, PyExc_MemoryError,
                            "Memory allocation failed.");
@@ -684,8 +759,9 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
             p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
             break;
         } else if (n == 2 || n == 3) {
-            // pixel centered on y is outside of scanner's limits or image [0,
-            // height - 1] OR: limits (x1, x2) are equal (line width is 0)
+            // pixel centered on y is outside of scanner's limits or image
+            // [0, height - 1] OR: limits (x1, x2) are equal (line width is
+            // 0)
             p->nmiss += (p->xmax - p->xmin);
             ++p->nskip;
             continue;
@@ -710,17 +786,18 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
                 nhit = 0;
 
                 /* Allow for stretching because of scale change */
-                d = get_pixel(p->data, i, j) * scale2;
+                d = get_pixel(p->data, i, j) * p->iscale;
                 for (k = 0; k < ndata2; ++k) {
                     if (p->data2[k]) {
-                        d2[k] = get_pixel(p->data2[k], i, j) * scale4;
+                        d2[k] = get_pixel(p->data2[k], i, j) * iscale2;
                     } else {
                         d2[k] = 0.0f;
                     }
                 }
 
-                /* Scale the weighting mask by the scale factor and inversely by
-                   the Jacobian to ensure conservation of weight in the output
+                /* Scale the weighting mask by the scale factor and
+                   inversely by the Jacobian to ensure conservation of
+                   weight in the output
                  */
                 if (p->weights) {
                     w = get_pixel(p->weights, i, j) * p->weight_scale;
@@ -745,8 +822,8 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
 
                         dow = (float)dover * w;
 
-                        /* If we are creating or modifying the context image,
-                           we do so here. */
+                        /* If we are creating or modifying the context
+                           image, we do so here. */
                         if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
@@ -775,8 +852,8 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
 }
 
 /** ---------------------------------------------------------------------------
- * This kernel assumes flux of input pixel is distributed according to lanczos
- * function
+ * This kernel assumes flux of input pixel is distributed according to
+ * lanczos function
  *
  * p: structure containing options, input, and output
  */
@@ -786,7 +863,7 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
     struct scanner s;
     integer_t bv, i, j, ii, jj, k, nxi, nxa, nyi, nya, nhit;
     integer_t osize[2];
-    float scale2, scale4, d, dow, *d2 = NULL;
+    float iscale2, d, dow, *d2 = NULL;
     double pfo, xx, yy, w, dover;
     int kernel_order;
     size_t nlut;
@@ -797,16 +874,14 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
     unsigned int dqval = 0;
 
     if (fabs(p->pixel_fraction - 1.0) > 1.0e-5) {
-        py_warning(
-            "In lanczos kernel, pixel_fraction is ignored and "
-            "assumed to be 1.0");
+        py_warning(NULL,
+                   "In lanczos kernel, pixel_fraction is ignored and "
+                   "assumed to be 1.0");
     }
 
     ndata2 = p->ndata2;
 
-    scale2 = p->scale * p->scale;
     kernel_order = (p->kernel == kernel_lanczos2) ? 2 : 3;
-    pfo = (double)kernel_order / p->scale;
 
     bv = compute_bit_value(p->uuid);
 
@@ -818,11 +893,21 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
         return driz_error_is_set(p->error);
     }
     create_lanczos_lut(kernel_order, nlut, lut_delta, lut);
-    sdp = p->scale / lut_delta;
 
     if (init_image_scanner(p, &s, &ymin, &ymax)) {
         return 1;
     }
+
+    /* if kscale is not defined, estimate it near the center of the
+       intersection polygon.
+     */
+    if (!isfinite(p->kscale) &&
+        compute_kscale(p, &s.bounding_polygon, &p->kscale)) {
+        return 1;
+    }
+
+    pfo = (double)kernel_order / (double)p->kscale;
+    sdp = p->kscale / lut_delta;
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -832,7 +917,7 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
     get_dimensions(p->output_data, osize);
 
     if (ndata2 > 0) {
-        scale4 = scale2 * scale2;
+        iscale2 = p->iscale * p->iscale;
 
         if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
             driz_error_set(p->error, PyExc_MemoryError,
@@ -869,8 +954,9 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
             p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
             break;
         } else if (n == 2 || n == 3) {
-            // pixel centered on y is outside of scanner's limits or image [0,
-            // height - 1] OR: limits (x1, x2) are equal (line width is 0)
+            // pixel centered on y is outside of scanner's limits or image
+            // [0, height - 1] OR: limits (x1, x2) are equal (line width is
+            // 0)
             p->nmiss += (p->xmax - p->xmin);
             ++p->nskip;
             continue;
@@ -892,17 +978,18 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
                 nhit = 0;
 
                 /* Allow for stretching because of scale change */
-                d = get_pixel(p->data, i, j) * scale2;
+                d = get_pixel(p->data, i, j) * p->iscale;
                 for (k = 0; k < ndata2; ++k) {
                     if (p->data2[k]) {
-                        d2[k] = get_pixel(p->data2[k], i, j) * scale4;
+                        d2[k] = get_pixel(p->data2[k], i, j) * iscale2;
                     } else {
                         d2[k] = 0.0f;
                     }
                 }
 
-                /* Scale the weighting mask by the scale factor and inversely by
-                   the Jacobian to ensure conservation of weight in the output
+                /* Scale the weighting mask by the scale factor and
+                   inversely by the Jacobian to ensure conservation of
+                   weight in the output
                  */
                 if (p->weights) {
                     w = get_pixel(p->weights, i, j) * p->weight_scale;
@@ -923,14 +1010,15 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
                         /* Count the hits */
                         ++nhit;
 
-                        /* Weight is product of Lanczos function values in X and
+                        /* Weight is product of Lanczos function values in X
+                         * and
                          * Y */
                         dover = lut[ix] * lut[iy];
 
                         dow = (float)(dover * w);
 
-                        /* If we are creating or modifying the context image,
-                           we do so here. */
+                        /* If we are creating or modifying the context
+                           image, we do so here. */
                         if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
@@ -974,8 +1062,8 @@ do_kernel_turbo_var(struct driz_param_t *p) {
     struct scanner s;
     integer_t bv, i, j, ii, jj, k, nhit, iis, iie, jjs, jje;
     integer_t osize[2];
-    float d, dow, *d2 = NULL;
-    double pfo, scale2, scale4, ac;
+    float d, dow, *d2 = NULL, iscale2;
+    double pfo, dover_scale, ac;
     double xxi, xxa, yyi, yya, w, dover;
     int xmin, xmax, ymin, ymax, n, ndata2;
     unsigned int dqval = 0;
@@ -985,12 +1073,21 @@ do_kernel_turbo_var(struct driz_param_t *p) {
     driz_log_message("starting do_kernel_turbo");
     bv = compute_bit_value(p->uuid);
     ac = 1.0 / (p->pixel_fraction * p->pixel_fraction);
-    pfo = p->pixel_fraction / p->scale / 2.0;
-    scale2 = p->scale * p->scale;
 
     if (init_image_scanner(p, &s, &ymin, &ymax)) {
         return 1;
     }
+
+    /* if kscale is not defined, estimate it near the center of the
+       intersection polygon.
+     */
+    if (!isfinite(p->kscale) &&
+        compute_kscale(p, &s.bounding_polygon, &p->kscale)) {
+        return 1;
+    }
+
+    pfo = p->pixel_fraction / p->kscale / 2.0;
+    dover_scale = ac * (double)p->kscale * (double)p->kscale;
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -1000,7 +1097,7 @@ do_kernel_turbo_var(struct driz_param_t *p) {
     get_dimensions(p->output_data, osize);
 
     if (ndata2 > 0) {
-        scale4 = scale2 * scale2;
+        iscale2 = p->iscale * p->iscale;
 
         if (!(d2 = (float *)malloc(ndata2 * sizeof(float)))) {
             driz_error_set(p->error, PyExc_MemoryError,
@@ -1033,8 +1130,9 @@ do_kernel_turbo_var(struct driz_param_t *p) {
             p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
             break;
         } else if (n == 2 || n == 3) {
-            // pixel centered on y is outside of scanner's limits or image [0,
-            // height - 1] OR: limits (x1, x2) are equal (line width is 0)
+            // pixel centered on y is outside of scanner's limits or image
+            // [0, height - 1] OR: limits (x1, x2) are equal (line width is
+            // 0)
             p->nmiss += (p->xmax - p->xmin);
             ++p->nskip;
             continue;
@@ -1064,17 +1162,18 @@ do_kernel_turbo_var(struct driz_param_t *p) {
                 nhit = 0;
 
                 /* Allow for stretching because of scale change */
-                d = (float)get_pixel(p->data, i, j) * scale2;
+                d = get_pixel(p->data, i, j) * p->iscale;
                 for (k = 0; k < ndata2; ++k) {
                     if (p->data2[k]) {
-                        d2[k] = (float)get_pixel(p->data2[k], i, j) * scale4;
+                        d2[k] = get_pixel(p->data2[k], i, j) * iscale2;
                     } else {
                         d2[k] = 0.0f;
                     }
                 }
 
-                /* Scale the weighting mask by the scale factor and inversely by
-                   the Jacobian to ensure conservation of weight in the output.
+                /* Scale the weighting mask by the scale factor and
+                   inversely by the Jacobian to ensure conservation of
+                   weight in the output.
                  */
                 if (p->weights) {
                     w = get_pixel(p->weights, i, j) * p->weight_scale;
@@ -1085,13 +1184,13 @@ do_kernel_turbo_var(struct driz_param_t *p) {
                 /* Loop over the output pixels which could be affected */
                 for (jj = jjs; jj <= jje; ++jj) {
                     for (ii = iis; ii <= iie; ++ii) {
-                        /* Calculate the overlap using the simpler "aligned" box
-                           routine */
+                        /* Calculate the overlap using the simpler "aligned"
+                           box routine */
                         dover = over(ii, jj, xxi, xxa, yyi, yya);
 
                         if (dover > 0.0) {
                             /* Correct for the pixfrac area factor */
-                            dover *= scale2 * ac;
+                            dover *= dover_scale;
 
                             /* Count the hits */
                             ++nhit;
@@ -1128,10 +1227,11 @@ do_kernel_turbo_var(struct driz_param_t *p) {
 }
 
 /** ---------------------------------------------------------------------------
- * This module does the actual mapping of input flux to output images. It works
- * by calculating the positions of the four corners of a quadrilateral on the
- * output grid corresponding to the corners of the input pixel and then working
- * out exactly how much of each pixel in the output is covered, or not.
+ * This module does the actual mapping of input flux to output images. It
+ * works by calculating the positions of the four corners of a quadrilateral
+ * on the output grid corresponding to the corners of the input pixel and
+ * then working out exactly how much of each pixel in the output is covered,
+ * or not.
  *
  * p: structure containing options, input, and output
  */
@@ -1140,7 +1240,7 @@ int
 do_kernel_square_var(struct driz_param_t *p) {
     integer_t bv, i, j, ii, jj, k, min_ii, max_ii, min_jj, max_jj, nhit;
     integer_t osize[2], mapsize[2];
-    float scale2, scale4, d, dow, *d2 = NULL;
+    float iscale2, d, dow, *d2 = NULL;
     double dh, jaco, dover, w;
 
     double xin[4], yin[4], xout[4], yout[4];
@@ -1155,7 +1255,6 @@ do_kernel_square_var(struct driz_param_t *p) {
     driz_log_message("starting do_kernel_square");
     dh = 0.5 * p->pixel_fraction;
     bv = compute_bit_value(p->uuid);
-    scale2 = p->scale * p->scale;
 
     /* Next the "classic" drizzle square kernel...  this is different
        because we have to transform all four corners of the shrunken
@@ -1172,7 +1271,7 @@ do_kernel_square_var(struct driz_param_t *p) {
     get_dimensions(p->pixmap, mapsize);
 
     if (ndata2 > 0) {
-        scale4 = scale2 * scale2;
+        iscale2 = p->iscale * p->iscale;
 
         if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
             driz_error_set(p->error, PyExc_MemoryError,
@@ -1206,8 +1305,9 @@ do_kernel_square_var(struct driz_param_t *p) {
             p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
             break;
         } else if (n == 2 || n == 3) {
-            // pixel centered on y is outside of scanner's limits or image [0,
-            // height - 1] OR: limits (x1, x2) are equal (line width is 0)
+            // pixel centered on y is outside of scanner's limits or image
+            // [0, height - 1] OR: limits (x1, x2) are equal (line width is
+            // 0)
             p->nmiss += (p->xmax - p->xmin);
             ++p->nskip;
             continue;
@@ -1266,17 +1366,18 @@ do_kernel_square_var(struct driz_param_t *p) {
                            (xout[0] - xout[2]) * (yout[1] - yout[3]));
 
             /* Allow for stretching because of scale change */
-            d = (float)get_pixel(p->data, i, j) * scale2;
+            d = get_pixel(p->data, i, j) * p->iscale;
             for (k = 0; k < ndata2; ++k) {
                 if (p->data2[k]) {
-                    d2[k] = (float)get_pixel(p->data2[k], i, j) * scale4;
+                    d2[k] = get_pixel(p->data2[k], i, j) * iscale2;
                 } else {
                     d2[k] = 0.0f;
                 }
             }
 
             /* Scale the weighting mask by the scale factor and inversely by
-               the Jacobian to ensure conservation of weight in the output */
+               the Jacobian to ensure conservation of weight in the output
+             */
             if (p->weights) {
                 w = get_pixel(p->weights, i, j) * p->weight_scale / jaco;
             } else {
@@ -1292,19 +1393,20 @@ do_kernel_square_var(struct driz_param_t *p) {
             for (jj = min_jj; jj <= max_jj; ++jj) {
                 for (ii = min_ii; ii <= max_ii; ++ii) {
                     /* Call boxer to calculate overlap */
-                    // dover = compute_area((double)ii, (double)jj, xout, yout);
+                    // dover = compute_area((double)ii, (double)jj, xout,
+                    // yout);
                     dover = boxer((double)ii, (double)jj, xout, yout);
 
-                    /* Could be positive or negative, depending on the sign of
-                     * jaco */
+                    /* Could be positive or negative, depending on the sign
+                     * of jaco */
                     if (dover != 0.0) {
                         dow = (float)(dover * w);
 
                         /* Count the hits */
                         ++nhit;
 
-                        /* If we are creating or modifying the context image we
-                            do so here */
+                        /* If we are creating or modifying the context image
+                           we do so here */
                         if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
@@ -1345,11 +1447,10 @@ do_kernel_point(struct driz_param_t *p) {
     struct scanner s;
     integer_t i, j, ii, jj;
     integer_t osize[2];
-    float scale2, d, dow;
+    float d, dow;
     integer_t bv;
     int xmin, xmax, ymin, ymax, n;
 
-    scale2 = p->scale * p->scale;
     bv = compute_bit_value(p->uuid);
 
     if (init_image_scanner(p, &s, &ymin, &ymax)) {
@@ -1370,8 +1471,9 @@ do_kernel_point(struct driz_param_t *p) {
             p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
             break;
         } else if (n == 2 || n == 3) {
-            // pixel centered on y is outside of scanner's limits or image [0,
-            // height - 1] OR: limits (x1, x2) are equal (line width is 0)
+            // pixel centered on y is outside of scanner's limits or image
+            // [0, height - 1] OR: limits (x1, x2) are equal (line width is
+            // 0)
             p->nmiss += (p->xmax - p->xmin);
             ++p->nskip;
             continue;
@@ -1396,14 +1498,13 @@ do_kernel_point(struct driz_param_t *p) {
 
                 } else {
                     /* Allow for stretching because of scale change */
-                    d = (float)get_pixel(p->data, i, j) * scale2;
+                    d = get_pixel(p->data, i, j) * p->iscale;
 
-                    /* Scale the weighting mask by the scale factor.  Note that
-                       we DON'T scale by the Jacobian as it hasn't been
+                    /* Scale the weighting mask by the scale factor.  Note
+                       that we DON'T scale by the Jacobian as it hasn't been
                        calculated */
                     if (p->weights) {
-                        dow = (float)get_pixel(p->weights, i, j) *
-                              p->weight_scale;
+                        dow = get_pixel(p->weights, i, j) * p->weight_scale;
                     } else {
                         dow = 1.0f;
                     }
@@ -1439,27 +1540,35 @@ do_kernel_gaussian(struct driz_param_t *p) {
     integer_t osize[2];
     float d, dow;
     double gaussian_efac, gaussian_es;
-    double pfo, ac, scale2, w, ddx, ddy, r2, dover;
+    double pfo, ac, kscale2, w, ddx, ddy, r2, dover;
     const double nsig = 2.5;
     int xmin, xmax, ymin, ymax, n;
+
+    if (init_image_scanner(p, &s, &ymin, &ymax)) {
+        return 1;
+    }
+
+    /* if kscale is not defined, estimate it near the center of the
+       intersection polygon.
+     */
+    if (!isfinite(p->kscale) &&
+        compute_kscale(p, &s.bounding_polygon, &p->kscale)) {
+        return 1;
+    }
 
     /* Added in V2.9 - make sure pfo doesn't get less than 1.2
        divided by the scale so that there are never holes in the
        output */
 
-    pfo = nsig * p->pixel_fraction / 2.3548 / p->scale;
-    pfo = CLAMP_ABOVE(pfo, 1.2 / p->scale);
+    pfo = nsig * p->pixel_fraction / 2.3548 / (double)p->kscale;
+    pfo = CLAMP_ABOVE(pfo, 1.2 / (double)p->kscale);
 
     ac = 1.0 / (p->pixel_fraction * p->pixel_fraction);
-    scale2 = p->scale * p->scale;
+    kscale2 = (double)p->kscale * (double)p->kscale;
     bv = compute_bit_value(p->uuid);
 
-    gaussian_efac = (2.3548 * 2.3548) * scale2 * ac / 2.0;
+    gaussian_efac = (2.3548 * 2.3548) * kscale2 * ac / 2.0;
     gaussian_es = gaussian_efac / M_PI;
-
-    if (init_image_scanner(p, &s, &ymin, &ymax)) {
-        return 1;
-    }
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -1476,8 +1585,9 @@ do_kernel_gaussian(struct driz_param_t *p) {
             p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
             break;
         } else if (n == 2 || n == 3) {
-            // pixel centered on y is outside of scanner's limits or image [0,
-            // height - 1] OR: limits (x1, x2) are equal (line width is 0)
+            // pixel centered on y is outside of scanner's limits or image
+            // [0, height - 1] OR: limits (x1, x2) are equal (line width is
+            // 0)
             p->nmiss += (p->xmax - p->xmin);
             ++p->nskip;
             continue;
@@ -1502,10 +1612,11 @@ do_kernel_gaussian(struct driz_param_t *p) {
                 nhit = 0;
 
                 /* Allow for stretching because of scale change */
-                d = get_pixel(p->data, i, j) * scale2;
+                d = get_pixel(p->data, i, j) * p->iscale;
 
-                /* Scale the weighting mask by the scale factor and inversely by
-                   the Jacobian to ensure conservation of weight in the output
+                /* Scale the weighting mask by the scale factor and
+                   inversely by the Jacobian to ensure conservation of
+                   weight in the output
                  */
                 if (p->weights) {
                     w = get_pixel(p->weights, i, j) * p->weight_scale;
@@ -1530,8 +1641,8 @@ do_kernel_gaussian(struct driz_param_t *p) {
 
                         dow = (float)dover * w;
 
-                        /* If we are creating or modifying the context image,
-                           we do so here. */
+                        /* If we are creating or modifying the context
+                           image, we do so here. */
                         if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
@@ -1554,8 +1665,8 @@ do_kernel_gaussian(struct driz_param_t *p) {
 }
 
 /** ---------------------------------------------------------------------------
- * This kernel assumes flux of input pixel is distributed according to lanczos
- * function
+ * This kernel assumes flux of input pixel is distributed according to
+ * lanczos function
  *
  * p: structure containing options, input, and output
  */
@@ -1565,7 +1676,7 @@ do_kernel_lanczos(struct driz_param_t *p) {
     struct scanner s;
     integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit;
     integer_t osize[2];
-    float scale2, d, dow;
+    float d, dow;
     double pfo, xx, yy, w, dover;
     int kernel_order;
     size_t nlut;
@@ -1575,14 +1686,12 @@ do_kernel_lanczos(struct driz_param_t *p) {
     int xmin, xmax, ymin, ymax, n;
 
     if (fabs(p->pixel_fraction - 1.0) > 1.0e-5) {
-        py_warning(
-            "In lanczos kernel, pixel_fraction is ignored and "
-            "assumed to be 1.0");
+        py_warning(NULL,
+                   "In lanczos kernel, pixel_fraction is ignored and "
+                   "assumed to be 1.0");
     }
 
-    scale2 = p->scale * p->scale;
     kernel_order = (p->kernel == kernel_lanczos2) ? 2 : 3;
-    pfo = (double)kernel_order / p->scale;
 
     bv = compute_bit_value(p->uuid);
 
@@ -1594,11 +1703,21 @@ do_kernel_lanczos(struct driz_param_t *p) {
         return driz_error_is_set(p->error);
     }
     create_lanczos_lut(kernel_order, nlut, lut_delta, lut);
-    sdp = p->scale / lut_delta;
 
     if (init_image_scanner(p, &s, &ymin, &ymax)) {
         return 1;
     }
+
+    /* if kscale is not defined, estimate it near the center of the
+       intersection polygon.
+     */
+    if (!isfinite(p->kscale) &&
+        compute_kscale(p, &s.bounding_polygon, &p->kscale)) {
+        return 1;
+    }
+
+    pfo = (double)kernel_order / (double)p->kscale;
+    sdp = (double)p->kscale / lut_delta;
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -1615,8 +1734,9 @@ do_kernel_lanczos(struct driz_param_t *p) {
             p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
             break;
         } else if (n == 2 || n == 3) {
-            // pixel centered on y is outside of scanner's limits or image [0,
-            // height - 1] OR: limits (x1, x2) are equal (line width is 0)
+            // pixel centered on y is outside of scanner's limits or image
+            // [0, height - 1] OR: limits (x1, x2) are equal (line width is
+            // 0)
             p->nmiss += (p->xmax - p->xmin);
             ++p->nskip;
             continue;
@@ -1638,10 +1758,11 @@ do_kernel_lanczos(struct driz_param_t *p) {
                 nhit = 0;
 
                 /* Allow for stretching because of scale change */
-                d = get_pixel(p->data, i, j) * scale2;
+                d = get_pixel(p->data, i, j) * p->iscale;
 
-                /* Scale the weighting mask by the scale factor and inversely by
-                   the Jacobian to ensure conservation of weight in the output
+                /* Scale the weighting mask by the scale factor and
+                   inversely by the Jacobian to ensure conservation of
+                   weight in the output
                  */
                 if (p->weights) {
                     w = get_pixel(p->weights, i, j) * p->weight_scale;
@@ -1662,14 +1783,15 @@ do_kernel_lanczos(struct driz_param_t *p) {
                         /* Count the hits */
                         ++nhit;
 
-                        /* Weight is product of Lanczos function values in X and
+                        /* Weight is product of Lanczos function values in X
+                         * and
                          * Y */
                         dover = lut[ix] * lut[iy];
 
                         dow = (float)(dover * w);
 
-                        /* If we are creating or modifying the context image,
-                           we do so here. */
+                        /* If we are creating or modifying the context
+                           image, we do so here. */
                         if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
@@ -1707,19 +1829,28 @@ do_kernel_turbo(struct driz_param_t *p) {
     integer_t bv, i, j, ii, jj, nhit, iis, iie, jjs, jje;
     integer_t osize[2];
     float d, dow;
-    double pfo, scale2, ac;
-    double xxi, xxa, yyi, yya, w, dover;
+    double pfo, ac;
+    double xxi, xxa, yyi, yya, w, dover, dover_scale;
     int xmin, xmax, ymin, ymax, n;
 
     driz_log_message("starting do_kernel_turbo");
     bv = compute_bit_value(p->uuid);
     ac = 1.0 / (p->pixel_fraction * p->pixel_fraction);
-    pfo = p->pixel_fraction / p->scale / 2.0;
-    scale2 = p->scale * p->scale;
 
     if (init_image_scanner(p, &s, &ymin, &ymax)) {
         return 1;
     }
+
+    /* if kscale is not defined, estimate it near the center of the
+       intersection polygon.
+     */
+    if (!isfinite(p->kscale) &&
+        compute_kscale(p, &s.bounding_polygon, &p->kscale)) {
+        return 1;
+    }
+
+    pfo = p->pixel_fraction / p->kscale / 2.0;
+    dover_scale = ac * (double)p->kscale * (double)p->kscale;
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -1737,8 +1868,9 @@ do_kernel_turbo(struct driz_param_t *p) {
             p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
             break;
         } else if (n == 2 || n == 3) {
-            // pixel centered on y is outside of scanner's limits or image [0,
-            // height - 1] OR: limits (x1, x2) are equal (line width is 0)
+            // pixel centered on y is outside of scanner's limits or image
+            // [0, height - 1] OR: limits (x1, x2) are equal (line width is
+            // 0)
             p->nmiss += (p->xmax - p->xmin);
             ++p->nskip;
             continue;
@@ -1768,10 +1900,11 @@ do_kernel_turbo(struct driz_param_t *p) {
                 nhit = 0;
 
                 /* Allow for stretching because of scale change */
-                d = (float)get_pixel(p->data, i, j) * scale2;
+                d = get_pixel(p->data, i, j) * p->iscale;
 
-                /* Scale the weighting mask by the scale factor and inversely by
-                   the Jacobian to ensure conservation of weight in the output.
+                /* Scale the weighting mask by the scale factor and
+                   inversely by the Jacobian to ensure conservation of
+                   weight in the output.
                  */
                 if (p->weights) {
                     w = get_pixel(p->weights, i, j) * p->weight_scale;
@@ -1782,13 +1915,13 @@ do_kernel_turbo(struct driz_param_t *p) {
                 /* Loop over the output pixels which could be affected */
                 for (jj = jjs; jj <= jje; ++jj) {
                     for (ii = iis; ii <= iie; ++ii) {
-                        /* Calculate the overlap using the simpler "aligned" box
-                           routine */
+                        /* Calculate the overlap using the simpler "aligned"
+                           box routine */
                         dover = over(ii, jj, xxi, xxa, yyi, yya);
 
                         if (dover > 0.0) {
                             /* Correct for the pixfrac area factor */
-                            dover *= scale2 * ac;
+                            dover *= dover_scale;
 
                             /* Count the hits */
                             ++nhit;
@@ -1821,10 +1954,11 @@ do_kernel_turbo(struct driz_param_t *p) {
 }
 
 /** ---------------------------------------------------------------------------
- * This module does the actual mapping of input flux to output images. It works
- * by calculating the positions of the four corners of a quadrilateral on the
- * output grid corresponding to the corners of the input pixel and then working
- * out exactly how much of each pixel in the output is covered, or not.
+ * This module does the actual mapping of input flux to output images. It
+ * works by calculating the positions of the four corners of a quadrilateral
+ * on the output grid corresponding to the corners of the input pixel and
+ * then working out exactly how much of each pixel in the output is covered,
+ * or not.
  *
  * p: structure containing options, input, and output
  */
@@ -1833,7 +1967,7 @@ int
 do_kernel_square(struct driz_param_t *p) {
     integer_t bv, i, j, ii, jj, min_ii, max_ii, min_jj, max_jj, nhit;
     integer_t osize[2], mapsize[2];
-    float scale2, d, dow;
+    float d, dow;
     double dh, jaco, dover, w;
     double xin[4], yin[4], xout[4], yout[4];
 
@@ -1843,7 +1977,6 @@ do_kernel_square(struct driz_param_t *p) {
     driz_log_message("starting do_kernel_square");
     dh = 0.5 * p->pixel_fraction;
     bv = compute_bit_value(p->uuid);
-    scale2 = p->scale * p->scale;
 
     /* Next the "classic" drizzle square kernel...  this is different
        because we have to transform all four corners of the shrunken
@@ -1868,8 +2001,9 @@ do_kernel_square(struct driz_param_t *p) {
             p->nmiss += (ymax + 1 - j) * (p->xmax - p->xmin);
             break;
         } else if (n == 2 || n == 3) {
-            // pixel centered on y is outside of scanner's limits or image [0,
-            // height - 1] OR: limits (x1, x2) are equal (line width is 0)
+            // pixel centered on y is outside of scanner's limits or image
+            // [0, height - 1] OR: limits (x1, x2) are equal (line width is
+            // 0)
             p->nmiss += (p->xmax - p->xmin);
             ++p->nskip;
             continue;
@@ -1928,10 +2062,11 @@ do_kernel_square(struct driz_param_t *p) {
                            (xout[0] - xout[2]) * (yout[1] - yout[3]));
 
             /* Allow for stretching because of scale change */
-            d = get_pixel(p->data, i, j) * scale2;
+            d = get_pixel(p->data, i, j) * p->iscale;
 
             /* Scale the weighting mask by the scale factor and inversely by
-               the Jacobian to ensure conservation of weight in the output */
+               the Jacobian to ensure conservation of weight in the output
+             */
             if (p->weights) {
                 w = get_pixel(p->weights, i, j) * p->weight_scale / jaco;
             } else {
@@ -1947,19 +2082,20 @@ do_kernel_square(struct driz_param_t *p) {
             for (jj = min_jj; jj <= max_jj; ++jj) {
                 for (ii = min_ii; ii <= max_ii; ++ii) {
                     /* Call boxer to calculate overlap */
-                    // dover = compute_area((double)ii, (double)jj, xout, yout);
+                    // dover = compute_area((double)ii, (double)jj, xout,
+                    // yout);
                     dover = boxer((double)ii, (double)jj, xout, yout);
 
-                    /* Could be positive or negative, depending on the sign of
-                     * jaco */
+                    /* Could be positive or negative, depending on the sign
+                     * of jaco */
                     if (dover != 0.0) {
                         dow = (float)(dover * w);
 
                         /* Count the hits */
                         ++nhit;
 
-                        /* If we are creating or modifying the context image we
-                            do so here */
+                        /* If we are creating or modifying the context image
+                           we do so here */
                         if (p->output_context && dow > 0.0f) {
                             set_bit(p->output_context, ii, jj, bv);
                         }
@@ -1985,9 +2121,9 @@ do_kernel_square(struct driz_param_t *p) {
 
 /** ---------------------------------------------------------------------------
  * The user selects a kernel to use for drizzling from a function in the
- * following tables The kernels differ in how the flux inside a single pixel is
- * allocated: evenly spread across the pixel, concentrated at the central point,
- * or by some other function.
+ * following tables The kernels differ in how the flux inside a single pixel
+ * is allocated: evenly spread across the pixel, concentrated at the central
+ * point, or by some other function.
  */
 
 static kernel_handler_t kernel_handler_map[] = {
@@ -1999,7 +2135,8 @@ static kernel_handler_t kernel_var_handler_map[] = {
     do_kernel_turbo_var,  do_kernel_lanczos_var,  do_kernel_lanczos_var};
 
 /** ---------------------------------------------------------------------------
- * The executive function which calls the kernel which does the actual drizzling
+ * The executive function which calls the kernel which does the actual
+ * drizzling
  *
  * p: structure containing options, input, and output
  */

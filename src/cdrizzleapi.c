@@ -193,14 +193,16 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     (void)self;
 
     const char *kwlist[] = {
-        "input",    "weights",  "pixmap",  "output",  "counts",   "context",
-        "input2",   "output2",  "dq",      "outdq",   "uniqid",   "xmin",
-        "xmax",     "ymin",     "ymax",    "scale",   "pixfrac",  "kernel",
-        "in_units", "expscale", "wtscale", "fillstr", "fillstr2", NULL};
+        "input",    "weights", "pixmap",   "output",   "counts",  "context",
+        "input2",   "output2", "dq",       "outdq",    "uniqid",  "xmin",
+        "xmax",     "ymin",    "ymax",     "iscale",   "kscale",  "scale",
+        "pixfrac",  "kernel",  "in_units", "expscale", "wtscale", "fillstr",
+        "fillstr2", NULL};
 
     /* Arguments in the order they appear */
     PyObject *oimg, *owei, *pixmap, *oout, *owht, *ocon, *odq = NULL;
-    PyObject *oimg2 = NULL, *oout2 = NULL, *ooutdq = NULL;
+    PyObject *oimg2 = NULL, *oout2 = NULL, *ooutdq = NULL, *okscale = NULL,
+             *oscale = NULL;
     int i, n_none;
     int nsq_args, nsq_arr = 0, nsq_arr_out = 0;
 
@@ -209,7 +211,9 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     integer_t xmax = 0;
     integer_t ymin = 0;
     integer_t ymax = 0;
-    double scale = 1.0;
+    float iscale = 1.0f;
+    float kscale = NPY_NANF;
+    float scale = NPY_NANF;
     double pfract = 1.0;
     char *kernel_str = "square";
     char *inun_str = "cps";
@@ -245,14 +249,56 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     driz_error_init(&error);
 
     if (!PyArg_ParseTupleAndKeywords(
-            args, keywords, "OOOOOO|OOOOiiiiiddssffss:tdriz", (char **)kwlist,
+            args, keywords, "OOOOOO|OOOOiiiiifOOdssffss:tdriz", (char **)kwlist,
             &oimg, &owei, &pixmap, &oout, &owht, &ocon, /* OOOOOO */
             &oimg2, &oout2, &odq, &ooutdq,              /* OOOO */
             &uniqid, &xmin, &xmax, &ymin, &ymax,        /* iiiii */
-            &scale, &pfract, &kernel_str, &inun_str,    /* ddss */
+            &iscale, &okscale, &oscale,                 /* fOO */
+            &pfract, &kernel_str, &inun_str,            /* dss */
             &expin, &wtscl, &fillstr, &fillstr2)        /* ffss */
     ) {
         return NULL;
+    }
+
+    if (oscale != NULL && oscale != Py_None) {
+        scale = (float)PyFloat_AsDouble(oscale);
+        if (PyErr_Occurred()) {
+            driz_error_set_message(&error, "Argument 'scale' is not a number.");
+            goto _exit;
+        }
+        if (scale <= 0.0f || !isfinite(scale)) {
+            driz_error_set_message(
+                &error, "Argument 'scale' must be positive and finite.");
+            goto _exit;
+        }
+        iscale = scale * scale;
+        kscale = scale;
+        py_warning(
+            PyExc_DeprecationWarning,
+            "Argument 'scale' has been deprecated since version 3.0 "
+            "and it will be removed in a future release. "
+            "Use 'iscale' and 'kscale' instead and set "
+            "iscale=kscale**2 to achieve the same effect as with 'scale'.");
+    } else {
+        if (iscale <= 0.0f || !isfinite(iscale)) {
+            driz_error_set_message(
+                &error, "Argument 'iscale' must be positive and finite.");
+            goto _exit;
+        }
+
+        if (okscale != NULL && okscale != Py_None) {
+            kscale = (float)PyFloat_AsDouble(okscale);
+            if (PyErr_Occurred()) {
+                driz_error_set_message(&error,
+                                       "Argument 'kscale' is not a number.");
+                goto _exit;
+            }
+            if (kscale <= 0.0f || !isfinite(kscale)) {
+                driz_error_set_message(
+                    &error, "Argument 'kscale' must be positive and finite.");
+                goto _exit;
+            }
+        }
     }
 
     /* Get raw C-array data */
@@ -566,7 +612,8 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     p.ymin = ymin;
     p.xmax = xmax;
     p.ymax = ymax;
-    p.scale = scale;
+    p.iscale = iscale;
+    p.kscale = kscale;
     p.pixel_fraction = pfract;
     p.kernel = kernel;
     p.in_units = inun;
@@ -594,9 +641,6 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
         goto _exit;
     }
     if (driz_error_check(&error, "ymax must be > ymin", p.ymax > p.ymin)) {
-        goto _exit;
-    }
-    if (driz_error_check(&error, "scale must be > 0", p.scale > 0.0f)) {
         goto _exit;
     }
     if (driz_error_check(&error, "exposure time must be > 0",
@@ -661,22 +705,23 @@ static PyObject *
 tblot(PyObject *self, PyObject *args, PyObject *keywords) {
     (void)self;
 
-    const char *kwlist[] = {"source",  "pixmap", "output", "xmin",   "xmax",
-                            "ymin",    "ymax",   "scale",  "kscale", "interp",
-                            "exptime", "misval", "sinscl", NULL};
+    const char *kwlist[] = {"source", "pixmap",  "output", "xmin",   "xmax",
+                            "ymin",   "ymax",    "iscale", "kscale", "scale",
+                            "interp", "exptime", "misval", "sinscl", NULL};
 
     /* Arguments in the order they appear */
-    PyObject *oimg, *pixmap, *oout;
+    PyObject *oimg, *pixmap, *oout, *oscale = NULL;
     long xmin = 0;
     long xmax = 0;
     long ymin = 0;
     long ymax = 0;
-    double scale = 1.0;
-    float kscale = 1.0;
+    float scale = 1.0f;
+    float iscale = 1.0f;
+    float kscale = 1.0f;
     char *interp_str = "poly5";
-    float ef = 1.0;
-    float misval = 0.0;
-    float sinscl = 1.0;
+    float ef = 1.0f;
+    float misval = 0.0f;
+    float sinscl = 1.0f;
 
     PyArrayObject *img = NULL, *out = NULL, *map = NULL;
     enum e_interp_t interp;
@@ -691,13 +736,40 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
     driz_error_init(&error);
 
     if (!PyArg_ParseTupleAndKeywords(
-            args, keywords, "OOO|lllldfsfff:tblot", (char **)kwlist, &oimg,
-            &pixmap, &oout,                    /* OOO */
-            &xmin, &xmax, &ymin, &ymax,        /* llll */
-            &scale, &kscale, &interp_str, &ef, /* dfsf */
-            &misval, &sinscl)                  /* ff */
+            args, keywords, "OOO|llllffOsfff:tblot", (char **)kwlist, &oimg,
+            &pixmap, &oout,                              /* OOO */
+            &xmin, &xmax, &ymin, &ymax,                  /* llll */
+            &iscale, &kscale, &oscale, &interp_str, &ef, /* ffOsf */
+            &misval, &sinscl)                            /* ff */
     ) {
         return NULL;
+    }
+
+    if (oscale != NULL && !Py_IsNone(oscale)) {
+        scale = (float)PyFloat_AsDouble(oscale);
+
+        if (PyErr_Occurred()) {
+            driz_error_set_message(&error, "Argument 'scale' is not a number.");
+            goto _exit;
+        }
+
+        if (scale <= 0.0f || !isfinite(scale)) {
+            driz_error_set_message(
+                &error, "Argument 'scale' must be positive and finite.");
+            goto _exit;
+        }
+        iscale = scale * scale;
+
+        py_warning(PyExc_DeprecationWarning,
+                   "Argument 'scale' is deprecated, use 'iscale' "
+                   "instead and set it to scale*scale.");
+
+    } else {
+        if (iscale <= 0.0f || !isfinite(iscale)) {
+            driz_error_set_message(
+                &error, "Argument 'iscale' must be positive and finite.");
+            goto _exit;
+        }
     }
 
     img = (PyArrayObject *)PyArray_ContiguousFromAny(oimg, NPY_FLOAT, 2, 2);
@@ -751,7 +823,7 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
     p.xmax = xmax;
     p.ymin = ymin;
     p.ymax = ymax;
-    p.scale = scale;
+    p.iscale = iscale;
     p.kscale = kscale;
     p.in_units = unit_cps;
     p.interpolation = interp;
@@ -771,9 +843,6 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
         goto _exit;
     }
     if (driz_error_check(&error, "ymax must be > ymin", p.ymax > p.ymin)) {
-        goto _exit;
-    }
-    if (driz_error_check(&error, "scale must be > 0", p.scale > 0.0)) {
         goto _exit;
     }
     if (driz_error_check(&error, "kscale must be > 0", p.kscale > 0.0)) {
@@ -994,11 +1063,11 @@ clip_polygon_wrap(PyObject *self, PyObject *args) {
 static struct PyMethodDef cdrizzle_methods[] = {
     {"tdriz", (PyCFunction)(void (*)(void))tdriz, METH_VARARGS | METH_KEYWORDS,
      "tdriz(image, weights, pixmap, output, counts, context, image2, "
-     "output2, dq, outdq, uniqid, xmin, xmax, ymin, ymax, scale, pixfrac, "
-     "kernel, in_units, expscale, wtscale, fillstr, fillstr2)"},
+     "output2, dq, outdq, uniqid, xmin, xmax, ymin, ymax, iscale, kscale, "
+     "pixfrac, kernel, in_units, expscale, wtscale, fillstr, fillstr2)"},
     {"tblot", (PyCFunction)(void (*)(void))(PyCFunctionWithKeywords)tblot,
      METH_VARARGS | METH_KEYWORDS,
-     "tblot(image, pixmap, output, xmin, xmax, ymin, ymax, scale, kscale, "
+     "tblot(image, pixmap, output, xmin, xmax, ymin, ymax, iscale, kscale, "
      "interp, exptime, misval, sinscl)"},
     {"test_cdrizzle", (PyCFunction)test_cdrizzle, METH_VARARGS,
      "test_cdrizzle(data, weights, pixmap, output_data, output_counts)"},

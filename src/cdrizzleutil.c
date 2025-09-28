@@ -11,6 +11,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <numpy/npy_math.h>
+#include <numpy/arrayobject.h>
+
 /*****************************************************************
  ERROR HANDLING
 */
@@ -95,7 +98,7 @@ driz_error_unset(struct driz_error_t *error) {
 }
 
 void
-py_warning(const char *format, ...) {
+py_warning(PyObject *warning_type, const char *format, ...) {
     char warn_msg[MAX_DRIZ_ERROR_LEN];
     va_list argp;
     va_start(argp, format);
@@ -104,7 +107,11 @@ py_warning(const char *format, ...) {
     }
     va_end(argp);
 
-    PyErr_WarnEx(PyExc_Warning, warn_msg, 1);
+    if (!warning_type) {
+        warning_type = PyExc_Warning;
+    }
+
+    PyErr_WarnEx(warning_type, warn_msg, 1);
 }
 
 /*****************************************************************
@@ -116,21 +123,21 @@ driz_param_dump(struct driz_param_t *p) {
 
     printf(
         "DRIZZLING PARAMETERS:\n"
-        "kernel:               %s\n"
-        "pixel_fraction:       %f\n"
-        "exposure_time:        %f\n"
-        "weight_scale:         %f\n"
-        "fill_value:           %f\n"
-        "fill_value2:          %f\n"
-        "do_fill:              %s\n"
-        "do_fill2:             %s\n"
-        "in_units:             %s\n"
-        "out_units:            %s\n"
-        "scale:                %f\n",
-        kernel_enum2str(p->kernel), p->pixel_fraction, p->exposure_time,
-        p->weight_scale, p->fill_value, p->fill_value2, bool2str(p->do_fill),
-        bool2str(p->do_fill2), unit_enum2str(p->in_units),
-        unit_enum2str(p->out_units), p->scale);
+        "kernel:          %s\n"
+        "pixel_fraction:  %f\n"
+        "exposure_time:   %f\n"
+        "weight_scale:    %f\n"
+        "fill_value:      %f\n"
+        "fill_value2:     %f\n"
+        "do_fill:         %s\n"
+        "do_fill2:        %s\n"
+        "in_units:        %s\n"
+        "out_units:       %s\n"
+        "iscale:          %f\n",
+        "kscale:          %f\n", kernel_enum2str(p->kernel), p->pixel_fraction,
+        p->exposure_time, p->weight_scale, p->fill_value, p->fill_value2,
+        bool2str(p->do_fill), bool2str(p->do_fill2), unit_enum2str(p->in_units),
+        unit_enum2str(p->out_units), p->iscale, p->kscale);
 }
 
 void
@@ -142,14 +149,14 @@ driz_param_init(struct driz_param_t *p) {
     p->pixel_fraction = 1.0;
 
     /* Exposure time */
-    p->exposure_time = 1.0;
+    p->exposure_time = 1.0f;
 
     /* Weight scale */
-    p->weight_scale = 1.0;
+    p->weight_scale = 1.0f;
 
     /* Filling */
-    p->fill_value = 0.0;
-    p->fill_value2 = 0.0;
+    p->fill_value = 0.0f;
+    p->fill_value2 = 0.0f;
     p->do_fill = 0;
     p->do_fill2 = 0;
 
@@ -157,7 +164,8 @@ driz_param_init(struct driz_param_t *p) {
     p->in_units = unit_counts;
     p->out_units = unit_counts;
 
-    p->scale = 1.0;
+    p->iscale = 1.0f;
+    p->kscale = NPY_NANF; /* Scaling for kernel size. NaN */
 
     /* Input data */
     p->data = NULL;
