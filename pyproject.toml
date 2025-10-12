@@ -3,7 +3,7 @@ name = "drizzle"
 description = "A package for combining dithered images into a single image"
 requires-python = ">=3.10"
 authors = [
-    { name = "STScI", email = "help@stsci.edu" },
+    { name = "STScI" },
 ]
 dependencies = [
     "numpy",
