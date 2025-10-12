@@ -1988,3 +1988,127 @@ def test_drizzle_var_identical_to_nonvar(kernel_fc, pscale_ratio):
     assert np.all(
         driz1.out_ctx == driz2.out_ctx
     ), "Context images are not identical."
+
+
+@pytest.mark.parametrize(
+    "create_out_dq, shift, add_non_dq_image",
+    (
+        x for x in product(
+            [True, False],
+            [0.0, 0.5],
+            [True, False],
+        )
+    )
+)
+def test_drizzle_dq_propagation(create_out_dq, shift, add_non_dq_image):
+    n = 200
+    in_shape = (n, n)
+
+    # input coordinate grid:
+    y, x = np.indices(in_shape, dtype=np.float64) + shift
+
+    # simulate data:
+    in_sci = np.ones(in_shape, dtype=np.float32)
+    in_wht = np.ones(in_shape, dtype=np.float32)
+    in_dq1 = np.zeros(in_shape, dtype=np.int32)
+    in_dq2 = np.zeros(in_shape, dtype=np.int32)
+    if create_out_dq:
+        out_dq = np.zeros(in_shape, dtype=np.int32)
+    else:
+        out_dq = None
+
+    xyc = n // 2
+    in_dq1[xyc, xyc] = 1 << 0
+    in_dq1[xyc + 1, xyc] = 1 << 1
+    in_dq1[xyc, xyc + 1] = 1 << 2
+    in_dq1[xyc + 1, xyc + 1] = 1 << 3
+
+    in_dq2[xyc, xyc] = 1 << 4
+    in_dq2[xyc + 1, xyc] = 1 << 5
+    in_dq2[xyc, xyc + 1] = 1 << 6
+    in_dq2[xyc + 1, xyc + 1] = 1 << 7
+
+    driz = resample.Drizzle(
+        kernel='square',
+        out_dq=out_dq,
+    )
+
+    pixmap = np.dstack([x, y])
+
+    driz.add_image(
+        in_sci,
+        dq=in_dq1,
+        exptime=1.0,
+        pixmap=pixmap,
+        weight_map=in_wht,
+    )
+
+    if shift == 0.0:
+        assert driz.out_dq[xyc, xyc] == in_dq1[xyc, xyc]
+        assert driz.out_dq[xyc + 1, xyc] == in_dq1[xyc + 1, xyc]
+        assert driz.out_dq[xyc, xyc + 1] == in_dq1[xyc, xyc + 1]
+        assert driz.out_dq[xyc + 1, xyc + 1] == in_dq1[xyc + 1, xyc + 1]
+    else:
+        # with shift=0.5 all 4 input pixels should contribute to the output
+        # pixel at (xyc+1, xyc+1)
+        assert driz.out_dq[xyc + 1, xyc + 1] == sum(1 << i for i in range(4))
+
+    if add_non_dq_image:
+        driz.add_image(
+            in_sci,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=in_wht,
+        )
+
+        if shift == 0.0:
+            assert driz.out_dq[xyc, xyc] == in_dq1[xyc, xyc]
+            assert driz.out_dq[xyc + 1, xyc] == in_dq1[xyc + 1, xyc]
+            assert driz.out_dq[xyc, xyc + 1] == in_dq1[xyc, xyc + 1]
+            assert driz.out_dq[xyc + 1, xyc + 1] == in_dq1[xyc + 1, xyc + 1]
+        else:
+            # with shift=0.5 all 4 input pixels should contribute to the output
+            # pixel at (xyc+1, xyc+1)
+            assert (
+                driz.out_dq[xyc + 1, xyc + 1] == sum(1 << i for i in range(4))
+            )
+
+    driz.add_image(
+        in_sci,
+        dq=in_dq2,
+        exptime=1.0,
+        pixmap=pixmap,
+        weight_map=in_wht,
+    )
+
+    in_dq_total = in_dq1 + in_dq2
+
+    if shift == 0.0:
+        assert driz.out_dq[xyc, xyc] == in_dq_total[xyc, xyc]
+        assert driz.out_dq[xyc + 1, xyc] == in_dq_total[xyc + 1, xyc]
+        assert driz.out_dq[xyc, xyc + 1] == in_dq_total[xyc, xyc + 1]
+        assert driz.out_dq[xyc + 1, xyc + 1] == in_dq_total[xyc + 1, xyc + 1]
+    else:
+        # with shift=0.5 all 4 input pixels should contribute to the output
+        # pixel at (xyc+1, xyc+1)
+        assert driz.out_dq[xyc + 1, xyc + 1] == sum(1 << i for i in range(8))
+
+    if add_non_dq_image:
+        driz.add_image(
+            in_sci,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=in_wht,
+        )
+
+        if shift == 0.0:
+            assert driz.out_dq[xyc, xyc] == in_dq_total[xyc, xyc]
+            assert driz.out_dq[xyc + 1, xyc] == in_dq_total[xyc + 1, xyc]
+            assert driz.out_dq[xyc, xyc + 1] == in_dq_total[xyc, xyc + 1]
+            assert driz.out_dq[xyc + 1, xyc + 1] == in_dq_total[xyc + 1, xyc + 1]
+        else:
+            # with shift=0.5 all 4 input pixels should contribute to the output
+            # pixel at (xyc+1, xyc+1)
+            assert (
+                driz.out_dq[xyc + 1, xyc + 1] == sum(1 << i for i in range(8))
+            )

@@ -162,6 +162,7 @@ driz_param_init(struct driz_param_t *p) {
     /* Input data */
     p->data = NULL;
     p->data2 = NULL;
+    p->dq = NULL;
     p->weights = NULL;
     p->pixmap = NULL;
     p->ndata2 = 0;
@@ -177,6 +178,7 @@ driz_param_init(struct driz_param_t *p) {
     p->output_data2 = NULL;
     p->output_counts = NULL;
     p->output_context = NULL;
+    p->output_dq = NULL;
 
     p->nmiss = 0;
     p->nskip = 0;

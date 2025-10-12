@@ -21,6 +21,9 @@ Release Notes
   3rd-order kernel. Improved discrete approximation to the Lanczos
   kernel. [#198]
 
+- Added support for propagating DQ bitfields from input images to the output
+  image using bitwise-OR. [#206]
+
 
 2.1.1 (2025-08-14)
 ==================

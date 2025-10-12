@@ -44,10 +44,6 @@ scale_image(PyArrayObject *image, double scale_factor) {
     return;
 }
 
-/** ---------------------------------------------------------------------------
- * Top level function for drizzling, interfaces with python code
- */
-
 static int
 process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
                    const char *name, PyArrayObject ***arrays, int *nmax,
@@ -189,19 +185,22 @@ _exit_on_err:
     return 1;
 }
 
+/** ---------------------------------------------------------------------------
+ * Top level function for drizzling, interfaces with python code
+ */
 static PyObject *
 tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     (void)self;
 
     const char *kwlist[] = {
-        "input",   "weights", "pixmap",   "output", "counts",   "context",
-        "input2",  "output2", "uniqid",   "xmin",   "xmax",     "ymin",
-        "ymax",    "scale",   "pixfrac",  "kernel", "in_units", "expscale",
-        "wtscale", "fillstr", "fillstr2", NULL};
+        "input",    "weights",  "pixmap",  "output",  "counts",   "context",
+        "input2",   "output2",  "dq",      "outdq",   "uniqid",   "xmin",
+        "xmax",     "ymin",     "ymax",    "scale",   "pixfrac",  "kernel",
+        "in_units", "expscale", "wtscale", "fillstr", "fillstr2", NULL};
 
     /* Arguments in the order they appear */
-    PyObject *oimg, *owei, *pixmap, *oout, *owht, *ocon;
-    PyObject *oimg2 = NULL, *oout2 = NULL;
+    PyObject *oimg, *owei, *pixmap, *oout, *owht, *ocon, *odq = NULL;
+    PyObject *oimg2 = NULL, *oout2 = NULL, *ooutdq = NULL;
     int i, n_none;
     int nsq_args, nsq_arr = 0, nsq_arr_out = 0;
 
@@ -222,7 +221,7 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     /* Derived values */
 
     PyArrayObject *img = NULL, *wei = NULL, *out = NULL, *wht = NULL,
-                  *con = NULL, *map = NULL;
+                  *con = NULL, *map = NULL, *dq = NULL, *outdq = NULL;
 
     PyArrayObject **img2_list = NULL, **out2_list = NULL;
 
@@ -246,12 +245,12 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     driz_error_init(&error);
 
     if (!PyArg_ParseTupleAndKeywords(
-            args, keywords, "OOOOOO|OOiiiiiddssffss:tdriz", (char **)kwlist,
-            &oimg, &owei, &pixmap, &oout, &owht, &ocon, &oimg2,
-            &oout2,                                  /* OOOOOOOO */
-            &uniqid, &xmin, &xmax, &ymin, &ymax,     /* iiiii */
-            &scale, &pfract, &kernel_str, &inun_str, /* ddss */
-            &expin, &wtscl, &fillstr, &fillstr2)     /* ffss */
+            args, keywords, "OOOOOO|OOOOiiiiiddssffss:tdriz", (char **)kwlist,
+            &oimg, &owei, &pixmap, &oout, &owht, &ocon, /* OOOOOO */
+            &oimg2, &oout2, &odq, &ooutdq,              /* OOOO */
+            &uniqid, &xmin, &xmax, &ymin, &ymax,        /* iiiii */
+            &scale, &pfract, &kernel_str, &inun_str,    /* ddss */
+            &expin, &wtscl, &fillstr, &fillstr2)        /* ffss */
     ) {
         return NULL;
     }
@@ -293,6 +292,32 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
         con = (PyArrayObject *)PyArray_ContiguousFromAny(ocon, NPY_INT32, 2, 2);
         if (!con) {
             driz_error_set_message(&error, "Invalid context array");
+            goto _exit;
+        }
+    }
+
+    if (odq == Py_None || odq == NULL) {
+        dq = NULL;
+    } else {
+        dq = (PyArrayObject *)PyArray_ContiguousFromAny(odq, NPY_INT32, 2, 2);
+        if (!dq) {
+            driz_error_set_message(&error, "Invalid input DQ array");
+            goto _exit;
+        }
+    }
+
+    if (ooutdq == Py_None || ooutdq == NULL) {
+        if (dq != NULL) {
+            driz_error_set_message(
+                &error, "If 'dq' is provided, 'outdq' must also be provided.");
+            goto _exit;
+        }
+        outdq = NULL;
+    } else {
+        outdq =
+            (PyArrayObject *)PyArray_ContiguousFromAny(ooutdq, NPY_INT32, 2, 2);
+        if (!outdq) {
+            driz_error_set_message(&error, "Invalid output DQ array");
             goto _exit;
         }
     }
@@ -501,7 +526,14 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     }
 
     if (pfract <= 0.001) {
-        printf("kernel reset to POINT due to pfract being set to 0.0...\n");
+        if (snprintf(warn_msg, 128,
+                     "Kernel reset to 'point' due to input 'pixfrac' "
+                     " being too small.") < 1) {
+            strcpy(warn_msg,
+                   "Kernel reset to 'point' due to input 'pixfrac' "
+                   " being too small.");
+        }
+        PyErr_WarnEx(PyExc_Warning, warn_msg, 1);
         kernel_str2enum("point", &kernel, &error);
     }
 
@@ -522,6 +554,7 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     driz_param_init(&p);
 
     p.data = img;
+    p.dq = dq;
     p.weights = wei;
     p.pixmap = map;
     p.output_data = out;
@@ -547,6 +580,7 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     p.data2 = img2_list;
     p.output_data2 = out2_list;
     p.ndata2 = nsq_arr;
+    p.output_dq = outdq;
     p.error = &error;
 
     if (driz_error_check(&error, "xmin must be >= 0", p.xmin >= 0)) {
@@ -955,11 +989,12 @@ clip_polygon_wrap(PyObject *self, PyObject *args) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-function-type-mismatch"
 #endif
+
 static struct PyMethodDef cdrizzle_methods[] = {
     {"tdriz", (PyCFunction)(void (*)(void))tdriz, METH_VARARGS | METH_KEYWORDS,
      "tdriz(image, weights, pixmap, output, counts, context, image2, "
-     "output2, uniqid, xmin, xmax, ymin, ymax, scale, pixfrac, kernel, "
-     "in_units, expscale, wtscale, fillstr, fillstr2)"},
+     "output2, dq, outdq, uniqid, xmin, xmax, ymin, ymax, scale, pixfrac, "
+     "kernel, in_units, expscale, wtscale, fillstr, fillstr2)"},
     {"tblot", (PyCFunction)(void (*)(void))(PyCFunctionWithKeywords)tblot,
      METH_VARARGS | METH_KEYWORDS,
      "tblot(image, pixmap, output, xmin, xmax, ymin, ymax, scale, kscale, "

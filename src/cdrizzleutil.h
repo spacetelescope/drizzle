@@ -154,6 +154,7 @@ struct driz_param_t {
     /* Input images */
     PyArrayObject *data;
     PyArrayObject **data2;
+    PyArrayObject *dq;
     PyArrayObject *weights;
     PyArrayObject *pixmap;
 
@@ -162,6 +163,7 @@ struct driz_param_t {
     PyArrayObject **output_data2;
     PyArrayObject *output_counts;
     PyArrayObject *output_context;
+    PyArrayObject *output_dq;
 
     integer_t ndata2;
 
@@ -308,6 +310,11 @@ oob_output_pixel(driz_param_t *p, integer_t xpix, integer_t ypix) {
 
 #endif
 
+static inline_macro int
+get_int_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
+    return *(int *)PyArray_GETPTR2(image, ypix, xpix);
+}
+
 static inline_macro float
 get_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
     return *(float *)PyArray_GETPTR2(image, ypix, xpix);
@@ -323,6 +330,12 @@ get_pixel_at_pos(PyArrayObject *image, integer_t pos) {
 static inline_macro void
 set_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix, double value) {
     *(float *)PyArray_GETPTR2(image, ypix, xpix) = value;
+    return;
+}
+
+static inline_macro void
+set_int_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix, int value) {
+    *(int *)PyArray_GETPTR2(image, ypix, xpix) = value;
     return;
 }
 
