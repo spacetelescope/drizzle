@@ -2112,3 +2112,45 @@ def test_drizzle_dq_propagation(create_out_dq, shift, add_non_dq_image):
             assert (
                 driz.out_dq[xyc + 1, xyc + 1] == sum(1 << i for i in range(8))
             )
+
+def test_drizzle_dq_propagation_wrong_shape():
+    n = 200
+    in_shape = (n, n)
+
+    # input coordinate grid:
+    y, x = np.indices(in_shape, dtype=np.float64)
+
+    # simulate data:
+    in_sci = np.ones(in_shape, dtype=np.float32)
+    in_wht = np.ones(in_shape, dtype=np.float32)
+    in_dq1 = np.zeros(tuple(i + 1 for i in in_shape), dtype=np.int32)
+    out_img = np.zeros(in_shape, dtype=np.float32)
+    out_dq = np.zeros(tuple(i + 1 for i in in_shape), dtype=np.int32)
+
+    with pytest.raises(ValueError) as err_info:
+        driz = resample.Drizzle(
+            kernel='square',
+            out_img=out_img,
+            out_dq=out_dq,
+        )
+    assert str(err_info.value).startswith(
+        "Inconsistent data shapes specified:"
+    )
+
+    driz = resample.Drizzle(
+        kernel='square',
+    )
+
+    pixmap = np.dstack([x, y])
+
+    with pytest.raises(ValueError) as err_info:
+        driz.add_image(
+            in_sci,
+            dq=in_dq1,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=in_wht,
+        )
+    assert str(err_info.value).startswith(
+        "'dq' shape is not consistent with 'data' shape."
+    )
