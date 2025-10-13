@@ -340,6 +340,7 @@ class Drizzle:
         if out_dq is not None:
             out_dq = np.asarray(out_dq, dtype=np.int32)
             shapes.add(out_dq.shape)
+            self._out_dq = out_dq
 
         if out_shape is not None:
             shapes.add(tuple(out_shape))
@@ -384,14 +385,6 @@ class Drizzle:
                 )
         self._output_shapes = shapes
         self._alloc_output_arrays2_init(out_img2=out_img2)
-
-        if out_dq is not None:
-            out_dq = np.asarray(out_dq, dtype=np.int32)
-            if out_dq.shape != self._out_shape:
-                raise ValueError(
-                    "'out_dq' must have the same shape as 'out_img'."
-                )
-            self._out_dq = out_dq
 
     @property
     def fillval(self):
