@@ -1990,16 +1990,9 @@ def test_drizzle_var_identical_to_nonvar(kernel_fc, pscale_ratio):
     ), "Context images are not identical."
 
 
-@pytest.mark.parametrize(
-    "create_out_dq, shift, add_non_dq_image",
-    (
-        x for x in product(
-            [True, False],
-            [0.0, 0.5],
-            [True, False],
-        )
-    )
-)
+@pytest.mark.parametrize("create_out_dq", [True, False])
+@pytest.mark.parametrize("shift", [0.0, 0.5])
+@pytest.mark.parametrize("add_non_dq_image", [True, False])
 def test_drizzle_dq_propagation(create_out_dq, shift, add_non_dq_image):
     n = 200
     in_shape = (n, n)
@@ -2010,10 +2003,12 @@ def test_drizzle_dq_propagation(create_out_dq, shift, add_non_dq_image):
     # simulate data:
     in_sci = np.ones(in_shape, dtype=np.float32)
     in_wht = np.ones(in_shape, dtype=np.float32)
-    in_dq1 = np.zeros(in_shape, dtype=np.int32)
-    in_dq2 = np.zeros(in_shape, dtype=np.int32)
+    # use int16 to test up to 16 bits and signed integers
+    in_dq1 = np.zeros(in_shape, dtype=np.int16)
+    # use uint32 to test up to 32 bits and unsigned integers (default type)
+    in_dq2 = np.zeros(in_shape, dtype=np.uint32)
     if create_out_dq:
-        out_dq = np.zeros(in_shape, dtype=np.int32)
+        out_dq = np.zeros(in_shape, dtype=np.uint32)
     else:
         out_dq = None
 
@@ -2113,6 +2108,7 @@ def test_drizzle_dq_propagation(create_out_dq, shift, add_non_dq_image):
                 driz.out_dq[xyc + 1, xyc + 1] == sum(1 << i for i in range(8))
             )
 
+
 def test_drizzle_dq_propagation_wrong_shape():
     n = 200
     in_shape = (n, n)
@@ -2123,9 +2119,9 @@ def test_drizzle_dq_propagation_wrong_shape():
     # simulate data:
     in_sci = np.ones(in_shape, dtype=np.float32)
     in_wht = np.ones(in_shape, dtype=np.float32)
-    in_dq1 = np.zeros(tuple(i + 1 for i in in_shape), dtype=np.int32)
+    in_dq = np.zeros(tuple(i + 1 for i in in_shape), dtype=np.uint32)
     out_img = np.zeros(in_shape, dtype=np.float32)
-    out_dq = np.zeros(tuple(i + 1 for i in in_shape), dtype=np.int32)
+    out_dq = np.zeros(tuple(i + 1 for i in in_shape), dtype=np.uint32)
 
     with pytest.raises(ValueError) as err_info:
         driz = resample.Drizzle(
@@ -2146,11 +2142,55 @@ def test_drizzle_dq_propagation_wrong_shape():
     with pytest.raises(ValueError) as err_info:
         driz.add_image(
             in_sci,
-            dq=in_dq1,
+            dq=in_dq,
             exptime=1.0,
             pixmap=pixmap,
             weight_map=in_wht,
         )
     assert str(err_info.value).startswith(
         "'dq' shape is not consistent with 'data' shape."
+    )
+
+def test_drizzle_dq_propagation_wrong_type():
+    n = 20
+    in_shape = (n, n)
+
+    # input coordinate grid:
+    y, x = np.indices(in_shape, dtype=np.float64)
+
+    # simulate data:
+    in_sci = np.ones(in_shape, dtype=np.float32)
+    in_wht = np.ones(in_shape, dtype=np.float32)
+    in_dq = np.zeros(in_shape, dtype=np.uint64)
+    out_img = np.zeros(in_shape, dtype=np.float32)
+    out_dq = np.zeros(in_shape, dtype=np.uint64)
+
+    with pytest.raises(TypeError) as err_info:
+        driz = resample.Drizzle(
+            kernel='square',
+            out_img=out_img,
+            out_dq=out_dq,
+        )
+    assert str(err_info.value).startswith(
+        "'out_dq' must be of an unsigned integer type with itemsize of "
+        "4 bytes or less"
+    )
+
+    driz = resample.Drizzle(
+        kernel='square',
+    )
+
+    pixmap = np.dstack([x, y])
+
+    with pytest.raises(TypeError) as err_info:
+        driz.add_image(
+            in_sci,
+            dq=in_dq,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=in_wht,
+        )
+    assert str(err_info.value).startswith(
+        "'dq' must be of an unsigned integer type with itemsize of "
+        "4 bytes or less."
     )

@@ -311,8 +311,8 @@ oob_output_pixel(driz_param_t *p, integer_t xpix, integer_t ypix) {
 #endif
 
 static inline_macro int
-get_int_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
-    return *(int *)PyArray_GETPTR2(image, ypix, xpix);
+get_uint_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix) {
+    return *(unsigned int *)PyArray_GETPTR2(image, ypix, xpix);
 }
 
 static inline_macro float
@@ -334,8 +334,9 @@ set_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix, double value) {
 }
 
 static inline_macro void
-set_int_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix, int value) {
-    *(int *)PyArray_GETPTR2(image, ypix, xpix) = value;
+set_uint_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix,
+               unsigned int value) {
+    *(unsigned int *)PyArray_GETPTR2(image, ypix, xpix) = value;
     return;
 }
 

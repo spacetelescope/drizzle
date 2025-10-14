@@ -299,7 +299,7 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     if (odq == Py_None || odq == NULL) {
         dq = NULL;
     } else {
-        dq = (PyArrayObject *)PyArray_ContiguousFromAny(odq, NPY_INT32, 2, 2);
+        dq = (PyArrayObject *)PyArray_ContiguousFromAny(odq, NPY_UINT32, 2, 2);
         if (!dq) {
             driz_error_set_message(&error, "Invalid input DQ array");
             goto _exit;
@@ -309,13 +309,14 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     if (ooutdq == Py_None || ooutdq == NULL) {
         if (dq != NULL) {
             driz_error_set_message(
-                &error, "If 'dq' is provided, 'outdq' must also be provided.");
+                &error,
+                "When 'dq' is provided, 'outdq' must also be provided.");
             goto _exit;
         }
         outdq = NULL;
     } else {
-        outdq =
-            (PyArrayObject *)PyArray_ContiguousFromAny(ooutdq, NPY_INT32, 2, 2);
+        outdq = (PyArrayObject *)PyArray_ContiguousFromAny(ooutdq, NPY_UINT32,
+                                                           2, 2);
         if (!outdq) {
             driz_error_set_message(&error, "Invalid output DQ array");
             goto _exit;

@@ -45,7 +45,8 @@ class Drizzle:
         the class initializer can allocate these arrays based on other input
         parameters such as ``output_shape``. If caller-supplied output arrays
         have the correct type (`numpy.float32` for ``out_img``, ``out_img2``
-        and ``out_wht`` and `numpy.int32` for the ``out_ctx`` array) and if
+        and ``out_wht``, `numpy.int32` for the ``out_ctx`` array and
+        `numpy.uint32` for the ``out_dq`` array) and if
         ``out_ctx`` is large enough not to need to be resized, these arrays
         will be used as is and may be modified by the :py:meth:`add_image`
         method. If not, a copy of these arrays will be made when converting
@@ -232,17 +233,23 @@ class Drizzle:
             Subsequent calls hold intermediate results. This parameter is
             ignored when ``disable_ctx`` is `True`.
 
-        out_dq : 2D array of int32, None, optional
+        out_dq : 2D array of uint32, None, optional
             A 2D `~numpy.ndarray` containing DQ bitfields of output (resampled)
-            pixels. It is computed by combining (using bitwise-OR) DQ bitfields
-            of input pixels that contributed to the output pixel.
+            pixels. It will be computed by combining (using bitwise-OR)
+            DQ bitfields of input pixels that contributed to the output pixel.
             If provided, it must be a 2D array of the same shape as
-            ``out_img``. If `None`, output DQ array will be created during
+            ``out_img`` and `numpy.uint32` type (unsigned 32-bit integer type).
+            If `None`, output DQ array will be created during
             the first call to `add_image` and will be initialized to zero.
+
+            .. warning::
+                64-bit integer type is not supported and will raise
+                an exception. Contact the authors to add support for 64-bit DQ
+                if you need it.
 
         exptime : float, optional
             Exposure time of previously resampled images when provided via
-            parameters ``out_img``, ``out_wht``, ``out_ctx``.
+            parameters ``out_img`` and ``out_wht``.
 
         begin_ctx_id : int, optional
             The context ID number (0-based) of the first image that will be
@@ -338,7 +345,13 @@ class Drizzle:
             shapes.add(out_ctx.shape[1:])
 
         if out_dq is not None:
-            out_dq = np.asarray(out_dq, dtype=np.int32)
+            t = np.min_scalar_type(out_dq)
+            if t.kind not in ['i', 'u'] or t.itemsize > 4:
+                raise TypeError(
+                    "'out_dq' must be of an unsigned integer type with "
+                    "itemsize of 4 bytes or less."
+                )
+            out_dq = np.asarray(out_dq, dtype=np.uint32)
             shapes.add(out_dq.shape)
             self._out_dq = out_dq
 
@@ -631,12 +644,18 @@ class Drizzle:
                 to rate units before resampling.
 
         dq : 2D array, None, optional
-            A 2D numpy array containing DQ bitfields of input pixels. It must
+            A 2D numpy array of type `numpy.uint32` (unsigned 32-bit integer
+            type) containing DQ bitfields of input pixels. It must
             have the same shape as ``data``. If provided, output DQ array
             (accessible via ``out_dq`` property) will be computed by combining
             (using bitwise-OR) DQ bitfields of input pixels that contributed to
             the output pixel. If `None`, DQ array of the output image will
             not be computed.
+
+            .. warning::
+                64-bit integer type is not supported and will raise
+                an exception. Contact the authors to add support for 64-bit DQ
+                if you need it.
 
         scale : float, optional
             The pixel scale of the input image. Conceptually, this is the
@@ -818,13 +837,19 @@ class Drizzle:
             ctx_plane = self._out_ctx[plane_no]
 
         if dq is not None:
-            dq = np.asarray(dq, dtype=np.int32)
+            t = np.min_scalar_type(dq)
+            if t.kind not in ['i', 'u'] or t.itemsize > 4:
+                raise TypeError(
+                    "'dq' must be of an unsigned integer type with itemsize "
+                    "of 4 bytes or less."
+                )
+            dq = np.asarray(dq, dtype=np.uint32)
             if dq.shape != data.shape:
                 raise ValueError(
                     "'dq' shape is not consistent with 'data' shape."
                 )
             if self._out_dq is None:
-                self._out_dq = np.zeros(self._out_shape, dtype=np.int32)
+                self._out_dq = np.zeros(self._out_shape, dtype=np.uint32)
 
         # TODO: probably tdriz should be modified to not return version.
         #       we should not have git, Python, C, ... versions

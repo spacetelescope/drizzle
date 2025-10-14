@@ -86,7 +86,7 @@ update_data(struct driz_param_t *p, const integer_t ii, const integer_t jj,
  */
 inline_macro static int
 update_data_var(struct driz_param_t *p, const integer_t ii, const integer_t jj,
-                const float d, const float dow, float *d2, int dq) {
+                const float d, const float dow, float *d2, unsigned int dq) {
     double vc_plus_dow, vc_plus_dow2;
     double v, vc2, dow2;
     float vc;
@@ -118,7 +118,7 @@ update_data_var(struct driz_param_t *p, const integer_t ii, const integer_t jj,
             }
         }
         if (p->dq) {
-            set_int_pixel(p->output_dq, ii, jj, dq);
+            set_uint_pixel(p->output_dq, ii, jj, dq);
         }
     } else {
         v = (get_pixel(p->output_data, ii, jj) * vc + dow * d) / vc_plus_dow;
@@ -134,8 +134,8 @@ update_data_var(struct driz_param_t *p, const integer_t ii, const integer_t jj,
             }
         }
         if (p->dq) {
-            output_dq_value = get_int_pixel(p->output_dq, ii, jj);
-            set_int_pixel(p->output_dq, ii, jj, output_dq_value | dq);
+            output_dq_value = get_uint_pixel(p->output_dq, ii, jj);
+            set_uint_pixel(p->output_dq, ii, jj, output_dq_value | dq);
         }
     }
     set_pixel(p->output_counts, ii, jj, vc_plus_dow);
@@ -482,8 +482,8 @@ do_kernel_point_var(struct driz_param_t *p) {
     integer_t osize[2];
     float scale2, scale4, d, dow, *d2 = NULL;
     integer_t bv;
-    int xmin, xmax, ymin, ymax, n, dqval = 0;
-    int ndata2;
+    int xmin, xmax, ymin, ymax, n, ndata2;
+    unsigned int dqval = 0;
 
     ndata2 = p->ndata2;
 
@@ -582,7 +582,7 @@ do_kernel_point_var(struct driz_param_t *p) {
                     }
 
                     if (p->dq) {
-                        dqval = (int)get_int_pixel(p->dq, i, j);
+                        dqval = (int)get_uint_pixel(p->dq, i, j);
                     }
 
                     /* If we are creating or modifying the context image,
@@ -620,8 +620,8 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
     double gaussian_efac, gaussian_es;
     double pfo, ac, scale2, scale4, w, ddx, ddy, r2, dover;
     const double nsig = 2.5;
-    int xmin, xmax, ymin, ymax, n, dqval = 0;
-    int ndata2;
+    int xmin, xmax, ymin, ymax, n, ndata2;
+    unsigned int dqval = 0;
 
     ndata2 = p->ndata2;
 
@@ -752,7 +752,7 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
                         }
 
                         if (p->dq) {
-                            dqval = (int)get_int_pixel(p->dq, i, j);
+                            dqval = get_uint_pixel(p->dq, i, j);
                         }
 
                         if (update_data_var(p, ii, jj, d, dow, d2, dqval)) {
@@ -793,8 +793,8 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
     size_t ix, iy;
     double sdp;
     double *lut = NULL;
-    int xmin, xmax, ymin, ymax, n, dqval = 0;
-    int ndata2;
+    int xmin, xmax, ymin, ymax, n, ndata2;
+    unsigned int dqval = 0;
 
     if (fabs(p->pixel_fraction - 1.0) > 1.0e-5) {
         py_warning(
@@ -936,7 +936,7 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
                         }
 
                         if (p->dq) {
-                            dqval = (int)get_int_pixel(p->dq, i, j);
+                            dqval = get_uint_pixel(p->dq, i, j);
                         }
 
                         if (update_data_var(p, ii, jj, d, dow, d2, dqval)) {
@@ -977,8 +977,8 @@ do_kernel_turbo_var(struct driz_param_t *p) {
     float d, dow, *d2 = NULL;
     double pfo, scale2, scale4, ac;
     double xxi, xxa, yyi, yya, w, dover;
-    int xmin, xmax, ymin, ymax, n, dqval = 0;
-    int ndata2;
+    int xmin, xmax, ymin, ymax, n, ndata2;
+    unsigned int dqval = 0;
 
     ndata2 = p->ndata2;
 
@@ -1105,7 +1105,7 @@ do_kernel_turbo_var(struct driz_param_t *p) {
                             }
 
                             if (p->dq) {
-                                dqval = get_int_pixel(p->dq, i, j);
+                                dqval = get_uint_pixel(p->dq, i, j);
                             }
 
                             if (update_data_var(p, ii, jj, d, dow, d2, dqval)) {
@@ -1144,7 +1144,8 @@ do_kernel_square_var(struct driz_param_t *p) {
     double dh, jaco, dover, w;
 
     double xin[4], yin[4], xout[4], yout[4];
-    int ndata2, dqval = 0;
+    int ndata2;
+    unsigned int dqval = 0;
 
     ndata2 = p->ndata2;
 
@@ -1309,7 +1310,7 @@ do_kernel_square_var(struct driz_param_t *p) {
                         }
 
                         if (p->dq) {
-                            dqval = (int)get_int_pixel(p->dq, i, j);
+                            dqval = get_uint_pixel(p->dq, i, j);
                         }
 
                         if (update_data_var(p, ii, jj, d, dow, d2, dqval)) {
