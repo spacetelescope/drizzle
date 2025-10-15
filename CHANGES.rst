@@ -21,15 +21,13 @@ Release Notes
   3rd-order kernel. Improved discrete approximation to the Lanczos
   kernel. [#198]
 
-<<<<<<< HEAD
 - Added support for propagating DQ bitfields from input images to the output
   image using bitwise-OR. [#206]
-=======
+
 - Argument ``scale`` of the ``add_image()`` method has been deprecated
   and split into two arguments: ``iscale`` that is multiplied with each input
   image before resampling and ``kscale`` used to compute appropriate
   resampling kernel size. [#203]
->>>>>>> 46a7b79 (Replace 'scale' with two independent parameters: 'iscale' and 'kscale')
 
 
 2.1.1 (2025-08-14)
