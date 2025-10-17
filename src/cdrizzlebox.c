@@ -470,32 +470,32 @@ over(const integer_t i, const integer_t j, const double xmin, const double xmax,
 }
 
 /**
- * @brief Computes the pixel scale ratio (kscale) at the centroid of a bounding
- * polygon.
+ * @brief Computes the pixel scale ratio (pscale_ratio) at the centroid of a
+ * bounding polygon.
  *
- * This function estimates the pixel scale ratio (kscale) for a given region
- * defined by a bounding polygon within a pixmap. The scale is computed at the
- * centroid of the polygon by mapping the centroid to pixel coordinates, then
- * calculating the local transformation matrix determinant using neighboring
- * pixels.
+ * This function estimates the pixel scale ratio (pscale_ratio) for a given
+ * region defined by a bounding polygon within a pixmap. The scale is computed
+ * at the centroid of the polygon by mapping the centroid to pixel coordinates,
+ * then calculating the local transformation matrix determinant using
+ * neighboring pixels.
  *
- * TODO: in the future, we could estimate kscale for each pixel - a varying
- *       kscale across the input image that is more accurate for distorted
- *       input images although this will have significant cost penalty.
+ * TODO: in the future, we could estimate pscale_ratio for each pixel - a
+ * varying pscale_ratio across the input image that is more accurate for
+ * distorted input images although this will have significant cost penalty.
  *
  * @param p Pointer to the driz_param_t structure containing pixmap and error
  * information.
  * @param bounding_polygon Pointer to the polygon structure representing the
  * region of interest.
- * @param kscale Pointer to a float where the computed pixel scale ratio will be
- * stored.
+ * @param pscale_ratio Pointer to a float where the computed pixel scale ratio
+ * will be stored.
  *
  * @return 0 on success, 1 on failure. On failure, an error message is set in
  * p->error.
  */
 int
-compute_kscale(struct driz_param_t *p, struct polygon *bounding_polygon,
-               float *kscale) {
+compute_pscale_ratio(struct driz_param_t *p, struct polygon *bounding_polygon,
+                     float *pscale_ratio) {
     integer_t i, j, nx, ny, mapsize[2];
     double cx, cy;
     double ox, oy, ox1, oy1, ox2, oy2;
@@ -528,12 +528,12 @@ compute_kscale(struct driz_param_t *p, struct polygon *bounding_polygon,
     cd12 = oy1 - oy;
     cd21 = ox2 - ox;
     cd22 = oy2 - oy;
-    *kscale = (float)sqrt(fabs(cd11 * cd22 - cd12 * cd21));
+    *pscale_ratio = (float)sqrt(fabs(cd11 * cd22 - cd12 * cd21));
 
     return 0;
 
 _error:
-    driz_error_set_message(p->error, "Unable to estimate kscale");
+    driz_error_set_message(p->error, "Unable to estimate pscale_ratio");
     return 1;
 }
 
@@ -699,18 +699,18 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
         return 1;
     }
 
-    /* if kscale is not defined, estimate it near the center of the
+    /* if pscale_ratio is not defined, estimate it near the center of the
        intersection polygon.
      */
-    if (!isfinite(p->kscale) &&
-        compute_kscale(p, &s.bounding_polygon, &p->kscale)) {
+    if (!isfinite(p->pscale_ratio) &&
+        compute_pscale_ratio(p, &s.bounding_polygon, &p->pscale_ratio)) {
         return 1;
     }
 
-    kscale2 = (double)p->kscale * (double)p->kscale;
+    kscale2 = (double)p->pscale_ratio * (double)p->pscale_ratio;
 
-    pfo = nsig * p->pixel_fraction / 2.3548 / (double)p->kscale;
-    pfo = CLAMP_ABOVE(pfo, 1.2 / (double)p->kscale);
+    pfo = nsig * p->pixel_fraction / 2.3548 / (double)p->pscale_ratio;
+    pfo = CLAMP_ABOVE(pfo, 1.2 / (double)p->pscale_ratio);
 
     ac = 1.0 / (p->pixel_fraction * p->pixel_fraction);
     bv = compute_bit_value(p->uuid);
@@ -898,16 +898,16 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
         return 1;
     }
 
-    /* if kscale is not defined, estimate it near the center of the
+    /* if pscale_ratio is not defined, estimate it near the center of the
        intersection polygon.
      */
-    if (!isfinite(p->kscale) &&
-        compute_kscale(p, &s.bounding_polygon, &p->kscale)) {
+    if (!isfinite(p->pscale_ratio) &&
+        compute_pscale_ratio(p, &s.bounding_polygon, &p->pscale_ratio)) {
         return 1;
     }
 
-    pfo = (double)kernel_order / (double)p->kscale;
-    sdp = p->kscale / lut_delta;
+    pfo = (double)kernel_order / (double)p->pscale_ratio;
+    sdp = p->pscale_ratio / lut_delta;
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -1078,16 +1078,16 @@ do_kernel_turbo_var(struct driz_param_t *p) {
         return 1;
     }
 
-    /* if kscale is not defined, estimate it near the center of the
+    /* if pscale_ratio is not defined, estimate it near the center of the
        intersection polygon.
      */
-    if (!isfinite(p->kscale) &&
-        compute_kscale(p, &s.bounding_polygon, &p->kscale)) {
+    if (!isfinite(p->pscale_ratio) &&
+        compute_pscale_ratio(p, &s.bounding_polygon, &p->pscale_ratio)) {
         return 1;
     }
 
-    pfo = p->pixel_fraction / p->kscale / 2.0;
-    dover_scale = ac * (double)p->kscale * (double)p->kscale;
+    pfo = p->pixel_fraction / p->pscale_ratio / 2.0;
+    dover_scale = ac * (double)p->pscale_ratio * (double)p->pscale_ratio;
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -1548,11 +1548,11 @@ do_kernel_gaussian(struct driz_param_t *p) {
         return 1;
     }
 
-    /* if kscale is not defined, estimate it near the center of the
+    /* if pscale_ratio is not defined, estimate it near the center of the
        intersection polygon.
      */
-    if (!isfinite(p->kscale) &&
-        compute_kscale(p, &s.bounding_polygon, &p->kscale)) {
+    if (!isfinite(p->pscale_ratio) &&
+        compute_pscale_ratio(p, &s.bounding_polygon, &p->pscale_ratio)) {
         return 1;
     }
 
@@ -1560,11 +1560,11 @@ do_kernel_gaussian(struct driz_param_t *p) {
        divided by the scale so that there are never holes in the
        output */
 
-    pfo = nsig * p->pixel_fraction / 2.3548 / (double)p->kscale;
-    pfo = CLAMP_ABOVE(pfo, 1.2 / (double)p->kscale);
+    pfo = nsig * p->pixel_fraction / 2.3548 / (double)p->pscale_ratio;
+    pfo = CLAMP_ABOVE(pfo, 1.2 / (double)p->pscale_ratio);
 
     ac = 1.0 / (p->pixel_fraction * p->pixel_fraction);
-    kscale2 = (double)p->kscale * (double)p->kscale;
+    kscale2 = (double)p->pscale_ratio * (double)p->pscale_ratio;
     bv = compute_bit_value(p->uuid);
 
     gaussian_efac = (2.3548 * 2.3548) * kscale2 * ac / 2.0;
@@ -1708,16 +1708,16 @@ do_kernel_lanczos(struct driz_param_t *p) {
         return 1;
     }
 
-    /* if kscale is not defined, estimate it near the center of the
+    /* if pscale_ratio is not defined, estimate it near the center of the
        intersection polygon.
      */
-    if (!isfinite(p->kscale) &&
-        compute_kscale(p, &s.bounding_polygon, &p->kscale)) {
+    if (!isfinite(p->pscale_ratio) &&
+        compute_pscale_ratio(p, &s.bounding_polygon, &p->pscale_ratio)) {
         return 1;
     }
 
-    pfo = (double)kernel_order / (double)p->kscale;
-    sdp = (double)p->kscale / lut_delta;
+    pfo = (double)kernel_order / (double)p->pscale_ratio;
+    sdp = (double)p->pscale_ratio / lut_delta;
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -1841,16 +1841,16 @@ do_kernel_turbo(struct driz_param_t *p) {
         return 1;
     }
 
-    /* if kscale is not defined, estimate it near the center of the
+    /* if pscale_ratio is not defined, estimate it near the center of the
        intersection polygon.
      */
-    if (!isfinite(p->kscale) &&
-        compute_kscale(p, &s.bounding_polygon, &p->kscale)) {
+    if (!isfinite(p->pscale_ratio) &&
+        compute_pscale_ratio(p, &s.bounding_polygon, &p->pscale_ratio)) {
         return 1;
     }
 
-    pfo = p->pixel_fraction / p->kscale / 2.0;
-    dover_scale = ac * (double)p->kscale * (double)p->kscale;
+    pfo = p->pixel_fraction / p->pscale_ratio / 2.0;
+    dover_scale = ac * (double)p->pscale_ratio * (double)p->pscale_ratio;
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);

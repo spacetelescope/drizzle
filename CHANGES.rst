@@ -5,7 +5,7 @@ Release Notes
 =============
 
 
-2.2.0 (unreleased)
+3.0.0 (unreleased)
 ==================
 
 - Added support for resampling and co-adding images using squared weights.
@@ -16,18 +16,25 @@ Release Notes
   decreased accuracy of resampled image. Improved discrete approximation to
   the Lanczos kernel. [#198]
 
-- Fixed a bug in resampling using "blot" with Lanczos interpolation due to which
-  kernel window for 5th-order kernel was incorrectly set to the same as for
-  3rd-order kernel. Improved discrete approximation to the Lanczos
-  kernel. [#198]
+- Fixed a bug in resampling using "blot" with Lanczos interpolation due to
+  which kernel window for 5th-order kernel was incorrectly set to
+  the same as for 3rd-order kernel. Improved discrete approximation
+  to the Lanczos kernel. [#198]
+
+- Argument ``scale`` of the ``Resample.add_image()`` method has been deprecated
+  and split into two arguments: ``iscale`` that is multiplied with each input
+  image before resampling and ``pixel_scale_ratio`` used to compute appropriate
+  resampling kernel size. [#203]
+
+- In ``tblot``, the arguments ``pix_ratio``, ``exptime``, and
+  ``output_pixel_shape`` have been deprecated and will be removed in a future
+  release. Use ``iscale`` instead of the deprecated ``pix_ratio`` and
+  ``exptime``: ``iscale = exptime / pix_scale**2``. The argument
+  ``output_pixel_shape`` is not needed because the output image shape
+  can be inferred from ``pixmap``. [#203]
 
 - Added support for propagating DQ bitfields from input images to the output
   image using bitwise-OR. [#206]
-
-- Argument ``scale`` of the ``add_image()`` method has been deprecated
-  and split into two arguments: ``iscale`` that is multiplied with each input
-  image before resampling and ``kscale`` used to compute appropriate
-  resampling kernel size. [#203]
 
 
 2.1.1 (2025-08-14)

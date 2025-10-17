@@ -137,8 +137,8 @@ struct driz_param_t {
 
     /* Scaling */
     float iscale;
-    float kscale; /* Scaling for kernel size. 0 or negative means it will be
-                     estimated from pixmap for t*/
+    float pscale_ratio; /* Scaling used for kernel size in tdriz. 0 or negative
+                     means it will be estimated from pixmap for t*/
 
     /* Image subset */
     integer_t xmin;

@@ -260,7 +260,7 @@ setup_parameters(void) {
     p->ymin = 0;
     p->ymax = image_size[1] - 1;
     p->iscale = 1.0f;
-    p->kscale = 1.0f;
+    p->pscale_ratio = 1.0f;
     p->pixel_fraction = 1.0;
     p->exposure_time = 1.0;
     p->ef = p->exposure_time;
@@ -406,11 +406,11 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_compute_kscale) {
+        FCT_TEST_BGN(utest_compute_pscale_ratio) {
             struct driz_param_t *p;
             struct polygon bp;
-            float kscale;
-            const float kscale_truth = sqrtf(1.2f * 1.7f);
+            float pscale_ratio;
+            const float pscale_ratio_truth = sqrtf(1.2f * 1.7f);
 
             p = setup_parameters();
             stretch_pixmap(p, 1.2, 1.7);
@@ -424,13 +424,13 @@ FCT_BGN_FN(utest_cdrizzle) {
             bp.v[2].x = 0.0;
             bp.v[2].y = (double)p->ymax;
 
-            compute_kscale(p, &bp, &kscale);
+            compute_pscale_ratio(p, &bp, &pscale_ratio);
 
             fct_xchk(
-                (int)(fabs(kscale - kscale_truth) < 5.0f * FLT_EPSILON),
+                (int)(fabs(pscale_ratio - pscale_ratio_truth) < 5.0f * FLT_EPSILON),
                 "chk_eq_flt: %f != %f",
-                kscale,
-                kscale_truth);
+                pscale_ratio,
+                pscale_ratio_truth);
 
             teardown_parameters(p);
         }

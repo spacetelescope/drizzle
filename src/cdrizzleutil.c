@@ -139,7 +139,7 @@ driz_param_dump(struct driz_param_t *p) {
     printf("  in_units:        %s\n", unit_enum2str(p->in_units));
     printf("  out_units:       %s\n", unit_enum2str(p->out_units));
     printf("  iscale:          %f\n", p->iscale);
-    printf("  kscale:          %f\n", p->kscale);
+    printf("  pscale_ratio:    %f\n", p->pscale_ratio);
 }
 
 void
@@ -167,7 +167,7 @@ driz_param_init(struct driz_param_t *p) {
     p->out_units = unit_counts;
 
     p->iscale = 1.0f;
-    p->kscale = NPY_NANF; /* Scaling for kernel size. NaN */
+    p->pscale_ratio = NPY_NANF; /* Scaling for kernel size. NaN */
 
     /* Input data */
     p->data = NULL;

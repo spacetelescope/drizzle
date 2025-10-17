@@ -870,7 +870,7 @@ doblot(struct driz_param_t *p) {
     int order;
     size_t nlut;
     integer_t isize[2], osize[2];
-    float xo, yo, v;
+    float xo, yo, v, s;
     integer_t i, j;
     interp_function *interpolate;
     struct sinc_param_t sinc;
@@ -880,6 +880,8 @@ doblot(struct driz_param_t *p) {
     driz_log_message("starting doblot");
     get_dimensions(p->data, isize);
     get_dimensions(p->output_data, osize);
+
+    s = p->ef * p->iscale;
 
     /* Select interpolation function */
     assert(p->interpolation >= 0 && p->interpolation < interp_LAST);
@@ -904,7 +906,7 @@ doblot(struct driz_param_t *p) {
 
         create_lanczos_lut(order, nlut, lut_delta, lanczos.lut);
 
-        lanczos.nbox = (integer_t)((float)order / p->kscale);
+        lanczos.nbox = (integer_t)order;
         lanczos.nlut = nlut;
         lanczos.space = lut_delta;
         lanczos.misval = p->misval;
@@ -953,20 +955,17 @@ doblot(struct driz_param_t *p) {
             /* Check it is on the input image */
             if (xo >= 0.0 && xo < (float)isize[0] && yo >= 0.0 &&
                 yo < (float)isize[1]) {
-                double value;
-
                 /* Check for look-up-table interpolation */
                 if (interpolate(state, p->data, xo, yo, &v, p->error)) {
                     goto doblot_exit_;
                 }
 
-                value = v * p->ef / p->iscale;
                 if (oob_pixel(p->output_data, i, j)) {
                     driz_error_format_message(
                         p->error, "OOB in output_data[%d,%d]", i, j);
                     return 1;
                 } else {
-                    set_pixel(p->output_data, i, j, value);
+                    set_pixel(p->output_data, i, j, v * s);
                 }
 
             } else {
