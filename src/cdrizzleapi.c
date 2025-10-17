@@ -23,27 +23,6 @@
 static PyObject *gl_Error;
 FILE *driz_log_handle = NULL;
 
-/** ---------------------------------------------------------------------------
- * Multiply each pixel in an image by a scale factor
- */
-
-static void
-scale_image(PyArrayObject *image, double scale_factor) {
-    long i, size;
-    float *imptr;
-
-    assert(image);
-    imptr = (float *)PyArray_DATA(image);
-
-    size = PyArray_DIMS(image)[0] * PyArray_DIMS(image)[1];
-
-    for (i = size; i > 0; --i) {
-        *imptr++ *= scale_factor;
-    }
-
-    return;
-}
-
 static int
 process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
                    const char *name, PyArrayObject ***arrays, int *nmax,
@@ -588,15 +567,16 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
 
     /* If the input image is not in CPS we need to divide by the exposure */
     if (inun != unit_cps) {
-        inv_exposure_time = 1.0f / expin;
-        scale_image(img, inv_exposure_time);
-        if (img2_list) {
-            for (i = 0; i < nsq_arr; ++i) {
-                if (img2_list[i] != NULL) {
-                    scale_image(img2_list[i], pow(inv_exposure_time, 2.0));
-                }
-            }
-        }
+        iscale /= expin;
+        // inv_exposure_time = 1.0f / expin;
+        // scale_image(img, inv_exposure_time);
+        // if (img2_list) {
+        //     for (i = 0; i < nsq_arr; ++i) {
+        //         if (img2_list[i] != NULL) {
+        //             scale_image(img2_list[i], pow(inv_exposure_time, 2.0));
+        //         }
+        //     }
+        // }
     }
 
     /* Setup reasonable defaults for drizzling */
