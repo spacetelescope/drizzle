@@ -31,7 +31,11 @@ Release Notes
   release. Use ``iscale`` instead of the deprecated ``pix_ratio`` and
   ``exptime``: ``iscale = exptime / pix_scale**2``. The argument
   ``output_pixel_shape`` is not needed because the output image shape
-  can be inferred from ``pixmap``. [#203]
+  can be inferred from ``pixmap``. Also, argument ``misval`` has been renamed
+  to ``fillval`` (to match the name from ``tdriz``, ``Drizzle.resample``).
+
+- Added parameter ``out_img`` to ``blot_image`` to allow caller to pass their
+  own output image array. [#203]
 
 - Added support for propagating DQ bitfields from input images to the output
   image using bitwise-OR. [#206]

@@ -214,7 +214,6 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     char *fillstr_end;
     bool_t do_fill, do_fill2;
     float fill_value, fill_value2;
-    float inv_exposure_time;
     struct driz_error_t error;
     struct driz_param_t p;
     integer_t size[2];
@@ -568,15 +567,6 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     /* If the input image is not in CPS we need to divide by the exposure */
     if (inun != unit_cps) {
         iscale /= expin;
-        // inv_exposure_time = 1.0f / expin;
-        // scale_image(img, inv_exposure_time);
-        // if (img2_list) {
-        //     for (i = 0; i < nsq_arr; ++i) {
-        //         if (img2_list[i] != NULL) {
-        //             scale_image(img2_list[i], pow(inv_exposure_time, 2.0));
-        //         }
-        //     }
-        // }
     }
 
     /* Setup reasonable defaults for drizzling */
@@ -687,13 +677,14 @@ static PyObject *
 tblot(PyObject *self, PyObject *args, PyObject *keywords) {
     (void)self;
 
-    const char *kwlist[] = {"source", "pixmap",  "output", "xmin",   "xmax",
-                            "ymin",   "ymax",    "iscale", "kscale", "scale",
-                            "interp", "exptime", "misval", "sinscl", NULL};
+    const char *kwlist[] = {"source",  "pixmap", "output", "xmin",
+                            "xmax",    "ymin",   "ymax",   "iscale",
+                            "kscale",  "scale",  "interp", "exptime",
+                            "fillval", "misval", "sinscl", NULL};
 
     /* Arguments in the order they appear */
     PyObject *oimg, *pixmap, *oout, *oscale = NULL, *okscale = NULL;
-    PyObject *oef = NULL;
+    PyObject *oef = NULL, *omisval = NULL, *ofillval = NULL;
     long xmin = 0;
     long xmax = 0;
     long ymin = 0;
@@ -702,7 +693,7 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
     float iscale = 1.0f;
     char *interp_str = "poly5";
     float ef = 1.0f;
-    float misval = 0.0f;
+    float fillval;
     float sinscl = 1.0f;
 
     PyArrayObject *img = NULL, *out = NULL, *map = NULL;
@@ -718,11 +709,11 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
     driz_error_init(&error);
 
     if (!PyArg_ParseTupleAndKeywords(
-            args, keywords, "OOO|llllfOOsOff:tblot", (char **)kwlist, &oimg,
-            &pixmap, &oout,                                /* OOO */
+            args, keywords, "OOO|llllfOOsOOOf:tblot", (char **)kwlist, /* */
+            &oimg, &pixmap, &oout,                                     /* OOO */
             &xmin, &xmax, &ymin, &ymax,                    /* llll */
-            &iscale, &okscale, &oscale, &interp_str, &oef, /* fOOsf */
-            &misval, &sinscl)                              /* ff */
+            &iscale, &okscale, &oscale, &interp_str, &oef, /* fOOsO */
+            &ofillval, &omisval, &sinscl)                  /* OOf */
     ) {
         return NULL;
     }
@@ -759,6 +750,38 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
                    "Argument 'kscale' has been deprecated and it will be "
                    "removed in a future version. It is no longer used by "
                    "the blotting algorithm and can be safely ignored.");
+    }
+
+    if (omisval != NULL && !Py_IsNone(omisval)) {
+        py_warning(PyExc_DeprecationWarning,
+                   "Argument 'misval' has been deprecated and has been "
+                   "replaces by 'fillval' to achieve the same effect.");
+
+        fillval = (float)PyFloat_AsDouble(omisval);
+
+        if (PyErr_Occurred()) {
+            driz_error_set_message(&error,
+                                   "Argument 'misval' is not a number.");
+            goto _exit;
+        }
+        if (ofillval != NULL && !Py_IsNone(ofillval)) {
+            driz_error_set_message(
+                &error,
+                "Argument 'fillval' should not be set when 'misval' is set.");
+            goto _exit;
+        }
+    }
+
+    if (ofillval != NULL && !Py_IsNone(ofillval)) {
+        fillval = (float)PyFloat_AsDouble(ofillval);
+
+        if (PyErr_Occurred()) {
+            driz_error_set_message(&error,
+                                   "Argument 'fillval' is not a number.");
+            goto _exit;
+        }
+    } else {
+        fillval = 0.0f;
     }
 
     if (oef != NULL && !Py_IsNone(oef)) {
@@ -838,7 +861,7 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
     p.in_units = unit_cps;
     p.interpolation = interp;
     p.ef = ef;
-    p.misval = misval;
+    p.fill_value = fillval;
     p.sinscl = sinscl;
     p.pixmap = map;
     p.error = &error;
@@ -1076,7 +1099,7 @@ static struct PyMethodDef cdrizzle_methods[] = {
     {"tblot", (PyCFunction)(void (*)(void))(PyCFunctionWithKeywords)tblot,
      METH_VARARGS | METH_KEYWORDS,
      "tblot(image, pixmap, output, xmin, xmax, ymin, ymax, iscale, "
-     "interp, exptime, misval, sinscl)"},
+     "interp, exptime, fillval, misval, sinscl)"},
     {"test_cdrizzle", (PyCFunction)test_cdrizzle, METH_VARARGS,
      "test_cdrizzle(data, weights, pixmap, output_data, output_counts)"},
     {"invert_pixmap", (PyCFunction)invert_pixmap_wrap, METH_VARARGS,

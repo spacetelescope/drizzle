@@ -982,7 +982,8 @@ class Drizzle:
 
 def blot_image(data, pixmap, pix_ratio=_DEPRECATED_ARG,
                exptime=_DEPRECATED_ARG, output_pixel_shape=_DEPRECATED_ARG,
-               iscale=1.0, interp='poly5', sinscl=1.0):
+               out_img=None, fillval=0.0, iscale=1.0, interp='poly5',
+               sinscl=1.0):
     """
     Resample the ``data`` input image onto an output grid defined by
     the ``pixmap`` array. ``blot_image`` performs resampling using one of
@@ -1042,6 +1043,14 @@ def blot_image(data, pixmap, pix_ratio=_DEPRECATED_ARG,
             Deprecated since version 3.0 and will be removed in a future
             release. It is not needed since the output image shape can be
             inferred from ``pixmap``.
+
+    output_image : 2D array of float32, None, optional
+        A 2D numpy array to hold the output image produced by resampling
+        the input image (``data``). If `None`, a new array will be allocated.
+
+    fillval: float, optional
+        The value of output pixels that did not have contributions from
+        input image' pixels.
 
     iscale : float, optional
         A multiplicative factor used to rescale output image data by
@@ -1105,10 +1114,17 @@ def blot_image(data, pixmap, pix_ratio=_DEPRECATED_ARG,
         )
         output_shape = output_pixel_shape[::-1]
 
-    out_img = np.zeros(output_shape, dtype=np.float32)
+    if out_img is None:
+        out_img = np.empty(output_shape, dtype=np.float32)
+    else:
+        out_img = np.asarray(out_img, dtype=np.float32)
+        if out_img.shape != output_shape:
+            raise ValueError(
+                "'output_image' shape is not consistent with 'pixmap' shape."
+            )
 
     cdrizzle.tblot(data, pixmap, out_img, iscale=iscale, interp=interp,
-                   misval=0.0, sinscl=sinscl)
+                   fillval=fillval, sinscl=sinscl)
 
     return out_img
 

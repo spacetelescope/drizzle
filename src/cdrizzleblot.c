@@ -909,7 +909,6 @@ doblot(struct driz_param_t *p) {
         lanczos.nbox = (integer_t)order;
         lanczos.nlut = nlut;
         lanczos.space = lut_delta;
-        lanczos.misval = p->misval;
 
         state = &lanczos;
 
@@ -976,7 +975,7 @@ doblot(struct driz_param_t *p) {
                         p->error, "OOB in output_data[%d,%d]", i, j);
                     return 1;
                 } else {
-                    set_pixel(p->output_data, i, j, p->misval);
+                    set_pixel(p->output_data, i, j, p->fill_value);
                     p->nmiss++;
                 }
             }
