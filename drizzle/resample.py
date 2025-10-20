@@ -723,8 +723,9 @@ class Drizzle:
 
         iscale : float, optional
             It is a multiplicative factor used to rescale input image data
-            by ``iscale``. It may make sense to rescale input image by
-            squared pixel scale ratio (the linear dimension of a side of an
+            by ``iscale`` value. ``data2`` images will be rescaled by
+            ``iscale**2``. It may make sense to rescale input image (``data``)
+            by squared pixel scale ratio (the linear dimension of a side of an
             output pixel as seen in the input image's coordinate frame)
             depending on the units of the input image, i.e., counts vs
             brightness. For more details see section
