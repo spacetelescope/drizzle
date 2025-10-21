@@ -25,11 +25,13 @@ jobs:
         - linux: py310-xdist
         - linux: py311-xdist
         - linux: py312-xdist
+        - linux: py313-xdist
         # `tox` does not currently respect `requires-python` versions when creating testing environments;
         # if this breaks, add an upper pin to `requires-python` and revert this py3 to the latest working version
         - linux: py3-cov-xdist
           coverage: codecov
         - macos: py3-xdist
+          python-version: '>=3.13.5 <3.14'
         - windows: py3-xdist
           # exclude Python 1.13.4, see https://github.com/python/cpython/issues/135151
           python-version: '>=3.13.5 <3.14'
