@@ -252,12 +252,16 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
         }
         iscale = scale * scale;
         pscale_ratio = scale;
-        py_warning(PyExc_DeprecationWarning,
-                   "Argument 'scale' has been deprecated since version 3.0 "
-                   "and it will be removed in a future release. "
-                   "Use 'iscale' and 'pscale_ratio' instead and set "
-                   "iscale=pscale_ratio**2 to achieve the same effect as with "
-                   "'scale'.");
+        if (py_warning(
+                PyExc_DeprecationWarning,
+                "Argument 'scale' has been deprecated since version 3.0 "
+                "and it will be removed in a future release. "
+                "Use 'iscale' and 'pscale_ratio' instead and set "
+                "iscale=pscale_ratio**2 to achieve the same effect as with "
+                "'scale'.") != 0) {
+            goto _exit;
+        }
+
     } else {
         if (iscale <= 0.0f || !isfinite(iscale)) {
             driz_error_set_message(
@@ -683,7 +687,8 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
                             "fillval", "misval", "sinscl", NULL};
 
     /* Arguments in the order they appear */
-    PyObject *oimg, *pixmap, *oout, *oscale = NULL, *okscale = NULL;
+    PyObject *oimg, *pixmap, *oout;
+    PyObject *oscale = NULL, *okscale = NULL, *oiscale = NULL;
     PyObject *oef = NULL, *omisval = NULL, *ofillval = NULL;
     long xmin = 0;
     long xmax = 0;
@@ -709,11 +714,11 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
     driz_error_init(&error);
 
     if (!PyArg_ParseTupleAndKeywords(
-            args, keywords, "OOO|llllfOOsOOOf:tblot", (char **)kwlist, /* */
+            args, keywords, "OOO|llllOOOsOOOf:tblot", (char **)kwlist, /* */
             &oimg, &pixmap, &oout,                                     /* OOO */
-            &xmin, &xmax, &ymin, &ymax,                    /* llll */
-            &iscale, &okscale, &oscale, &interp_str, &oef, /* fOOsO */
-            &ofillval, &omisval, &sinscl)                  /* OOf */
+            &xmin, &xmax, &ymin, &ymax,                     /* llll */
+            &oiscale, &okscale, &oscale, &interp_str, &oef, /* fOOsO */
+            &ofillval, &omisval, &sinscl)                   /* OOf */
     ) {
         return NULL;
     }
@@ -733,11 +738,24 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
         }
         iscale = 1.0 / (scale * scale);
 
-        py_warning(PyExc_DeprecationWarning,
-                   "Argument 'scale' is deprecated, use 'iscale' "
-                   "instead and set it to 1.0 / (scale*scale).");
+        if (py_warning(PyExc_DeprecationWarning,
+                       "Argument 'scale' is deprecated, use 'iscale' "
+                       "instead and set it to 1.0 / (scale*scale).") != 0) {
+            goto _exit;
+        }
 
     } else {
+        if (oiscale == NULL || Py_IsNone(oiscale)) {
+            iscale = 1.0f;
+        } else {
+            iscale = (float)PyFloat_AsDouble(oiscale);
+
+            if (PyErr_Occurred()) {
+                driz_error_set_message(&error,
+                                       "Argument 'iscale' is not a number.");
+                goto _exit;
+            }
+        }
         if (iscale <= 0.0f || !isfinite(iscale)) {
             driz_error_set_message(
                 &error, "Argument 'iscale' must be positive and finite.");
@@ -746,49 +764,52 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
     }
 
     if (okscale != NULL && !Py_IsNone(okscale)) {
-        py_warning(PyExc_DeprecationWarning,
-                   "Argument 'kscale' has been deprecated and it will be "
-                   "removed in a future version. It is no longer used by "
-                   "the blotting algorithm and can be safely ignored.");
+        if (py_warning(PyExc_DeprecationWarning,
+                       "Argument 'kscale' has been deprecated and it will be "
+                       "removed in a future version. It is no longer used by "
+                       "the blotting algorithm and can be safely ignored.") !=
+            0) {
+            goto _exit;
+        }
     }
 
     if (omisval != NULL && !Py_IsNone(omisval)) {
-        py_warning(PyExc_DeprecationWarning,
-                   "Argument 'misval' has been deprecated and has been "
-                   "replaces by 'fillval' to achieve the same effect.");
+        if (py_warning(PyExc_DeprecationWarning,
+                       "Argument 'misval' has been deprecated and has been "
+                       "replaced by 'fillval' to achieve the same effect.") !=
+            0) {
+            goto _exit;
+        }
 
         fillval = (float)PyFloat_AsDouble(omisval);
 
-        if (PyErr_Occurred()) {
-            driz_error_set_message(&error,
-                                   "Argument 'misval' is not a number.");
-            goto _exit;
-        }
         if (ofillval != NULL && !Py_IsNone(ofillval)) {
             driz_error_set_message(
                 &error,
                 "Argument 'fillval' should not be set when 'misval' is set.");
             goto _exit;
         }
-    }
-
-    if (ofillval != NULL && !Py_IsNone(ofillval)) {
-        fillval = (float)PyFloat_AsDouble(ofillval);
-
-        if (PyErr_Occurred()) {
-            driz_error_set_message(&error,
-                                   "Argument 'fillval' is not a number.");
-            goto _exit;
-        }
     } else {
-        fillval = 0.0f;
+        if (ofillval != NULL && !Py_IsNone(ofillval)) {
+            fillval = (float)PyFloat_AsDouble(ofillval);
+
+            if (PyErr_Occurred()) {
+                driz_error_set_message(&error,
+                                       "Argument 'fillval' is not a number.");
+                goto _exit;
+            }
+        } else {
+            fillval = 0.0f;
+        }
     }
 
     if (oef != NULL && !Py_IsNone(oef)) {
-        py_warning(PyExc_DeprecationWarning,
-                   "Argument 'exptime' has been deprecated and it will be "
-                   "removed in a future version. Use 'iscale' to achieve "
-                   "the same.");
+        if (py_warning(PyExc_DeprecationWarning,
+                       "Argument 'exptime' has been deprecated and it will be "
+                       "removed in a future version. Use 'iscale' to achieve "
+                       "the same.") != 0) {
+            goto _exit;
+        }
 
         ef = (float)PyFloat_AsDouble(oef);
 
@@ -889,9 +910,9 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
 _exit:
     driz_log_message("ending tblot");
     driz_log_close(driz_log_handle);
-    Py_DECREF(img);
-    Py_DECREF(out);
-    Py_DECREF(map);
+    Py_XDECREF(img);
+    Py_XDECREF(out);
+    Py_XDECREF(map);
 
     if (driz_error_is_set(&error)) {
         if (strcmp(driz_error_get_message(&error), "<PYTHON>") != 0) {

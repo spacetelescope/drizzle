@@ -940,10 +940,10 @@ doblot(struct driz_param_t *p) {
                 driz_error_format_message(p->error, "OOB in pixmap[%d,%d]", i,
                                           j);
                 return 1;
-            } else {
-                xo = (float)get_pixmap(p->pixmap, i, j)[0];
-                yo = (float)get_pixmap(p->pixmap, i, j)[1];
             }
+
+            xo = (float)get_pixmap(p->pixmap, i, j)[0];
+            yo = (float)get_pixmap(p->pixmap, i, j)[1];
 
             if (npy_isnan(xo) || npy_isnan(yo)) {
                 driz_error_format_message(p->error, "NaN in pixmap[%d,%d]", i,
@@ -970,14 +970,8 @@ doblot(struct driz_param_t *p) {
             } else {
                 /* If there is nothing for us then set the output to missing C
                    value flag */
-                if (oob_pixel(p->output_data, i, j)) {
-                    driz_error_format_message(
-                        p->error, "OOB in output_data[%d,%d]", i, j);
-                    return 1;
-                } else {
-                    set_pixel(p->output_data, i, j, p->fill_value);
-                    p->nmiss++;
-                }
+                set_pixel(p->output_data, i, j, p->fill_value);
+                p->nmiss++;
             }
         }
     }

@@ -100,7 +100,46 @@ driz_error_unset(struct driz_error_t *error) {
     driz_error_init(error);
 }
 
-void
+/**
+ * py_warning - Issue a Python warning with a formatted message.
+ *
+ * Constructs a warning message from a printf-style format string and
+ * variable arguments, then issues it to the Python warning system via
+ * PyErr_WarnEx(..., stacklevel=1).
+ *
+ * Parameters:
+ *   warning_type  - A Python warning exception/type object (e.g.
+ * PyExc_Warning). If NULL, PyExc_Warning is used. format        - printf-style
+ * format string describing the warning text.
+ *   ...           - Arguments matching the format string.
+ *
+ * Behavior and constraints:
+ *   - The formatted message is written into a fixed-size buffer of length
+ *     MAX_DRIZ_ERROR_LEN. The implementation writes at most
+ *     MAX_DRIZ_ERROR_LEN - 1 bytes using vsnprintf and ensures a terminating
+ *     NUL at warn_msg[MAX_DRIZ_ERROR_LEN - 1]. As a result, long messages may
+ *     be truncated.
+ *   - If vsnprintf reports a formatting error (return value < 1), a fallback
+ *     message "Warning message formatting error." is used.
+ *   - The function calls PyErr_WarnEx(warning_type, message, 1), so the
+ *     warning's stacklevel is 1.
+ *   - The caller must hold the Python GIL when calling this function because
+ *     it uses Python C-API functions.
+ *
+ * Return value:
+ *   - Returns 0 on success.
+ *   - Returns -1 on failure (a Python error/warning handling error), with a
+ *     corresponding Python error indicator set.
+ *
+ * Notes:
+ *   - This function is intended for reporting non-fatal warnings to Python
+ *     code; it does not raise an exception in the usual sense but routes the
+ *     message through Python's warning machinery.
+ *   - Because the function uses a local fixed-size buffer, it is safe from
+ *     buffer-overflow as implemented, but the resulting message may be
+ *     truncated for very long formatted strings.
+ */
+int
 py_warning(PyObject *warning_type, const char *format, ...) {
     char warn_msg[MAX_DRIZ_ERROR_LEN];
     va_list argp;
@@ -117,7 +156,7 @@ py_warning(PyObject *warning_type, const char *format, ...) {
 
     warn_msg[MAX_DRIZ_ERROR_LEN - 1] = '\0';
 
-    PyErr_WarnEx(warning_type, warn_msg, 1);
+    return PyErr_WarnEx(warning_type, warn_msg, 1);
 }
 
 /*****************************************************************

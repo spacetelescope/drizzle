@@ -38,7 +38,7 @@ const char *driz_error_get_message(struct driz_error_t *error);
 int driz_error_is_set(struct driz_error_t *error);
 void driz_error_unset(struct driz_error_t *error);
 
-void py_warning(PyObject *warning_type, const char *format, ...);
+int py_warning(PyObject *warning_type, const char *format, ...);
 
 /*****************************************************************
  CONVENIENCE MACROS
