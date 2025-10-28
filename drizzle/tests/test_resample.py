@@ -363,7 +363,8 @@ def test_resample_kernel(tmpdir, kernel, test_image_type, max_diff_atol):
             exptime=1.0,
             pixmap=pixmap,
             weight_map=inwht,
-            scale=pscale_ratio,
+            iscale=pscale_ratio**2,
+            pixel_scale_ratio=pscale_ratio,
         )
     else:
         with pytest.warns(
@@ -375,7 +376,8 @@ def test_resample_kernel(tmpdir, kernel, test_image_type, max_diff_atol):
                 exptime=1.0,
                 pixmap=pixmap,
                 weight_map=inwht,
-                scale=pscale_ratio,
+                iscale=pscale_ratio**2,
+                pixel_scale_ratio=pscale_ratio,
             )
 
     _, med_diff, max_diff = centroid_statistics(
@@ -437,7 +439,8 @@ def test_resample_kernel_image(tmpdir, kernel, max_diff_atol):
         exptime=1.0,
         pixmap=pixmap,
         weight_map=inwht,
-        scale=pscale_ratio,
+        iscale=pscale_ratio**2,
+        pixel_scale_ratio=pscale_ratio,
     )
     outctx = driz.out_ctx[0]
 
@@ -573,9 +576,7 @@ def test_blot_interpolation(tmpdir, interpolator, test_image_type):
     blotted_image = resample.blot_image(
         outsci,
         pixmap=pixmap,
-        pix_ratio=pscale_ratio,
-        exptime=1.0,
-        output_pixel_shape=inwcs.pixel_shape,
+        iscale=1.0 / (pscale_ratio ** 2),
         **kwargs
     )
 
@@ -718,17 +719,21 @@ def test_context_agrees_with_weight():
 
 
 @pytest.mark.parametrize(
-    'kernel,fc',
+    'kernel,fc,pixel_scale_ratio',
     [
-        ('square', True),
-        ('point', True),
-        ('turbo', True),
-        ('lanczos2', False),
-        ('lanczos3', False),
-        ('gaussian', False),
+        ('square', True, 1.0),
+        ('point', True, 1.0),
+        ('turbo', True, 1.0),
+        ('turbo', True, None),
+        ('lanczos2', False, 1.0),
+        ('lanczos2', False, None),
+        ('lanczos3', False, 1.0),
+        ('lanczos3', False, None),
+        ('gaussian', False, 1.0),
+        ('gaussian', False, None),
     ],
 )
-def test_flux_conservation_nondistorted(kernel, fc):
+def test_flux_conservation_nondistorted(kernel, fc, pixel_scale_ratio):
     n = 200
     in_shape = (n, n)
 
@@ -770,7 +775,7 @@ def test_flux_conservation_nondistorted(kernel, fc):
             out_wht,
             out_ctx,
             pixfrac=1.0,
-            scale=1.0,
+            pscale_ratio=pixel_scale_ratio,
             kernel=kernel,
             in_units="cps",
             expscale=1.0,
@@ -789,12 +794,13 @@ def test_flux_conservation_nondistorted(kernel, fc):
                 out_wht,
                 out_ctx,
                 pixfrac=1.0,
-                scale=1.0,
+                pscale_ratio=pixel_scale_ratio,
                 kernel=kernel,
                 in_units="cps",
                 expscale=1.0,
                 wtscale=1.0,
             )
+
         pytest.xfail("Not a flux-conserving kernel")
 
     assert np.allclose(
@@ -861,7 +867,7 @@ def test_flux_conservation_distorted(kernel, fc):
             out_wht,
             out_ctx,
             pixfrac=1.0,
-            scale=1.0,
+            pscale_ratio=1.0,
             kernel=kernel,
             in_units="cps",
             expscale=1.0,
@@ -880,7 +886,7 @@ def test_flux_conservation_distorted(kernel, fc):
                 out_wht,
                 out_ctx,
                 pixfrac=1.0,
-                scale=1.0,
+                pscale_ratio=1.0,
                 kernel=kernel,
                 in_units="cps",
                 expscale=1.0,
@@ -924,7 +930,8 @@ def test_flux_conservation_distorted_distributed_sources(nrcb5_stars, kernel, ps
         exptime=1.0,
         pixmap=pixmap,
         weight_map=inwht,
-        scale=1,
+        iscale=1.0,
+        pixel_scale_ratio=1.0,
     )
 
     # for efficiency, instead of doing this patch-by-patch,
@@ -943,7 +950,8 @@ def test_flux_conservation_distorted_distributed_sources(nrcb5_stars, kernel, ps
             exptime=1.0,
             pixmap=pixmap,
             weight_map=inwht,
-            scale=1,
+            iscale=1.0,
+            pixel_scale_ratio=1.0,
         )
         out_data = driz_var.out_img * driz_var.out_wht
     out_var = driz_var.out_img2[0] * (driz_var.out_wht**2)
@@ -1082,6 +1090,8 @@ def test_pixmap_shape_matches_image():
             exptime=1.0,
             pixmap=pixmap,
             weight_map=in_wht,
+            iscale=1.0,
+            pixel_scale_ratio=1.0,
         )
     assert str(err_info.value) == "'pixmap' shape is not consistent with 'data' shape."
 
@@ -1311,7 +1321,8 @@ def test_resample_edge_sgarea_bug():
         in_units='cps',
         pixfrac=1.0,
         pixmap=pixmap,
-        scale=1.0,
+        iscale=1.0,
+        pixel_scale_ratio=1.0,
         wht_scale=1.0,
     )
     # expected pixels should be close to 42
@@ -1362,7 +1373,8 @@ def test_resample_edge_collinear():
         in_units='cps',
         pixfrac=1.0,
         pixmap=pixmap,
-        scale=1.0,
+        iscale=1.0,
+        pixel_scale_ratio=1.0,
         wht_scale=1.0,
     )
 
@@ -1854,7 +1866,7 @@ def test_drizzle_weights_squared_array_shape_mismatch():
 
 
 @pytest.mark.parametrize(
-    "kernel_fc, pscale_ratio",
+    "kernel_fc, pscale_ratio, kscale_none",
     (
         x for x in product(
             [
@@ -1866,15 +1878,21 @@ def test_drizzle_weights_squared_array_shape_mismatch():
                 ('gaussian', False),
             ],
             [0.9, 1.0, 1.2],
+            [False, True]
         )
     )
 )
-def test_drizzle_var_identical_to_nonvar(kernel_fc, pscale_ratio):
+def test_drizzle_var_identical_to_nonvar(kernel_fc, pscale_ratio, kscale_none):
     """ Test that the resampled science image using code with support for
     variance-propagation is identical to the resampled science image
     using code without support for variance-propagation (original code).
     """
     kernel, fc = kernel_fc
+
+    if kscale_none:
+        kscale = None
+    else:
+        kscale = pscale_ratio
 
     amplitude = 100.0
     inwcs = wcs_from_file("j8bt06nyq_flt.fits", ext=1)
@@ -1917,7 +1935,8 @@ def test_drizzle_var_identical_to_nonvar(kernel_fc, pscale_ratio):
             exptime=13.0,
             pixmap=pixmap,
             weight_map=inwht,
-            scale=pscale_ratio,
+            iscale=pscale_ratio**2,
+            pixel_scale_ratio=kscale,
             xmin=10,
             ymin=10,
             xmax=output_wcs.array_shape[0] - 10,
@@ -1929,7 +1948,8 @@ def test_drizzle_var_identical_to_nonvar(kernel_fc, pscale_ratio):
             exptime=13.0,
             pixmap=pixmap,
             weight_map=inwht,
-            scale=pscale_ratio,
+            iscale=pscale_ratio**2,
+            pixel_scale_ratio=kscale,
             xmin=10,
             ymin=10,
             xmax=output_wcs.array_shape[0] - 10,
@@ -1945,7 +1965,8 @@ def test_drizzle_var_identical_to_nonvar(kernel_fc, pscale_ratio):
                 exptime=13.0,
                 pixmap=pixmap,
                 weight_map=inwht,
-                scale=pscale_ratio,
+                iscale=pscale_ratio**2,
+                pixel_scale_ratio=kscale,
                 xmin=10,
                 ymin=10,
                 xmax=output_wcs.array_shape[0] - 10,
@@ -1962,7 +1983,8 @@ def test_drizzle_var_identical_to_nonvar(kernel_fc, pscale_ratio):
                 exptime=13.0,
                 pixmap=pixmap,
                 weight_map=inwht,
-                scale=pscale_ratio,
+                iscale=pscale_ratio**2,
+                pixel_scale_ratio=kscale,
                 xmin=10,
                 ymin=10,
                 xmax=output_wcs.array_shape[0] - 10,
@@ -2151,6 +2173,7 @@ def test_drizzle_dq_propagation_wrong_shape():
         "'dq' shape is not consistent with 'data' shape."
     )
 
+
 def test_drizzle_dq_propagation_wrong_type():
     n = 20
     in_shape = (n, n)
@@ -2194,3 +2217,120 @@ def test_drizzle_dq_propagation_wrong_type():
         "'dq' must be of an unsigned integer type with itemsize of "
         "4 bytes or less."
     )
+
+
+@pytest.mark.parametrize(
+    "kernel, pscale_ratio, use_var",
+    (
+        x for x in product(
+            [
+                'square',
+                'point',
+                'turbo',
+                'lanczos2',
+                'lanczos3',
+                'gaussian',
+            ],
+            [0.9, 1.2, 0.3],
+            [True, False],
+        )
+    )
+)
+@pytest.mark.filterwarnings(
+    r"ignore:Argument 'scale' has been deprecated.*:DeprecationWarning"
+)
+@pytest.mark.filterwarnings(
+    r"ignore:Kernel '.*' is not a flux-conserving kernel:Warning"
+)
+def test_drizzle_ipscale_same_as_scale(kernel, pscale_ratio, use_var):
+    """ Test that the resampled science image using new "pixel_scale_ratio" and
+    "iscale" parameters is identical to the resampled science image
+    using the old "scale" parameter.
+
+    TODO: remove this test when support for "scale" is removed.
+    """
+    amplitude = 100.0
+    inwcs = wcs_from_file("j8bt06nyq_flt.fits", ext=1)
+    insci = amplitude * np.random.random(inwcs.array_shape).astype(np.float32)
+    inwht = np.ones_like(insci)
+    output_wcs, _ = wcs_from_file(
+        "reference_square_image.fits",
+        ext=1,
+        return_data=True
+    )
+
+    pixmap = utils.calc_pixmap(
+        inwcs,
+        output_wcs,
+    )
+
+    driz1 = resample.Drizzle(
+        kernel=kernel,
+        fillval="NaN",
+        out_shape=output_wcs.array_shape,
+        exptime=0.0,
+        begin_ctx_id=0,
+        max_ctx_id=1,
+        disable_ctx=False,
+    )
+
+    driz2 = resample.Drizzle(
+        kernel=kernel,
+        fillval="NaN",
+        out_shape=output_wcs.array_shape,
+        exptime=0.0,
+        begin_ctx_id=0,
+        max_ctx_id=1,
+        disable_ctx=False,
+    )
+
+    driz1.add_image(
+        insci,
+        exptime=13.0,
+        pixmap=pixmap,
+        weight_map=inwht,
+        iscale=pscale_ratio**2,
+        pixel_scale_ratio=pscale_ratio,
+        xmin=10,
+        ymin=10,
+        xmax=output_wcs.array_shape[0] - 10,
+        ymax=output_wcs.array_shape[1] - 10,
+    )
+
+    if use_var:
+        kwargs = {"data2": insci}
+    else:
+        kwargs = {}
+
+    driz2.add_image(
+        insci,
+        exptime=13.0,
+        pixmap=pixmap,
+        weight_map=inwht,
+        scale=pscale_ratio,
+        xmin=10,
+        ymin=10,
+        xmax=output_wcs.array_shape[0] - 10,
+        ymax=output_wcs.array_shape[1] - 10,
+        **kwargs,
+    )
+
+    assert np.allclose(
+        driz1.out_img,
+        driz2.out_img,
+        rtol=0.0,
+        atol=5.0 * amplitude * np.finfo(np.float32).eps,
+        equal_nan=True
+    ), "Resampled science images are not identical."
+
+    assert np.allclose(
+        driz1.out_wht,
+        driz2.out_wht,
+        rtol=0.0,
+        atol=5.0 * amplitude * np.finfo(np.float32).eps,
+        equal_nan=True
+    ), "Resampled weight images are not identical."
+
+    assert np.all(
+        driz1.out_ctx == driz2.out_ctx
+    ), "Context images are not identical."

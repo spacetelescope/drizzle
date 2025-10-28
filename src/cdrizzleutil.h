@@ -38,7 +38,7 @@ const char *driz_error_get_message(struct driz_error_t *error);
 int driz_error_is_set(struct driz_error_t *error);
 void driz_error_unset(struct driz_error_t *error);
 
-void py_warning(const char *format, ...);
+int py_warning(PyObject *warning_type, const char *format, ...);
 
 /*****************************************************************
  CONVENIENCE MACROS
@@ -110,22 +110,21 @@ struct lanczos_param_t {
     double sdp;
     integer_t nbox;
     double space;
-    float misval;
 };
 
 struct driz_param_t {
     /* Options */
-    enum e_kernel_t kernel;  /* Kernel shape and size */
-    double pixel_fraction;   /* was: PIXFRAC */
-    float exposure_time;     /* Exposure time was: EXPIN */
-    float weight_scale;      /* Weight scale was: WTSCL */
-    float fill_value;        /* Filling was: FILVAL */
-    float fill_value2;       /* Filling was: FILVAL */
-    bool_t do_fill;          /* was: FILL */
-    bool_t do_fill2;         /* was: FILL */
-    enum e_unit_t in_units;  /* CPS / counts was: INCPS, either counts or CPS */
-    enum e_unit_t out_units; /* CPS / counts was: INCPS, either counts or CPS */
-    integer_t uuid;          /* was: UNIQID */
+    enum e_kernel_t kernel;
+    double pixel_fraction;
+    float exposure_time;
+    float weight_scale;
+    float fill_value;
+    float fill_value2;
+    bool_t do_fill;
+    bool_t do_fill2;
+    enum e_unit_t in_units;
+    enum e_unit_t out_units;
+    integer_t uuid;
 
     /* Input image dimensions */
     integer_t in_nx;
@@ -136,7 +135,9 @@ struct driz_param_t {
     integer_t out_ny;
 
     /* Scaling */
-    double scale;
+    float iscale;
+    float pscale_ratio; /* Scaling used for kernel size in tdriz. 0 or negative
+                     means it will be estimated from pixmap for t*/
 
     /* Image subset */
     integer_t xmin;
@@ -149,7 +150,6 @@ struct driz_param_t {
     float ef;
     float misval;
     float sinscl;
-    float kscale;
 
     /* Input images */
     PyArrayObject *data;

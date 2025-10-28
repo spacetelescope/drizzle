@@ -2,6 +2,8 @@
 The `drizzle` module defines the `Drizzle` class, for combining input
 images into a single output image using the drizzle algorithm.
 """
+import warnings
+
 import numpy as np
 
 from drizzle import cdrizzle
@@ -18,6 +20,9 @@ SUPPORTED_DRIZZLE_KERNELS = [
 ]
 
 CTX_PLANE_BITS = 32
+
+
+_DEPRECATED_ARG = object()
 
 
 class Drizzle:
@@ -52,11 +57,52 @@ class Drizzle:
         method. If not, a copy of these arrays will be made when converting
         to the expected type (or expanding the context array).
 
+    Scaling of input image data
+    ---------------------------
+
+    It is important to highlight that the drizzle algorithm computes
+    *weighted mean* of input pixel values -- see equations (4) and (5) in
+    `Fruchter and Hook, PASP 2002 <https://doi.org/10.1086/338393>`_.
+    Therefore, it is important that all input pixel values that contribute
+    to an output pixel are from the same distribution. In other words,
+    input pixel values from different images must be on the same footing,
+    i.e., they must be comparable and must be representative of the same
+    physical quantity.
+
+    For example, for Hubble Space Telescope data, calibrated images
+    (i.e., ``*_flt.fits``, ``*_flc.fits``) are in unit of counts, counts per
+    second, electrons, or electrons per second. To convert them to flux
+    units (e.g., erg/cm^2/s/Angstrom), one needs to multiply these images
+    by the ``PHOTFLAM``. Sometimes, images that are drizzle-combined have been
+    observed at very different times (separated by many years) and the
+    sensitivity of the instrument (represented by ``PHOTFLAM``) may have
+    changed significantly. Other times a source is observed in different chips,
+    i.e., the two chips of the Wide Field Camera. In such cases detector's
+    sensitivity (``PHOTFLAM``) may be different for the images to be combined.
+    Consequently, pixel values in these images may not be directly comparable
+    and drizzle-combining such images would result in systematic errors.
+
+    In this case, it is important to rescale images to the same flux units
+    either by multiplying by the appropriate ``PHOTFLAM`` values or some
+    other appropriate scaling factor before combining them using drizzle.
+    This can be accomplished by using the ``iscale`` parameter of
+    :py:meth:`add_image` which simply multiplies each input image by
+    ``iscale``.
+
+    Also, for the case of HST images that have flux units instead of surface
+    brightness, if input images have different pixel scales, then the pixel
+    values must be rescaled by the square of the pixel scale ratio (the linear
+    dimension of a side of an output pixel as seen in the input image's
+    coordinate frame) in order to preserve flux. In this case ``iscale`` is
+    equivalent to ``s**2`` factor in equations (3) and (5) of
+    `Fruchter and Hook, PASP 2002 <https://doi.org/10.1086/338393>`_
+    (``s`` may be different for each input image).
+
     Output Science Image
     --------------------
 
-    Output science image is obtained by adding input pixel fluxes according to
-    equations (4) and (5) in
+    Output science image is obtained by computing *weighted mean* of input
+    pixel values according to equations (4) and (5) in
     `Fruchter and Hook, PASP 2002 <https://doi.org/10.1086/338393>`_.
     The weights and coefficients in those equations will depend on the chosen
     kernel, input image weights, and pixel overlaps computed from ``pixmap``.
@@ -130,6 +176,14 @@ class Drizzle:
 
     For convenience, this functionality was implemented in the
     :py:func:`~drizzle.utils.decode_context` function.
+
+    Output DQ Image
+    ---------------
+
+    If DQ array of input image pixels is provided via ``dq`` parameter of
+    :py:meth:`add_image`, then an output DQ array will be computed by combining
+    (using bitwise-OR) DQ bitfields of all input pixels that contribute to
+    a given output pixel.
 
     References
     ----------
@@ -599,7 +653,8 @@ class Drizzle:
 
         return plane_info
 
-    def add_image(self, data, exptime, pixmap, data2=None, dq=None, scale=1.0,
+    def add_image(self, data, exptime, pixmap, data2=None, dq=None,
+                  scale=_DEPRECATED_ARG, iscale=1.0, pixel_scale_ratio=1.0,
                   weight_map=None, wht_scale=1.0, pixfrac=1.0, in_units='cps',
                   xmin=None, xmax=None, ymin=None, ymax=None):
         """
@@ -658,10 +713,34 @@ class Drizzle:
                 if you need it.
 
         scale : float, optional
-            The pixel scale of the input image. Conceptually, this is the
-            linear dimension of a side of a pixel in the input image, but it
-            is not limited to this and can be set to change how the drizzling
-            algorithm operates.
+            Deprecated: use ``iscale`` and ``pixel_scale_ratio`` instead.
+            It is a factor used both to rescale input image data
+            by ``scale**2`` AND to compute the correct kernel size for some
+            kernels ("turbo", "gaussian", and "lanczos"). It is recommended
+            ``scale`` be set to pixel scale ratio: the linear dimension of
+            a side of an output pixel relative to the size of an input pixel
+            (or size of an output pixel in the input image's coordinate system).
+
+        iscale : float, optional
+            It is a multiplicative factor used to rescale input image data
+            by ``iscale`` value. ``data2`` images will be rescaled by
+            ``iscale**2``. It may make sense to rescale input image (``data``)
+            by squared pixel scale ratio (the linear dimension of a side of an
+            output pixel as seen in the input image's coordinate frame)
+            depending on the units of the input image, i.e., counts vs
+            brightness. For more details see section
+            "Scaling of input image data" in :py:class:`Drizzle`.
+
+        pixel_scale_ratio : float, None, optional
+            It is a factor used to compute the correct kernel size in output
+            image's coordinate system for some of the kernels
+            ("turbo", "gaussian", and "lanczos") from their nominal
+            sizes in input image pixels. For example, for the "lanczos3"
+            kernel, the nominal size is 3 input pixels. It is recommended that
+            ``pixel_scale_ratio`` be set to pixel scale ratio: the linear dimension of
+            output pixel relative to the size of an input pixel. When
+            ``pixel_scale_ratio`` is `None`, it will be estimated from ``pixmap`` but this
+            can impose a performance penalty.
 
         weight_map : 2D array, None, optional
             A 2D numpy array containing the pixel by pixel weighting.
@@ -723,6 +802,17 @@ class Drizzle:
             ignored and did not contribute to the output image.
 
         """
+        if scale is not _DEPRECATED_ARG:
+            warnings.warn(
+                "Argument 'scale' has been deprecated since version 3.0 and "
+                "it will be removed in a future release. "
+                "Use 'iscale' and 'pixel_scale_ratio' instead and set iscale=pixel_scale_ratio**2 "
+                "to achieve the same effect as with 'scale'.",
+                DeprecationWarning
+            )
+            iscale = scale * scale
+            pixel_scale_ratio = scale
+
         # this enables initializer to not need output image shape at all and
         # set output image shape based on output coordinates from the pixmap.
         #
@@ -874,7 +964,9 @@ class Drizzle:
             xmax=xmax,
             ymin=ymin,
             ymax=ymax,
-            scale=scale,  # scales image intensity. usually equal to pixel scale
+            iscale=iscale,  # scales image intensity. usually equal to 1 or
+                            # (pixel scale ratio)**2
+            pscale_ratio=pixel_scale_ratio,  # scales kernel size. usually equal to pixel scale ratio
             pixfrac=pixfrac,
             kernel=self._kernel,
             in_units=in_units,
@@ -889,8 +981,10 @@ class Drizzle:
         return nmiss, nskip
 
 
-def blot_image(data, pixmap, pix_ratio, exptime, output_pixel_shape,
-               interp='poly5', sinscl=1.0):
+def blot_image(data, pixmap, pix_ratio=_DEPRECATED_ARG,
+               exptime=_DEPRECATED_ARG, output_pixel_shape=_DEPRECATED_ARG,
+               out_img=None, fillval=0.0, iscale=1.0, interp='poly5',
+               sinscl=1.0):
     """
     Resample the ``data`` input image onto an output grid defined by
     the ``pixmap`` array. ``blot_image`` performs resampling using one of
@@ -917,15 +1011,57 @@ def blot_image(data, pixmap, pix_ratio, exptime, output_pixel_shape,
         pixels in the ouput frame and ``pixmap[..., 1]`` forms a 2D array of
         Y-coordinates of input pixels in the ouput coordinate frame.
 
+    pix_ratio : float
+        Ratio of the input image pixel scale to the output image pixel scale as
+        used in the ``drizzle`` context: input is a distorted image that was
+        "drizzled" onto the output image. That is, it is the ratio of the
+        scale of the pixels in the input ``data`` argument to the scale of
+        pixels of the image array returned by ``blot_image()``.
+        **It is used to scale the input image intensities to account
+        for the change in pixel area.**
+
+        .. warning::
+            Deprecated since version 3.0 and will be removed in a future
+            release. Use ``iscale`` instead and set
+            ``iscale=1.0 / pix_ratio**2`` to achieve the same effect as with
+            ``pix_ratio``.
+
+    exptime : float
+        The exposure time of the input image. If provided it is used to scale
+        the output image values.
+
+        .. warning::
+            Deprecated since version 3.0 and will be removed in a future
+            release. Use ``iscale`` instead and set
+            ``iscale=exptime`` or ``exptime / pix_ratio**2`` to achieve the
+            same effect as with ``exptime`` (and ``pix_ratio``).
+
     output_pixel_shape : tuple of int
         A tuple of two integer numbers indicating the dimensions of the output
         image ``(Nx, Ny)``.
 
-    pix_ratio : float
-        Ratio of the input image pixel scale to the ouput image pixel scale.
+        .. warning::
+            Deprecated since version 3.0 and will be removed in a future
+            release. It is not needed since the output image shape can be
+            inferred from ``pixmap``.
 
-    exptime : float
-        The exposure time of the input image.
+    output_image : 2D array of float32, None, optional
+        A 2D numpy array to hold the output image produced by resampling
+        the input image (``data``). If `None`, a new array will be allocated.
+
+    fillval: float, optional
+        The value of output pixels that did not have contributions from
+        input image' pixels.
+
+    iscale : float, optional
+        A multiplicative factor used to rescale output image data by
+        ``iscale``. Depending on specific needs, it may make sense to rescale
+        output image by inverse of squared pixel scale ratio (the linear
+        dimension of a side of a resampled/drizzled (input) pixel as seen in
+        the distorted (output) image's coordinate frame) depending on the units
+        of the input image, i.e., counts (flux) vs surface brightness.
+        For more details see section "Scaling of input image data" in
+        :py:class:`Drizzle`.
 
     interp : str, optional
         The type of interpolation used in the resampling. The
@@ -948,10 +1084,48 @@ def blot_image(data, pixmap, pix_ratio, exptime, output_pixel_shape,
         A 2D numpy array containing the resampled image data.
 
     """
-    out_img = np.zeros(output_pixel_shape[::-1], dtype=np.float32)
+    if pix_ratio is not _DEPRECATED_ARG:
+        warnings.warn(
+            "Argument 'pix_ratio' has been deprecated since version 3.0 and "
+            "it will be removed in a future release. "
+            "Use 'iscale' instead and set iscale=1.0 / pix_ratio**2 "
+            "to achieve the same effect as with 'pix_ratio'.",
+            DeprecationWarning
+        )
+        iscale /= pix_ratio * pix_ratio
 
-    cdrizzle.tblot(data, pixmap, out_img, scale=pix_ratio, kscale=1.0,
-                   interp=interp, exptime=exptime, misval=0.0, sinscl=sinscl)
+    if exptime is not _DEPRECATED_ARG:
+        warnings.warn(
+            "Argument 'exptime' has been deprecated since version 3.0 and "
+            "it will be removed in a future release. "
+            "Use 'iscale' instead and set iscale=exptime "
+            "to achieve the same effect as with 'exptime'.",
+            DeprecationWarning
+        )
+        iscale *= exptime
+
+    if output_pixel_shape is _DEPRECATED_ARG:
+        output_shape = tuple(pixmap.shape[:2])
+    else:
+        warnings.warn(
+            "Argument 'output_pixel_shape' has been deprecated since version "
+            "3.0 and it will be removed in a future release. It is not needed "
+            "since the output image shape can be inferred from 'pixmap'.",
+            DeprecationWarning
+        )
+        output_shape = output_pixel_shape[::-1]
+
+    if out_img is None:
+        out_img = np.empty(output_shape, dtype=np.float32)
+    else:
+        out_img = np.asarray(out_img, dtype=np.float32)
+        if out_img.shape != output_shape:
+            raise ValueError(
+                "'output_image' shape is not consistent with 'pixmap' shape."
+            )
+
+    cdrizzle.tblot(data, pixmap, out_img, iscale=iscale, interp=interp,
+                   fillval=fillval, sinscl=sinscl)
 
     return out_img
 

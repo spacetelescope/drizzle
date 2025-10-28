@@ -11,6 +11,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <numpy/npy_math.h>
+#include <numpy/arrayobject.h>
+
 /*****************************************************************
  ERROR HANDLING
 */
@@ -37,7 +40,8 @@ driz_error_set_message(struct driz_error_t *error, const char *message) {
     assert(error);
     assert(message);
 
-    strncpy(error->last_message, message, MAX_DRIZ_ERROR_LEN);
+    strncpy(error->last_message, message, MAX_DRIZ_ERROR_LEN - 1);
+    error->last_message[MAX_DRIZ_ERROR_LEN - 1] = '\0';
 }
 
 void
@@ -51,8 +55,9 @@ driz_error_format_message(struct driz_error_t *error, const char *format, ...) {
     assert(format);
 
     va_start(argp, format);
-    (void)vsnprintf(error->last_message, MAX_DRIZ_ERROR_LEN, format, argp);
+    (void)vsnprintf(error->last_message, MAX_DRIZ_ERROR_LEN - 1, format, argp);
     va_end(argp);
+    error->last_message[MAX_DRIZ_ERROR_LEN - 1] = '\0';
 }
 
 void
@@ -67,9 +72,10 @@ driz_error_set(struct driz_error_t *error, PyObject *type, const char *format,
     assert(format);
 
     va_start(argp, format);
-    (void)vsnprintf(error->last_message, MAX_DRIZ_ERROR_LEN, format, argp);
+    (void)vsnprintf(error->last_message, MAX_DRIZ_ERROR_LEN - 1, format, argp);
     va_end(argp);
 
+    error->last_message[MAX_DRIZ_ERROR_LEN - 1] = '\0';
     error->type = type;
 }
 
@@ -94,17 +100,63 @@ driz_error_unset(struct driz_error_t *error) {
     driz_error_init(error);
 }
 
-void
-py_warning(const char *format, ...) {
+/**
+ * py_warning - Issue a Python warning with a formatted message.
+ *
+ * Constructs a warning message from a printf-style format string and
+ * variable arguments, then issues it to the Python warning system via
+ * PyErr_WarnEx(..., stacklevel=1).
+ *
+ * Parameters:
+ *   warning_type  - A Python warning exception/type object (e.g.
+ * PyExc_Warning). If NULL, PyExc_Warning is used. format        - printf-style
+ * format string describing the warning text.
+ *   ...           - Arguments matching the format string.
+ *
+ * Behavior and constraints:
+ *   - The formatted message is written into a fixed-size buffer of length
+ *     MAX_DRIZ_ERROR_LEN. The implementation writes at most
+ *     MAX_DRIZ_ERROR_LEN - 1 bytes using vsnprintf and ensures a terminating
+ *     NUL at warn_msg[MAX_DRIZ_ERROR_LEN - 1]. As a result, long messages may
+ *     be truncated.
+ *   - If vsnprintf reports a formatting error (return value < 1), a fallback
+ *     message "Warning message formatting error." is used.
+ *   - The function calls PyErr_WarnEx(warning_type, message, 1), so the
+ *     warning's stacklevel is 1.
+ *   - The caller must hold the Python GIL when calling this function because
+ *     it uses Python C-API functions.
+ *
+ * Return value:
+ *   - Returns 0 on success.
+ *   - Returns -1 on failure (a Python error/warning handling error), with a
+ *     corresponding Python error indicator set.
+ *
+ * Notes:
+ *   - This function is intended for reporting non-fatal warnings to Python
+ *     code; it does not raise an exception in the usual sense but routes the
+ *     message through Python's warning machinery.
+ *   - Because the function uses a local fixed-size buffer, it is safe from
+ *     buffer-overflow as implemented, but the resulting message may be
+ *     truncated for very long formatted strings.
+ */
+int
+py_warning(PyObject *warning_type, const char *format, ...) {
     char warn_msg[MAX_DRIZ_ERROR_LEN];
     va_list argp;
     va_start(argp, format);
-    if (vsnprintf(warn_msg, MAX_DRIZ_ERROR_LEN, format, argp) < 1) {
-        strcpy(warn_msg, "Warning message formatting error.");
+    if (vsnprintf(warn_msg, MAX_DRIZ_ERROR_LEN - 1, format, argp) < 1) {
+        strncpy(warn_msg, "Warning message formatting error.",
+                MAX_DRIZ_ERROR_LEN - 1);
     }
     va_end(argp);
 
-    PyErr_WarnEx(PyExc_Warning, warn_msg, 1);
+    if (!warning_type) {
+        warning_type = PyExc_Warning;
+    }
+
+    warn_msg[MAX_DRIZ_ERROR_LEN - 1] = '\0';
+
+    return PyErr_WarnEx(warning_type, warn_msg, 1);
 }
 
 /*****************************************************************
@@ -114,23 +166,19 @@ void
 driz_param_dump(struct driz_param_t *p) {
     assert(p);
 
-    printf(
-        "DRIZZLING PARAMETERS:\n"
-        "kernel:               %s\n"
-        "pixel_fraction:       %f\n"
-        "exposure_time:        %f\n"
-        "weight_scale:         %f\n"
-        "fill_value:           %f\n"
-        "fill_value2:          %f\n"
-        "do_fill:              %s\n"
-        "do_fill2:             %s\n"
-        "in_units:             %s\n"
-        "out_units:            %s\n"
-        "scale:                %f\n",
-        kernel_enum2str(p->kernel), p->pixel_fraction, p->exposure_time,
-        p->weight_scale, p->fill_value, p->fill_value2, bool2str(p->do_fill),
-        bool2str(p->do_fill2), unit_enum2str(p->in_units),
-        unit_enum2str(p->out_units), p->scale);
+    printf("DRIZZLING PARAMETERS:\n");
+    printf("  kernel:          %s\n", kernel_enum2str(p->kernel));
+    printf("  pixel_fraction:  %f\n", p->pixel_fraction);
+    printf("  exposure_time:   %f\n", p->exposure_time);
+    printf("  weight_scale:    %f\n", p->weight_scale);
+    printf("  fill_value:      %f\n", p->fill_value);
+    printf("  fill_value2:     %f\n", p->fill_value2);
+    printf("  do_fill:         %s\n", bool2str(p->do_fill));
+    printf("  do_fill2:        %s\n", bool2str(p->do_fill2));
+    printf("  in_units:        %s\n", unit_enum2str(p->in_units));
+    printf("  out_units:       %s\n", unit_enum2str(p->out_units));
+    printf("  iscale:          %f\n", p->iscale);
+    printf("  pscale_ratio:    %f\n", p->pscale_ratio);
 }
 
 void
@@ -142,14 +190,14 @@ driz_param_init(struct driz_param_t *p) {
     p->pixel_fraction = 1.0;
 
     /* Exposure time */
-    p->exposure_time = 1.0;
+    p->exposure_time = 1.0f;
 
     /* Weight scale */
-    p->weight_scale = 1.0;
+    p->weight_scale = 1.0f;
 
     /* Filling */
-    p->fill_value = 0.0;
-    p->fill_value2 = 0.0;
+    p->fill_value = 0.0f;
+    p->fill_value2 = 0.0f;
     p->do_fill = 0;
     p->do_fill2 = 0;
 
@@ -157,7 +205,8 @@ driz_param_init(struct driz_param_t *p) {
     p->in_units = unit_counts;
     p->out_units = unit_counts;
 
-    p->scale = 1.0;
+    p->iscale = 1.0f;
+    p->pscale_ratio = NPY_NANF; /* Scaling for kernel size. NaN */
 
     /* Input data */
     p->data = NULL;

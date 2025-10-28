@@ -72,7 +72,7 @@ init_pixmap(struct driz_param_t *p) {
 }
 
 void
-stretch_pixmap(struct driz_param_t *p, double stretch) {
+stretch_pixmap(struct driz_param_t *p, double sx, double sy) {
     int i, j;
     double xpix, ypix;
 
@@ -80,8 +80,8 @@ stretch_pixmap(struct driz_param_t *p, double stretch) {
     for (j = 0; j < image_size[1]; j++) {
         xpix = 0.0;
         for (i = 0; i < image_size[0]; i++) {
-            get_pixmap(p->pixmap, i, j)[0] = xpix;
-            get_pixmap(p->pixmap, i, j)[1] = stretch * ypix;
+            get_pixmap(p->pixmap, i, j)[0] = sx * xpix;
+            get_pixmap(p->pixmap, i, j)[1] = sy * ypix;
             xpix += 1.0;
         }
         ypix += 1.0;
@@ -259,7 +259,8 @@ setup_parameters(void) {
     p->xmax = image_size[0] - 1;
     p->ymin = 0;
     p->ymax = image_size[1] - 1;
-    p->scale = 1.0;
+    p->iscale = 1.0f;
+    p->pscale_ratio = 1.0f;
     p->pixel_fraction = 1.0;
     p->exposure_time = 1.0;
     p->ef = p->exposure_time;
@@ -350,7 +351,7 @@ FCT_BGN_FN(utest_cdrizzle) {
         FCT_TEST_BGN(utest_map_lookup_01) {
             struct driz_param_t *p;
             p = setup_parameters();
-            stretch_pixmap(p, 1000.0);
+            stretch_pixmap(p, 1.0, 1000.0);
 
             double x = get_pixmap(p->pixmap, 1, 1)[0];
             double y = get_pixmap(p->pixmap, 1, 1)[1];
@@ -365,7 +366,7 @@ FCT_BGN_FN(utest_cdrizzle) {
         FCT_TEST_BGN(utest_map_lookup_02) {
             struct driz_param_t *p;
             p = setup_parameters();
-            stretch_pixmap(p, 1000.0);
+            stretch_pixmap(p, 1.0, 1000.0);
 
             double x = get_pixmap(p->pixmap, 3, 0)[0];
             double y = get_pixmap(p->pixmap, 3, 0)[1];
@@ -380,7 +381,7 @@ FCT_BGN_FN(utest_cdrizzle) {
         FCT_TEST_BGN(utest_map_lookup_03) {
             struct driz_param_t *p;
             p = setup_parameters();
-            stretch_pixmap(p, 1000.0);
+            stretch_pixmap(p, 1.0, 1000.0);
 
             double x = get_pixmap(p->pixmap, 0, 1)[0];
             double y = get_pixmap(p->pixmap, 0, 1)[1];
@@ -394,7 +395,7 @@ FCT_BGN_FN(utest_cdrizzle) {
         FCT_TEST_BGN(utest_map_lookup_04) {
             struct driz_param_t *p;
             p = setup_parameters();
-            stretch_pixmap(p, 1000.0);
+            stretch_pixmap(p, 1.0, 1000.0);
 
             double x = get_pixmap(p->pixmap, 3, 1)[0];
             double y = get_pixmap(p->pixmap, 3, 1)[1];
@@ -405,12 +406,42 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
+        FCT_TEST_BGN(utest_compute_pscale_ratio) {
+            struct driz_param_t *p;
+            struct polygon bp;
+            float pscale_ratio;
+            const float pscale_ratio_truth = sqrtf(1.2f * 1.7f);
+
+            p = setup_parameters();
+            stretch_pixmap(p, 1.2, 1.7);
+            bp.npv = 4;
+            bp.v[0].x = 0.0;
+            bp.v[0].y = 0.0;
+            bp.v[1].x = (double)p->xmax;
+            bp.v[1].y = 0.0;
+            bp.v[2].x = (double)p->xmax;
+            bp.v[2].y = (double)p->ymax;
+            bp.v[2].x = 0.0;
+            bp.v[2].y = (double)p->ymax;
+
+            compute_pscale_ratio(p, &bp, &pscale_ratio);
+
+            fct_xchk(
+                (int)(fabs(pscale_ratio - pscale_ratio_truth) < 5.0f * FLT_EPSILON),
+                "chk_eq_flt: %f != %f",
+                pscale_ratio,
+                pscale_ratio_truth);
+
+            teardown_parameters(p);
+        }
+        FCT_TEST_END();
+
         FCT_TEST_BGN(utest_map_point_01) {
             double ix, iy, ox, oy;
             struct driz_param_t *p;
 
             p = setup_parameters();
-            stretch_pixmap(p, 1000.0);
+            stretch_pixmap(p, 1.0, 1000.0);
 
             ix = 2.5;
             iy = 1.5;
@@ -429,7 +460,7 @@ FCT_BGN_FN(utest_cdrizzle) {
             struct driz_param_t *p;
 
             p = setup_parameters();
-            stretch_pixmap(p, 1000.0);
+            stretch_pixmap(p, 1.0, 1000.0);
 
             ix = -1.0;
             iy = 0.5;
@@ -449,7 +480,7 @@ FCT_BGN_FN(utest_cdrizzle) {
             struct driz_param_t *p;
 
             p = setup_parameters();
-            stretch_pixmap(p, 1000.0);
+            stretch_pixmap(p, 1.0, 1000.0);
 
             ix = 3.25;
             iy = 5.0;
@@ -478,7 +509,7 @@ FCT_BGN_FN(utest_cdrizzle) {
 
             p = setup_parameters();
 
-            stretch_pixmap(p, 1000.0);
+            stretch_pixmap(p, 1.0, 1000.0);
 
             ix = 0.25;
             iy = 5.0;
