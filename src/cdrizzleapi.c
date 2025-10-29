@@ -9,9 +9,14 @@
 #include <stdio.h>
 
 #ifndef NPY_NO_DEPRECATED_API
-#define NPY_NO_DEPRECATED_API NPY_1_10_API_VERSION
+#define NPY_NO_DEPRECATED_API NPY_1_24_API_VERSION
 #endif
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+
 #include <numpy/arrayobject.h>
+#include <numpy/ndarrayobject.h>
 #include <numpy/npy_math.h>
 
 #include "cdrizzleblot.h"
@@ -19,22 +24,59 @@
 #include "cdrizzlemap.h"
 #include "cdrizzleutil.h"
 #include "tests/drizzletest.h"
+#pragma GCC diagnostic pop
 
 static PyObject *gl_Error;
 FILE *driz_log_handle = NULL;
 
+static PyArrayObject *
+ensure_array(PyObject *obj, int npy_type, int min_depth, int max_depth,
+             int *is_copy) {
+    if (PyArray_CheckExact(obj) &&
+        PyArray_IS_C_CONTIGUOUS((PyArrayObject *)obj) &&
+        PyArray_TYPE((PyArrayObject *)obj) == npy_type) {
+        *is_copy = 0;
+        return (PyArrayObject *)obj;
+    } else {
+        *is_copy = 1;
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+        PyArray_Descr *dtype_descr =
+            (PyArray_Descr *)((void *)PyArray_DescrFromType((int)npy_type));
+#pragma GCC diagnostic pop
+
+        if (dtype_descr == NULL) {
+            PyErr_SetString(PyExc_TypeError,
+                            "Invalid numpy type for array conversion.");
+            *is_copy = 0;
+            return NULL;
+        }
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+        return (PyArrayObject *)PyArray_FromAny(
+            obj, dtype_descr, min_depth, max_depth,
+            NPY_ARRAY_DEFAULT | NPY_ARRAY_ENSUREARRAY, NULL);
+#pragma GCC diagnostic pop
+    }
+}
+
 static int
 process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
                    const char *name, PyArrayObject ***arrays, int *nmax,
-                   int allow_none, int *n_none, struct driz_error_t *error) {
+                   int allow_none, int *n_none, int **free_arrays,
+                   struct driz_error_t *error) {
     npy_intp *ndim;
     int inx, iny;
     PyObject *list_elem = NULL;
     PyArrayObject **arr_list = NULL;
     PyArrayObject *arr = NULL;
     int i, at_least_one;
+    int cpy;
 
     *arrays = NULL;
+    *free_arrays = NULL;
     *nmax = 0;
     if (n_none) {
         *n_none = 0;
@@ -52,7 +94,15 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
                            "Memory allocation failed.");
             return 1;
         }
-        arr = (PyArrayObject *)PyArray_ContiguousFromAny(list, NPY_FLOAT, 2, 2);
+        if (!(*free_arrays = (int *)malloc(sizeof(int)))) {
+            driz_error_set(error, PyExc_MemoryError,
+                           "Memory allocation failed.");
+            return 1;
+        }
+        arr = ensure_array(list, NPY_FLOAT, 2, 2, &cpy);
+        (*free_arrays)[0] = cpy;
+        // arr = (PyArrayObject *)PyArray_ContiguousFromAny(list, NPY_FLOAT, 2,
+        // 2);
         if (!arr) {
             driz_error_set(error, PyExc_ValueError, "Invalid '%s' array.",
                            name);
@@ -86,6 +136,10 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
         driz_error_set(error, PyExc_MemoryError, "Memory allocation failed.");
         return 1;
     }
+    if (!(*free_arrays = (int *)calloc(*nmax, sizeof(int)))) {
+        driz_error_set(error, PyExc_MemoryError, "Memory allocation failed.");
+        return 1;
+    }
 
     for (i = 0; i < *nmax; ++i) {
         if (!(list_elem = PySequence_GetItem(list, i))) {
@@ -101,6 +155,7 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
                     (*n_none)++;
                 }
                 arr_list[i] = NULL;
+                (*free_arrays)[i] = 0;
                 Py_XDECREF(list_elem);
                 continue;
             } else {
@@ -112,14 +167,17 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
                 goto _exit_on_err;
             }
         } else {
-            arr = (PyArrayObject *)PyArray_ContiguousFromAny(list_elem,
-                                                             NPY_FLOAT, 2, 2);
+            // arr = (PyArrayObject *)PyArray_ContiguousFromAny(list_elem,
+            //                                                  NPY_FLOAT, 2,
+            //                                                  2);
+            arr = ensure_array(list_elem, NPY_FLOAT, 2, 2, &cpy);
             if (!arr) {
                 driz_error_set(error, PyExc_ValueError,
                                "Invalid array in '%s' at position %d.", name,
                                i);
                 goto _exit_on_err;
             }
+            (*free_arrays)[i] = cpy;
             at_least_one = 1;
         }
         Py_XDECREF(list_elem);
@@ -145,6 +203,7 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
 
     if (!at_least_one && !allow_none) {
         free(arr_list);
+        free(*free_arrays);
         arr_list = NULL;
         *nmax = 0;
     }
@@ -157,9 +216,14 @@ _exit_on_err:
     Py_XDECREF(list_elem);
     if (arr_list) {
         for (i = 0; i < *nmax; ++i) {
-            Py_XDECREF(arr_list[i]);
+            if (free_arrays && (*free_arrays)[i]) {
+                Py_XDECREF(arr_list[i]);
+            }
         }
         free(arr_list);
+    }
+    if (*free_arrays) {
+        free(*free_arrays);
     }
     return 1;
 }
@@ -185,6 +249,7 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
              *opscale_ratio = NULL, *oscale = NULL;
     int i, n_none;
     int nsq_args, nsq_arr = 0, nsq_arr_out = 0;
+    int *free_arrays2 = NULL, *free_out_arrays2 = NULL;
 
     integer_t uniqid = 1;
     integer_t xmin = 0;
@@ -206,6 +271,9 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
 
     PyArrayObject *img = NULL, *wei = NULL, *out = NULL, *wht = NULL,
                   *con = NULL, *map = NULL, *dq = NULL, *outdq = NULL;
+
+    int free_img = 1, free_wei = 1, free_out = 1, free_wht = 1;
+    int free_con = 1, free_map = 1, free_dq = 1, free_outdq = 1;
 
     PyArrayObject **img2_list = NULL, **out2_list = NULL;
 
@@ -286,7 +354,8 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     }
 
     /* Get raw C-array data */
-    img = (PyArrayObject *)PyArray_ContiguousFromAny(oimg, NPY_FLOAT, 2, 2);
+    // img = (PyArrayObject *)PyArray_ContiguousFromAny(oimg, NPY_FLOAT, 2, 2);
+    img = ensure_array(oimg, NPY_FLOAT, 2, 2, &free_img);
     if (!img) {
         driz_error_set_message(&error, "Invalid input array");
         goto _exit;
@@ -480,7 +549,7 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
         nx = inx;
         ny = iny;
         if (process_array_list(oimg2, &nx, &ny, "input2", &img2_list, &nsq_arr,
-                               1, &n_none, &error)) {
+                               1, &n_none, &free_arrays2, &error)) {
             goto _exit;
         }
         if (n_none == nsq_arr && img2_list) {
@@ -499,7 +568,8 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
             nx = onx;
             ny = ony;
             if (process_array_list(oout2, &nx, &ny, "output2", &out2_list,
-                                   &nsq_arr_out, 0, NULL, &error)) {
+                                   &nsq_arr_out, 0, NULL, &free_out_arrays2,
+                                   &error)) {
                 goto _exit;
             }
             if (nx != onx || ny != ony) {
@@ -641,7 +711,9 @@ _exit:
     driz_log_message("ending tdriz");
     driz_log_close(driz_log_handle);
     Py_XDECREF(con);
-    Py_XDECREF(img);
+    if (free_img) {
+        Py_XDECREF(img);
+    }
     Py_XDECREF(wei);
     Py_XDECREF(out);
     Py_XDECREF(wht);
@@ -649,16 +721,22 @@ _exit:
 
     if (nsq_arr > 0 && img2_list) {
         for (i = 0; i < nsq_arr; ++i) {
-            Py_XDECREF(img2_list[i]);
+            if (free_arrays2[i]) {
+                Py_XDECREF(img2_list[i]);
+            }
         }
         free(img2_list);
+        free(free_arrays2);
     }
 
     if (nsq_arr_out > 0 && out2_list) {
         for (i = 0; i < nsq_arr_out; ++i) {
-            Py_XDECREF(out2_list[i]);
+            if (free_out_arrays2[i]) {
+                Py_XDECREF(out2_list[i]);
+            }
         }
         free(out2_list);
+        free(free_out_arrays2);
     }
 
     if (driz_error_is_set(&error)) {
