@@ -703,7 +703,9 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
 _exit:
     driz_log_message("ending tdriz");
     driz_log_close(driz_log_handle);
-    Py_XDECREF(con);
+    if (free_con) {
+        Py_XDECREF(con);
+    }
     if (free_img) {
         Py_XDECREF(img);
     }
@@ -925,7 +927,7 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
         goto _exit;
     }
 
-    out = ensure_array(owei, NPY_FLOAT, 2, 2, &free_out);
+    out = ensure_array(oout, NPY_FLOAT, 2, 2, &free_out);
     if (!out) {
         driz_error_set_message(&error, "Invalid output array");
         goto _exit;
@@ -1029,6 +1031,8 @@ test_cdrizzle(PyObject *self, PyObject *args) {
     PyArrayObject *dat, *wei, *map, *odat, *ocnt, *ocon;
     int argc = 1;
     char *argv[] = {"utest_cdrizzle", NULL};
+    int free_data = 0, free_wei = 0, free_map = 0;
+    int free_odat = 0, free_ocnt = 0, free_ocon = 0;
 
     if (!PyArg_ParseTuple(args, "OOOOOO:test_cdrizzle", &data, &weights,
                           &pixmap, &output_data, &output_counts,
@@ -1036,41 +1040,57 @@ test_cdrizzle(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    dat = (PyArrayObject *)PyArray_ContiguousFromAny(data, NPY_FLOAT, 2, 2);
+    dat = ensure_array(data, NPY_FLOAT, 2, 2, &free_data);
     if (!dat) {
         return PyErr_Format(gl_Error, "Invalid data array.");
     }
 
-    wei = (PyArrayObject *)PyArray_ContiguousFromAny(weights, NPY_FLOAT, 2, 2);
+    wei = ensure_array(weights, NPY_FLOAT, 2, 2, &free_wei);
     if (!wei) {
         return PyErr_Format(gl_Error, "Invalid weghts array.");
     }
 
-    map = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, NPY_DOUBLE, 2, 4);
+    map = ensure_array(pixmap, NPY_DOUBLE, 2, 4, &free_map);
     if (!map) {
         return PyErr_Format(gl_Error, "Invalid pixmap.");
     }
 
-    odat = (PyArrayObject *)PyArray_ContiguousFromAny(output_data, NPY_FLOAT, 2,
-                                                      2);
+    odat = ensure_array(output_data, NPY_FLOAT, 2, 2, &free_odat);
     if (!odat) {
         return PyErr_Format(gl_Error, "Invalid output data array.");
     }
 
-    ocnt = (PyArrayObject *)PyArray_ContiguousFromAny(output_counts, NPY_FLOAT,
-                                                      2, 2);
+    ocnt = ensure_array(output_counts, NPY_FLOAT, 2, 2, &free_ocnt);
     if (!ocnt) {
         return PyErr_Format(gl_Error, "Invalid output counts array.");
     }
 
-    ocon = (PyArrayObject *)PyArray_ContiguousFromAny(output_context, NPY_INT32,
-                                                      2, 2);
+    ocon = ensure_array(output_context, NPY_INT32, 2, 2, &free_ocon);
     if (!ocon) {
         return PyErr_Format(gl_Error, "Invalid context array");
     }
 
     set_test_arrays(dat, wei, map, odat, ocnt, ocon);
     utest_cdrizzle(argc, argv);
+
+    if (free_data) {
+        Py_XDECREF(dat);
+    }
+    if (free_wei) {
+        Py_XDECREF(wei);
+    }
+    if (free_map) {
+        Py_XDECREF(map);
+    }
+    if (free_odat) {
+        Py_XDECREF(odat);
+    }
+    if (free_ocnt) {
+        Py_XDECREF(ocnt);
+    }
+    if (free_ocon) {
+        Py_XDECREF(ocon);
+    }
 
     return Py_BuildValue("");
 }
@@ -1085,6 +1105,7 @@ invert_pixmap_wrap(PyObject *self, PyObject *args) {
     double *xy, *xyin;
     npy_intp *ndim, xyin_dim = 2;
     const double half = 0.5 - DBL_EPSILON;
+    int free_xyout = 0, free_pixmap = 0, free_bbox = 0;
 
     xyin = (double *)malloc(2 * sizeof(double));
 
@@ -1092,14 +1113,12 @@ invert_pixmap_wrap(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    xyout_arr =
-        (PyArrayObject *)PyArray_ContiguousFromAny(xyout, NPY_DOUBLE, 1, 1);
+    xyout_arr = ensure_array(xyout, NPY_DOUBLE, 1, 1, &free_xyout);
     if (!xyout_arr) {
         return PyErr_Format(gl_Error, "Invalid xyout array.");
     }
 
-    pixmap_arr =
-        (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, NPY_DOUBLE, 3, 3);
+    pixmap_arr = ensure_array(pixmap, NPY_DOUBLE, 3, 3, &free_pixmap);
     if (!pixmap_arr) {
         return PyErr_Format(gl_Error, "Invalid pixmap.");
     }
@@ -1113,8 +1132,7 @@ invert_pixmap_wrap(PyObject *self, PyObject *args) {
         par.ymin = 0;
         par.ymax = ndim[0] - 1;
     } else {
-        bbox_arr =
-            (PyArrayObject *)PyArray_ContiguousFromAny(bbox, NPY_DOUBLE, 2, 2);
+        bbox_arr = ensure_array(bbox, NPY_DOUBLE, 2, 2, &free_bbox);
         if (!bbox_arr) {
             return PyErr_Format(gl_Error, "Invalid input bounding box.");
         }
@@ -1138,6 +1156,15 @@ invert_pixmap_wrap(PyObject *self, PyObject *args) {
         1, &xyin_dim, NPY_DOUBLE, xyin);
 
     PyArray_ENABLEFLAGS(arr, NPY_ARRAY_OWNDATA);
+    if (free_xyout) {
+        Py_XDECREF(xyout_arr);
+    }
+    if (free_pixmap) {
+        Py_XDECREF(pixmap_arr);
+    }
+    if (free_bbox) {
+        Py_XDECREF(bbox_arr);
+    }
 
     return Py_BuildValue("N", arr);
 }
@@ -1151,17 +1178,18 @@ clip_polygon_wrap(PyObject *self, PyObject *args) {
     PyArrayObject *pin_arr, *qin_arr;
     struct polygon p, q, pq;
     PyObject *list, *tuple;
+    int free_pin = 0, free_qin = 0;
 
     if (!PyArg_ParseTuple(args, "OO:clip_polygon", &pin, &qin)) {
         return NULL;
     }
 
-    pin_arr = (PyArrayObject *)PyArray_ContiguousFromAny(pin, NPY_DOUBLE, 2, 2);
+    pin_arr = ensure_array(pin, NPY_DOUBLE, 2, 2, &free_pin);
     if (!pin_arr) {
         return PyErr_Format(gl_Error, "Invalid P.");
     }
 
-    qin_arr = (PyArrayObject *)PyArray_ContiguousFromAny(qin, NPY_DOUBLE, 2, 2);
+    qin_arr = ensure_array(qin, NPY_DOUBLE, 2, 2, &free_qin);
     if (!qin_arr) {
         return PyErr_Format(gl_Error, "Invalid Q.");
     }
@@ -1187,6 +1215,12 @@ clip_polygon_wrap(PyObject *self, PyObject *args) {
         PyTuple_SetItem(tuple, 0, PyFloat_FromDouble(pq.v[k].x));
         PyTuple_SetItem(tuple, 1, PyFloat_FromDouble(pq.v[k].y));
         PyList_SetItem(list, k, tuple);
+    }
+    if (free_pin) {
+        Py_XDECREF(pin_arr);
+    }
+    if (free_qin) {
+        Py_XDECREF(qin_arr);
     }
 
     return Py_BuildValue("N", list);
