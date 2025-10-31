@@ -383,7 +383,6 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
         con = NULL;
     } else {
         con = ensure_array(ocon, NPY_INT32, 2, 2, &free_con);
-        con = (PyArrayObject *)PyArray_ContiguousFromAny(ocon, NPY_INT32, 2, 2);
         if (!con) {
             driz_error_set_message(&error, "Invalid context array");
             goto _exit;
@@ -794,6 +793,7 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
     struct driz_param_t p;
     integer_t psize[2], osize[2];
     char warn_msg[128];
+    int free_img = 0, free_out = 0, free_map = 0;
 
     driz_log_handle = driz_log_init(driz_log_handle);
     driz_log_message("starting tblot");
@@ -913,19 +913,19 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
         ef = 1.0f;
     }
 
-    img = (PyArrayObject *)PyArray_ContiguousFromAny(oimg, NPY_FLOAT, 2, 2);
+    img = ensure_array(oimg, NPY_FLOAT, 2, 2, &free_img);
     if (!img) {
         driz_error_set_message(&error, "Invalid input array");
         goto _exit;
     }
 
-    map = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, NPY_DOUBLE, 3, 3);
+    map = ensure_array(pixmap, NPY_DOUBLE, 3, 3, &free_map);
     if (!map) {
         driz_error_set_message(&error, "Invalid pixmap array");
         goto _exit;
     }
 
-    out = (PyArrayObject *)PyArray_ContiguousFromAny(oout, NPY_FLOAT, 2, 2);
+    out = ensure_array(owei, NPY_FLOAT, 2, 2, &free_out);
     if (!out) {
         driz_error_set_message(&error, "Invalid output array");
         goto _exit;
@@ -996,9 +996,15 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
 _exit:
     driz_log_message("ending tblot");
     driz_log_close(driz_log_handle);
-    Py_XDECREF(img);
-    Py_XDECREF(out);
-    Py_XDECREF(map);
+    if (free_img) {
+        Py_XDECREF(img);
+    }
+    if (free_out) {
+        Py_XDECREF(out);
+    }
+    if (free_map) {
+        Py_XDECREF(map);
+    }
 
     if (driz_error_is_set(&error)) {
         if (strcmp(driz_error_get_message(&error), "<PYTHON>") != 0) {
