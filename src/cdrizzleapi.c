@@ -101,8 +101,6 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
         }
         arr = ensure_array(list, NPY_FLOAT, 2, 2, &cpy);
         (*free_arrays)[0] = cpy;
-        // arr = (PyArrayObject *)PyArray_ContiguousFromAny(list, NPY_FLOAT, 2,
-        // 2);
         if (!arr) {
             driz_error_set(error, PyExc_ValueError, "Invalid '%s' array.",
                            name);
@@ -167,9 +165,6 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
                 goto _exit_on_err;
             }
         } else {
-            // arr = (PyArrayObject *)PyArray_ContiguousFromAny(list_elem,
-            //                                                  NPY_FLOAT, 2,
-            //                                                  2);
             arr = ensure_array(list_elem, NPY_FLOAT, 2, 2, &cpy);
             if (!arr) {
                 driz_error_set(error, PyExc_ValueError,
@@ -272,8 +267,8 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     PyArrayObject *img = NULL, *wei = NULL, *out = NULL, *wht = NULL,
                   *con = NULL, *map = NULL, *dq = NULL, *outdq = NULL;
 
-    int free_img = 1, free_wei = 1, free_out = 1, free_wht = 1;
-    int free_con = 1, free_map = 1, free_dq = 1, free_outdq = 1;
+    int free_img = 0, free_wei = 0, free_out = 0, free_wht = 0;
+    int free_con = 0, free_map = 0, free_dq = 0, free_outdq = 0;
 
     PyArrayObject **img2_list = NULL, **out2_list = NULL;
 
@@ -354,32 +349,31 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     }
 
     /* Get raw C-array data */
-    // img = (PyArrayObject *)PyArray_ContiguousFromAny(oimg, NPY_FLOAT, 2, 2);
     img = ensure_array(oimg, NPY_FLOAT, 2, 2, &free_img);
     if (!img) {
         driz_error_set_message(&error, "Invalid input array");
         goto _exit;
     }
 
-    wei = (PyArrayObject *)PyArray_ContiguousFromAny(owei, NPY_FLOAT, 2, 2);
+    wei = ensure_array(owei, NPY_FLOAT, 2, 2, &free_wei);
     if (!wei) {
         driz_error_set_message(&error, "Invalid weights array");
         goto _exit;
     }
 
-    map = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, NPY_DOUBLE, 3, 3);
+    map = ensure_array(pixmap, NPY_DOUBLE, 3, 3, &free_map);
     if (!map) {
         driz_error_set_message(&error, "Invalid pixmap array");
         goto _exit;
     }
 
-    out = (PyArrayObject *)PyArray_ContiguousFromAny(oout, NPY_FLOAT, 2, 2);
+    out = ensure_array(oout, NPY_FLOAT, 2, 2, &free_out);
     if (!out) {
         driz_error_set_message(&error, "Invalid output array");
         goto _exit;
     }
 
-    wht = (PyArrayObject *)PyArray_ContiguousFromAny(owht, NPY_FLOAT, 2, 2);
+    wht = ensure_array(owht, NPY_FLOAT, 2, 2, &free_wht);
     if (!wht) {
         driz_error_set_message(&error, "Invalid counts array");
         goto _exit;
@@ -388,6 +382,7 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     if (ocon == Py_None) {
         con = NULL;
     } else {
+        con = ensure_array(ocon, NPY_INT32, 2, 2, &free_con);
         con = (PyArrayObject *)PyArray_ContiguousFromAny(ocon, NPY_INT32, 2, 2);
         if (!con) {
             driz_error_set_message(&error, "Invalid context array");
@@ -398,7 +393,7 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     if (odq == Py_None || odq == NULL) {
         dq = NULL;
     } else {
-        dq = (PyArrayObject *)PyArray_ContiguousFromAny(odq, NPY_UINT32, 2, 2);
+        dq = ensure_array(odq, NPY_UINT32, 2, 2, &free_dq);
         if (!dq) {
             driz_error_set_message(&error, "Invalid input DQ array");
             goto _exit;
@@ -414,8 +409,7 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
         }
         outdq = NULL;
     } else {
-        outdq = (PyArrayObject *)PyArray_ContiguousFromAny(ooutdq, NPY_UINT32,
-                                                           2, 2);
+        outdq = ensure_array(ooutdq, NPY_UINT32, 2, 2, &free_outdq);
         if (!outdq) {
             driz_error_set_message(&error, "Invalid output DQ array");
             goto _exit;
@@ -714,10 +708,24 @@ _exit:
     if (free_img) {
         Py_XDECREF(img);
     }
-    Py_XDECREF(wei);
-    Py_XDECREF(out);
-    Py_XDECREF(wht);
-    Py_XDECREF(map);
+    if (free_wei) {
+        Py_XDECREF(wei);
+    }
+    if (free_out) {
+        Py_XDECREF(out);
+    }
+    if (free_wht) {
+        Py_XDECREF(wht);
+    }
+    if (free_map) {
+        Py_XDECREF(map);
+    }
+    if (free_dq) {
+        Py_XDECREF(dq);
+    }
+    if (free_outdq) {
+        Py_XDECREF(outdq);
+    }
 
     if (nsq_arr > 0 && img2_list) {
         for (i = 0; i < nsq_arr; ++i) {
