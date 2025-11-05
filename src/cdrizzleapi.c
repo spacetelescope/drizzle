@@ -1,6 +1,5 @@
 #include <Python.h>
 
-#define _USE_MATH_DEFINES /* MS Windows needs to define M_PI */
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,11 +8,8 @@
 #include <stdio.h>
 
 #ifndef NPY_NO_DEPRECATED_API
-#define NPY_NO_DEPRECATED_API NPY_1_24_API_VERSION
+#define NPY_NO_DEPRECATED_API NPY_1_21_API_VERSION
 #endif
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
 
 #include <numpy/arrayobject.h>
 #include <numpy/ndarrayobject.h>
@@ -24,7 +20,6 @@
 #include "cdrizzlemap.h"
 #include "cdrizzleutil.h"
 #include "tests/drizzletest.h"
-#pragma GCC diagnostic pop
 
 static PyObject *gl_Error;
 FILE *driz_log_handle = NULL;

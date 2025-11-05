@@ -1,8 +1,3 @@
-#define NO_IMPORT_ARRAY
-#define NO_IMPORT_ASTROPY_WCS_API
-#include "cdrizzlemap.h"
-#include "cdrizzleutil.h"
-
 #include <assert.h>
 #define _USE_MATH_DEFINES /* needed for MS Windows to define M_PI */
 #include <math.h>
@@ -11,8 +6,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef NPY_NO_DEPRECATED_API
+#define NPY_NO_DEPRECATED_API NPY_1_21_API_VERSION
+#endif
+#define NO_IMPORT_ARRAY
+#define PY_ARRAY_UNIQUE_SYMBOL cdrizzle_util_api
+
 #include <numpy/npy_math.h>
 #include <numpy/arrayobject.h>
+
+#include "cdrizzlemap.h"
+#include "cdrizzleutil.h"
 
 /*****************************************************************
  ERROR HANDLING

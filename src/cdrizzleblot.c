@@ -1,17 +1,17 @@
+#include <assert.h>
+#define _USE_MATH_DEFINES /* needed for MS Windows to define M_PI */
+#include <math.h>
+#include <stdlib.h>
+
 #define NO_IMPORT_ARRAY
-#define NO_IMPORT_ASTROPY_WCS_API
+#define PY_ARRAY_UNIQUE_SYMBOL cdrizzle_blot_api
+#include <numpy/npy_math.h>
+#include <numpy/arrayobject.h>
 
 #include "driz_portability.h"
 #include "cdrizzlemap.h"
 #include "cdrizzleblot.h"
 #include "cdrizzleutil.h"
-
-#include <assert.h>
-#define _USE_MATH_DEFINES /* needed for MS Windows to define M_PI */
-#include <math.h>
-#include <stdlib.h>
-#include <numpy/npy_math.h>
-#include <numpy/arrayobject.h>
 
 static const double lut_delta = 0.003; /* spacing of Lanczos LUT */
 
@@ -580,8 +580,8 @@ interpolate_sinc_(PyArrayObject *data, const integer_t firstt,
     const integer_t nsinc = (nconv - 1) / 2;
     /* TODO: This is to match Fortan, but is probably technically less precise
      */
-    const float halfpi = 1.5707963267948966192f; /* M_PI / 2.0; */
-    const float sconst = powf((halfpi / (float)nsinc), 2.0f);
+
+    const float sconst = powf((float)(M_PI_2 / nsinc), 2.0f);
     const float a2 = -0.49670f;
     const float a4 = 0.03705f;
     float taper[INTERPOLATE_SINC_NCONV];

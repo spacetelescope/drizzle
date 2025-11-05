@@ -2,7 +2,7 @@
 
 #include <Python.h>
 #ifndef NPY_NO_DEPRECATED_API
-#define NPY_NO_DEPRECATED_API NPY_1_24_API_VERSION
+#define NPY_NO_DEPRECATED_API NPY_1_21_API_VERSION
 #endif
 #include <numpy/arrayobject.h>
 
