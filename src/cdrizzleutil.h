@@ -13,7 +13,10 @@
 #ifndef NPY_NO_DEPRECATED_API
 #define NPY_NO_DEPRECATED_API NPY_1_21_API_VERSION
 #endif
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <numpy/arrayobject.h>
+#pragma GCC diagnostic pop
 
 /*****************************************************************
  ERROR HANDLING
