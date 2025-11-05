@@ -5,6 +5,10 @@
 #include <math.h>
 #include <stdlib.h>
 
+#ifndef NPY_NO_DEPRECATED_API
+#define NPY_NO_DEPRECATED_API NPY_1_21_API_VERSION
+#endif
+
 #define NO_IMPORT_ARRAY
 #define PY_ARRAY_UNIQUE_SYMBOL cdrizzle_box_api
 
