@@ -15,6 +15,9 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
+// too much work to check whether this is critical (Wmaybe-uninitialized).
+// TODO: consider replacing fct.h with another test framework
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #ifdef WIN32
 #include "fct.h"
 #else
