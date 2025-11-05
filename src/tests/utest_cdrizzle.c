@@ -13,11 +13,14 @@
 #include <numpy/npy_math.h>
 #pragma GCC diagnostic pop
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
 #ifdef WIN32
 #include "fct.h"
 #else
 #include "pandokia_fct.h"
 #endif
+#pragma GCC diagnostic pop
 
 #include "cdrizzlebox.h"
 #include "cdrizzleblot.h"
