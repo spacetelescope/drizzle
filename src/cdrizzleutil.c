@@ -12,8 +12,11 @@
 #define NO_IMPORT_ARRAY
 #define PY_ARRAY_UNIQUE_SYMBOL cdrizzle_util_api
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <numpy/npy_math.h>
 #include <numpy/arrayobject.h>
+#pragma GCC diagnostic pop
 
 #include "cdrizzlemap.h"
 #include "cdrizzleutil.h"

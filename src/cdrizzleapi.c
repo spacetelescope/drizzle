@@ -11,9 +11,12 @@
 #define NPY_NO_DEPRECATED_API NPY_1_21_API_VERSION
 #endif
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <numpy/arrayobject.h>
 #include <numpy/ndarrayobject.h>
 #include <numpy/npy_math.h>
+#pragma GCC diagnostic pop
 
 #include "cdrizzleblot.h"
 #include "cdrizzlebox.h"
