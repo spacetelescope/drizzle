@@ -1147,8 +1147,11 @@ invert_pixmap_wrap(PyObject *self, PyObject *args) {
         return Py_BuildValue("");
     }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
     PyArrayObject *arr = (PyArrayObject *)PyArray_SimpleNewFromData(
         1, &xyin_dim, NPY_DOUBLE, xyin);
+#pragma GCC diagnostic pop
 
     PyArray_ENABLEFLAGS(arr, NPY_ARRAY_OWNDATA);
     if (free_xyout) {
