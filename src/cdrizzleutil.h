@@ -2,20 +2,21 @@
 #define CDRIZZLEUTIL_H
 #include "driz_portability.h"
 
-#include <Python.h>
-#ifndef NPY_NO_DEPRECATED_API
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#endif
-#include <numpy/arrayobject.h>
-
 #include <assert.h>
 #include <errno.h>
-#define _USE_MATH_DEFINES /* needed for MS Windows to define M_PI */
-#include <math.h>
 #if __STDC_VERSION__ >= 199901L
 #include <stdint.h>
 #endif
 #include <stdlib.h>
+
+#include <Python.h>
+#ifndef NPY_NO_DEPRECATED_API
+#define NPY_NO_DEPRECATED_API NPY_1_21_API_VERSION
+#endif
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#include <numpy/arrayobject.h>
+#pragma GCC diagnostic pop
 
 /*****************************************************************
  ERROR HANDLING

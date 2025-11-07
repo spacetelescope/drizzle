@@ -1,15 +1,21 @@
 #define NO_IMPORT_ARRAY
-#define NO_IMPORT_ASTROPY_WCS_API
-
-#include "driz_portability.h"
-#include "cdrizzlemap.h"
-#include "cdrizzlebox.h"
-#include "cdrizzleutil.h"
 
 #include <assert.h>
 #define _USE_MATH_DEFINES /* needed for MS Windows to define M_PI */
 #include <math.h>
 #include <stdlib.h>
+
+#ifndef NPY_NO_DEPRECATED_API
+#define NPY_NO_DEPRECATED_API NPY_1_21_API_VERSION
+#endif
+
+#define NO_IMPORT_ARRAY
+#define PY_ARRAY_UNIQUE_SYMBOL cdrizzle_box_api
+
+#include "driz_portability.h"
+#include "cdrizzlemap.h"
+#include "cdrizzlebox.h"
+#include "cdrizzleutil.h"
 
 static const double lut_delta = 0.003; /* spacing of Lanczos LUT */
 

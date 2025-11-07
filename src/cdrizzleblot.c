@@ -1,17 +1,25 @@
+#include <assert.h>
+#define _USE_MATH_DEFINES /* needed for MS Windows to define M_PI */
+#include <math.h>
+#include <stdlib.h>
+
+#ifndef NPY_NO_DEPRECATED_API
+#define NPY_NO_DEPRECATED_API NPY_1_21_API_VERSION
+#endif
+
 #define NO_IMPORT_ARRAY
-#define NO_IMPORT_ASTROPY_WCS_API
+#define PY_ARRAY_UNIQUE_SYMBOL cdrizzle_blot_api
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#include <numpy/npy_math.h>
+#include <numpy/arrayobject.h>
+#pragma GCC diagnostic pop
 
 #include "driz_portability.h"
 #include "cdrizzlemap.h"
 #include "cdrizzleblot.h"
 #include "cdrizzleutil.h"
-
-#include <assert.h>
-#define _USE_MATH_DEFINES /* needed for MS Windows to define M_PI */
-#include <math.h>
-#include <stdlib.h>
-#include <numpy/npy_math.h>
-#include <numpy/arrayobject.h>
 
 static const double lut_delta = 0.003; /* spacing of Lanczos LUT */
 
@@ -62,13 +70,13 @@ struct sinc_param_t {
  * zfit:      An array of length \a npts of interpolated values. (output)
  */
 
-static inline_macro void
+static inline_macro int
 ii_bipoly3(const float *coeff /* [len_coeff][len_coeff] */,
            const integer_t len_coeff, const integer_t firstt,
            const integer_t npts, const float *x /* [npts] */,
            const float *y /* [npts] */,
            /* Output parameters */
-           float *zfit /* [npts] */) {
+           float *zfit /* [npts] */, struct driz_error_t *error) {
     float sx, tx, sx2m1, tx2m1, sy, ty;
     float cd20[4], cd21[4], ztemp[4];
     float cd20y, cd21y;
@@ -78,18 +86,20 @@ ii_bipoly3(const float *coeff /* [len_coeff][len_coeff] */,
     integer_t i, j;
 
     nxold = nyold = -1;
+
     for (i = 0; i < npts; ++i) {
         nx = (integer_t)x[i];
-        assert(nx >= 0);
+        ny = (integer_t)y[i];
+        if (nx < 0 || ny < 0) {
+            driz_error_set(error, PyExc_ValueError,
+                           "Negative coordinates in ii_bipoly3.");
+            return 1;
+        }
 
         sx = x[i] - (float)nx;
         tx = 1.0f - sx;
         sx2m1 = sx * sx - 1.0f;
         tx2m1 = tx * tx - 1.0f;
-
-        ny = (integer_t)y[i];
-        assert(ny >= 0);
-
         sy = y[i] - (float)ny;
         ty = 1.0f - sy;
 
@@ -133,6 +143,7 @@ ii_bipoly3(const float *coeff /* [len_coeff][len_coeff] */,
         nxold = nx;
         nyold = ny;
     }
+    return 0;
 }
 
 /** ---------------------------------------------------------------------------
@@ -150,13 +161,13 @@ ii_bipoly3(const float *coeff /* [len_coeff][len_coeff] */,
  * zfit:      An array of length \a npts of interpolated values. (output)
  */
 
-static inline_macro void
+static inline_macro int
 ii_bipoly5(const float *coeff /* [len_coeff][len_coeff] */,
            const integer_t len_coeff, const integer_t firstt,
            const integer_t npts, const float *x /* [npts] */,
            const float *y /* [npts] */,
            /* Output parameters */
-           float *zfit /* [npts] */) {
+           float *zfit /* [npts] */, struct driz_error_t *error) {
     integer_t nxold, nyold;
     integer_t nx, ny;
     float sx, sx2, tx, tx2, sy, sy2, ty, ty2;
@@ -175,11 +186,15 @@ ii_bipoly5(const float *coeff /* [len_coeff][len_coeff] */,
     assert(zfit);
 
     nxold = nyold = -1;
+
     for (i = 0; i < npts; ++i) {
         nx = (integer_t)x[i];
         ny = (integer_t)y[i];
-        assert(nx >= 0);
-        assert(ny >= 0);
+        if (nx < 0 || ny < 0) {
+            driz_error_set(error, PyExc_ValueError,
+                           "Negative coordinates in ii_bipoly3.");
+            return 1;
+        }
 
         sx = x[i] - (float)nx;
         sx2 = sx * sx;
@@ -247,6 +262,7 @@ ii_bipoly5(const float *coeff /* [len_coeff][len_coeff] */,
         nxold = nx;
         nyold = ny;
     }
+    return 0;
 }
 
 /** ---------------------------------------------------------------------------
@@ -360,7 +376,6 @@ interpolate_poly3(const void *state, PyArrayObject *data, const float x,
                   float *value, struct driz_error_t *error) {
     /* Unused parameters: */
     (void)state;
-    (void)error;
 
     integer_t nx, ny;
     const integer_t rowleh = 4;
@@ -449,9 +464,7 @@ interpolate_poly3(const void *state, PyArrayObject *data, const float x,
     xval = 2.0f + (x - (float)nx);
     yval = 2.0f + (y - (float)ny);
 
-    ii_bipoly3(&coeff[0][0], rowleh, 0, 1, &xval, &yval, value);
-
-    return 0;
+    return ii_bipoly3(&coeff[0][0], rowleh, 0, 1, &xval, &yval, value, error);
 }
 
 /** ---------------------------------------------------------------------------
@@ -469,7 +482,6 @@ interpolate_poly5(const void *state, PyArrayObject *data, const float x,
                   /* Output parameters */
                   float *value, struct driz_error_t *error) {
     (void)state;
-    (void)error;
 
     integer_t nx, ny;
     const integer_t rowleh = 6;
@@ -553,9 +565,7 @@ interpolate_poly5(const void *state, PyArrayObject *data, const float x,
     xval = 3.0f + (x - (float)nx);
     yval = 3.0f + (y - (float)ny);
 
-    ii_bipoly5(&coeff[0][0], rowleh, 0, 1, &xval, &yval, value);
-
-    return 0;
+    return ii_bipoly5(&coeff[0][0], rowleh, 0, 1, &xval, &yval, value, error);
 }
 
 /** ---------------------------------------------------------------------------
@@ -578,8 +588,8 @@ interpolate_sinc_(PyArrayObject *data, const integer_t firstt,
     const integer_t nsinc = (nconv - 1) / 2;
     /* TODO: This is to match Fortan, but is probably technically less precise
      */
-    const float halfpi = 1.5707963267948966192f; /* M_PI / 2.0; */
-    const float sconst = powf((halfpi / (float)nsinc), 2.0f);
+
+    const float sconst = powf((float)(M_PI_2 / nsinc), 2.0f);
     const float a2 = -0.49670f;
     const float a4 = 0.03705f;
     float taper[INTERPOLATE_SINC_NCONV];

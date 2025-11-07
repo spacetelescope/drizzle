@@ -1,19 +1,26 @@
 #include <assert.h>
+#include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+
 #include <Python.h>
+
 #ifndef NPY_NO_DEPRECATED_API
-#define NPY_NO_DEPRECATED_API NPY_1_10_API_VERSION
+#define NPY_NO_DEPRECATED_API NPY_1_21_API_VERSION
 #endif
+#define NO_IMPORT_ARRAY
+#define PY_ARRAY_UNIQUE_SYMBOL cdrizzle_map_api
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <numpy/npy_math.h>
 #include <numpy/arrayobject.h>
+#pragma GCC diagnostic pop
 
 #include "driz_portability.h"
 #include "cdrizzlemap.h"
 #include "cdrizzleutil.h"
-
-#include <float.h>
 
 static const double VERTEX_ATOL = 1.0e-12;
 static const double APPROX_ZERO = 1.0e3 * DBL_MIN;

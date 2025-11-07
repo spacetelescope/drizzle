@@ -1,6 +1,5 @@
 #include <Python.h>
 
-#define _USE_MATH_DEFINES /* MS Windows needs to define M_PI */
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,10 +8,15 @@
 #include <stdio.h>
 
 #ifndef NPY_NO_DEPRECATED_API
-#define NPY_NO_DEPRECATED_API NPY_1_10_API_VERSION
+#define NPY_NO_DEPRECATED_API NPY_1_21_API_VERSION
 #endif
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <numpy/arrayobject.h>
+#include <numpy/ndarrayobject.h>
 #include <numpy/npy_math.h>
+#pragma GCC diagnostic pop
 
 #include "cdrizzleblot.h"
 #include "cdrizzlebox.h"
@@ -23,18 +27,54 @@
 static PyObject *gl_Error;
 FILE *driz_log_handle = NULL;
 
+static PyArrayObject *
+ensure_array(PyObject *obj, int npy_type, int min_depth, int max_depth,
+             int *is_copy) {
+    if (PyArray_CheckExact(obj) &&
+        PyArray_IS_C_CONTIGUOUS((PyArrayObject *)obj) &&
+        PyArray_TYPE((PyArrayObject *)obj) == npy_type) {
+        *is_copy = 0;
+        return (PyArrayObject *)obj;
+    } else {
+        *is_copy = 1;
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+        PyArray_Descr *dtype_descr =
+            (PyArray_Descr *)((void *)PyArray_DescrFromType((int)npy_type));
+#pragma GCC diagnostic pop
+
+        if (dtype_descr == NULL) {
+            PyErr_SetString(PyExc_TypeError,
+                            "Invalid numpy type for array conversion.");
+            *is_copy = 0;
+            return NULL;
+        }
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+        return (PyArrayObject *)PyArray_FromAny(
+            obj, dtype_descr, min_depth, max_depth,
+            NPY_ARRAY_DEFAULT | NPY_ARRAY_ENSUREARRAY, NULL);
+#pragma GCC diagnostic pop
+    }
+}
+
 static int
 process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
                    const char *name, PyArrayObject ***arrays, int *nmax,
-                   int allow_none, int *n_none, struct driz_error_t *error) {
+                   int allow_none, int *n_none, int **free_arrays,
+                   struct driz_error_t *error) {
     npy_intp *ndim;
     int inx, iny;
     PyObject *list_elem = NULL;
     PyArrayObject **arr_list = NULL;
     PyArrayObject *arr = NULL;
     int i, at_least_one;
+    int cpy;
 
     *arrays = NULL;
+    *free_arrays = NULL;
     *nmax = 0;
     if (n_none) {
         *n_none = 0;
@@ -52,7 +92,13 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
                            "Memory allocation failed.");
             return 1;
         }
-        arr = (PyArrayObject *)PyArray_ContiguousFromAny(list, NPY_FLOAT, 2, 2);
+        if (!(*free_arrays = (int *)malloc(sizeof(int)))) {
+            driz_error_set(error, PyExc_MemoryError,
+                           "Memory allocation failed.");
+            return 1;
+        }
+        arr = ensure_array(list, NPY_FLOAT, 2, 2, &cpy);
+        (*free_arrays)[0] = cpy;
         if (!arr) {
             driz_error_set(error, PyExc_ValueError, "Invalid '%s' array.",
                            name);
@@ -86,6 +132,10 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
         driz_error_set(error, PyExc_MemoryError, "Memory allocation failed.");
         return 1;
     }
+    if (!(*free_arrays = (int *)calloc(*nmax, sizeof(int)))) {
+        driz_error_set(error, PyExc_MemoryError, "Memory allocation failed.");
+        return 1;
+    }
 
     for (i = 0; i < *nmax; ++i) {
         if (!(list_elem = PySequence_GetItem(list, i))) {
@@ -101,6 +151,7 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
                     (*n_none)++;
                 }
                 arr_list[i] = NULL;
+                (*free_arrays)[i] = 0;
                 Py_XDECREF(list_elem);
                 continue;
             } else {
@@ -112,14 +163,14 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
                 goto _exit_on_err;
             }
         } else {
-            arr = (PyArrayObject *)PyArray_ContiguousFromAny(list_elem,
-                                                             NPY_FLOAT, 2, 2);
+            arr = ensure_array(list_elem, NPY_FLOAT, 2, 2, &cpy);
             if (!arr) {
                 driz_error_set(error, PyExc_ValueError,
                                "Invalid array in '%s' at position %d.", name,
                                i);
                 goto _exit_on_err;
             }
+            (*free_arrays)[i] = cpy;
             at_least_one = 1;
         }
         Py_XDECREF(list_elem);
@@ -145,6 +196,7 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
 
     if (!at_least_one && !allow_none) {
         free(arr_list);
+        free(*free_arrays);
         arr_list = NULL;
         *nmax = 0;
     }
@@ -157,9 +209,14 @@ _exit_on_err:
     Py_XDECREF(list_elem);
     if (arr_list) {
         for (i = 0; i < *nmax; ++i) {
-            Py_XDECREF(arr_list[i]);
+            if (free_arrays && (*free_arrays)[i]) {
+                Py_XDECREF(arr_list[i]);
+            }
         }
         free(arr_list);
+    }
+    if (*free_arrays) {
+        free(*free_arrays);
     }
     return 1;
 }
@@ -185,6 +242,7 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
              *opscale_ratio = NULL, *oscale = NULL;
     int i, n_none;
     int nsq_args, nsq_arr = 0, nsq_arr_out = 0;
+    int *free_arrays2 = NULL, *free_out_arrays2 = NULL;
 
     integer_t uniqid = 1;
     integer_t xmin = 0;
@@ -206,6 +264,9 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
 
     PyArrayObject *img = NULL, *wei = NULL, *out = NULL, *wht = NULL,
                   *con = NULL, *map = NULL, *dq = NULL, *outdq = NULL;
+
+    int free_img = 0, free_wei = 0, free_out = 0, free_wht = 0;
+    int free_con = 0, free_map = 0, free_dq = 0, free_outdq = 0;
 
     PyArrayObject **img2_list = NULL, **out2_list = NULL;
 
@@ -286,31 +347,31 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     }
 
     /* Get raw C-array data */
-    img = (PyArrayObject *)PyArray_ContiguousFromAny(oimg, NPY_FLOAT, 2, 2);
+    img = ensure_array(oimg, NPY_FLOAT, 2, 2, &free_img);
     if (!img) {
         driz_error_set_message(&error, "Invalid input array");
         goto _exit;
     }
 
-    wei = (PyArrayObject *)PyArray_ContiguousFromAny(owei, NPY_FLOAT, 2, 2);
+    wei = ensure_array(owei, NPY_FLOAT, 2, 2, &free_wei);
     if (!wei) {
         driz_error_set_message(&error, "Invalid weights array");
         goto _exit;
     }
 
-    map = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, NPY_DOUBLE, 3, 3);
+    map = ensure_array(pixmap, NPY_DOUBLE, 3, 3, &free_map);
     if (!map) {
         driz_error_set_message(&error, "Invalid pixmap array");
         goto _exit;
     }
 
-    out = (PyArrayObject *)PyArray_ContiguousFromAny(oout, NPY_FLOAT, 2, 2);
+    out = ensure_array(oout, NPY_FLOAT, 2, 2, &free_out);
     if (!out) {
         driz_error_set_message(&error, "Invalid output array");
         goto _exit;
     }
 
-    wht = (PyArrayObject *)PyArray_ContiguousFromAny(owht, NPY_FLOAT, 2, 2);
+    wht = ensure_array(owht, NPY_FLOAT, 2, 2, &free_wht);
     if (!wht) {
         driz_error_set_message(&error, "Invalid counts array");
         goto _exit;
@@ -319,7 +380,7 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     if (ocon == Py_None) {
         con = NULL;
     } else {
-        con = (PyArrayObject *)PyArray_ContiguousFromAny(ocon, NPY_INT32, 2, 2);
+        con = ensure_array(ocon, NPY_INT32, 2, 2, &free_con);
         if (!con) {
             driz_error_set_message(&error, "Invalid context array");
             goto _exit;
@@ -329,7 +390,7 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     if (odq == Py_None || odq == NULL) {
         dq = NULL;
     } else {
-        dq = (PyArrayObject *)PyArray_ContiguousFromAny(odq, NPY_UINT32, 2, 2);
+        dq = ensure_array(odq, NPY_UINT32, 2, 2, &free_dq);
         if (!dq) {
             driz_error_set_message(&error, "Invalid input DQ array");
             goto _exit;
@@ -345,8 +406,7 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
         }
         outdq = NULL;
     } else {
-        outdq = (PyArrayObject *)PyArray_ContiguousFromAny(ooutdq, NPY_UINT32,
-                                                           2, 2);
+        outdq = ensure_array(ooutdq, NPY_UINT32, 2, 2, &free_outdq);
         if (!outdq) {
             driz_error_set_message(&error, "Invalid output DQ array");
             goto _exit;
@@ -480,7 +540,7 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
         nx = inx;
         ny = iny;
         if (process_array_list(oimg2, &nx, &ny, "input2", &img2_list, &nsq_arr,
-                               1, &n_none, &error)) {
+                               1, &n_none, &free_arrays2, &error)) {
             goto _exit;
         }
         if (n_none == nsq_arr && img2_list) {
@@ -499,7 +559,8 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
             nx = onx;
             ny = ony;
             if (process_array_list(oout2, &nx, &ny, "output2", &out2_list,
-                                   &nsq_arr_out, 0, NULL, &error)) {
+                                   &nsq_arr_out, 0, NULL, &free_out_arrays2,
+                                   &error)) {
                 goto _exit;
             }
             if (nx != onx || ny != ony) {
@@ -640,25 +701,49 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
 _exit:
     driz_log_message("ending tdriz");
     driz_log_close(driz_log_handle);
-    Py_XDECREF(con);
-    Py_XDECREF(img);
-    Py_XDECREF(wei);
-    Py_XDECREF(out);
-    Py_XDECREF(wht);
-    Py_XDECREF(map);
+    if (free_con) {
+        Py_XDECREF(con);
+    }
+    if (free_img) {
+        Py_XDECREF(img);
+    }
+    if (free_wei) {
+        Py_XDECREF(wei);
+    }
+    if (free_out) {
+        Py_XDECREF(out);
+    }
+    if (free_wht) {
+        Py_XDECREF(wht);
+    }
+    if (free_map) {
+        Py_XDECREF(map);
+    }
+    if (free_dq) {
+        Py_XDECREF(dq);
+    }
+    if (free_outdq) {
+        Py_XDECREF(outdq);
+    }
 
     if (nsq_arr > 0 && img2_list) {
         for (i = 0; i < nsq_arr; ++i) {
-            Py_XDECREF(img2_list[i]);
+            if (free_arrays2[i]) {
+                Py_XDECREF(img2_list[i]);
+            }
         }
         free(img2_list);
+        free(free_arrays2);
     }
 
     if (nsq_arr_out > 0 && out2_list) {
         for (i = 0; i < nsq_arr_out; ++i) {
-            Py_XDECREF(out2_list[i]);
+            if (free_out_arrays2[i]) {
+                Py_XDECREF(out2_list[i]);
+            }
         }
         free(out2_list);
+        free(free_out_arrays2);
     }
 
     if (driz_error_is_set(&error)) {
@@ -708,6 +793,7 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
     struct driz_param_t p;
     integer_t psize[2], osize[2];
     char warn_msg[128];
+    int free_img = 0, free_out = 0, free_map = 0;
 
     driz_log_handle = driz_log_init(driz_log_handle);
     driz_log_message("starting tblot");
@@ -827,19 +913,19 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
         ef = 1.0f;
     }
 
-    img = (PyArrayObject *)PyArray_ContiguousFromAny(oimg, NPY_FLOAT, 2, 2);
+    img = ensure_array(oimg, NPY_FLOAT, 2, 2, &free_img);
     if (!img) {
         driz_error_set_message(&error, "Invalid input array");
         goto _exit;
     }
 
-    map = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, NPY_DOUBLE, 3, 3);
+    map = ensure_array(pixmap, NPY_DOUBLE, 3, 3, &free_map);
     if (!map) {
         driz_error_set_message(&error, "Invalid pixmap array");
         goto _exit;
     }
 
-    out = (PyArrayObject *)PyArray_ContiguousFromAny(oout, NPY_FLOAT, 2, 2);
+    out = ensure_array(oout, NPY_FLOAT, 2, 2, &free_out);
     if (!out) {
         driz_error_set_message(&error, "Invalid output array");
         goto _exit;
@@ -910,9 +996,15 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
 _exit:
     driz_log_message("ending tblot");
     driz_log_close(driz_log_handle);
-    Py_XDECREF(img);
-    Py_XDECREF(out);
-    Py_XDECREF(map);
+    if (free_img) {
+        Py_XDECREF(img);
+    }
+    if (free_out) {
+        Py_XDECREF(out);
+    }
+    if (free_map) {
+        Py_XDECREF(map);
+    }
 
     if (driz_error_is_set(&error)) {
         if (strcmp(driz_error_get_message(&error), "<PYTHON>") != 0) {
@@ -937,6 +1029,8 @@ test_cdrizzle(PyObject *self, PyObject *args) {
     PyArrayObject *dat, *wei, *map, *odat, *ocnt, *ocon;
     int argc = 1;
     char *argv[] = {"utest_cdrizzle", NULL};
+    int free_data = 0, free_wei = 0, free_map = 0;
+    int free_odat = 0, free_ocnt = 0, free_ocon = 0;
 
     if (!PyArg_ParseTuple(args, "OOOOOO:test_cdrizzle", &data, &weights,
                           &pixmap, &output_data, &output_counts,
@@ -944,41 +1038,57 @@ test_cdrizzle(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    dat = (PyArrayObject *)PyArray_ContiguousFromAny(data, NPY_FLOAT, 2, 2);
+    dat = ensure_array(data, NPY_FLOAT, 2, 2, &free_data);
     if (!dat) {
         return PyErr_Format(gl_Error, "Invalid data array.");
     }
 
-    wei = (PyArrayObject *)PyArray_ContiguousFromAny(weights, NPY_FLOAT, 2, 2);
+    wei = ensure_array(weights, NPY_FLOAT, 2, 2, &free_wei);
     if (!wei) {
         return PyErr_Format(gl_Error, "Invalid weghts array.");
     }
 
-    map = (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, NPY_DOUBLE, 2, 4);
+    map = ensure_array(pixmap, NPY_DOUBLE, 2, 4, &free_map);
     if (!map) {
         return PyErr_Format(gl_Error, "Invalid pixmap.");
     }
 
-    odat = (PyArrayObject *)PyArray_ContiguousFromAny(output_data, NPY_FLOAT, 2,
-                                                      2);
+    odat = ensure_array(output_data, NPY_FLOAT, 2, 2, &free_odat);
     if (!odat) {
         return PyErr_Format(gl_Error, "Invalid output data array.");
     }
 
-    ocnt = (PyArrayObject *)PyArray_ContiguousFromAny(output_counts, NPY_FLOAT,
-                                                      2, 2);
+    ocnt = ensure_array(output_counts, NPY_FLOAT, 2, 2, &free_ocnt);
     if (!ocnt) {
         return PyErr_Format(gl_Error, "Invalid output counts array.");
     }
 
-    ocon = (PyArrayObject *)PyArray_ContiguousFromAny(output_context, NPY_INT32,
-                                                      2, 2);
+    ocon = ensure_array(output_context, NPY_INT32, 2, 2, &free_ocon);
     if (!ocon) {
         return PyErr_Format(gl_Error, "Invalid context array");
     }
 
     set_test_arrays(dat, wei, map, odat, ocnt, ocon);
     utest_cdrizzle(argc, argv);
+
+    if (free_data) {
+        Py_XDECREF(dat);
+    }
+    if (free_wei) {
+        Py_XDECREF(wei);
+    }
+    if (free_map) {
+        Py_XDECREF(map);
+    }
+    if (free_odat) {
+        Py_XDECREF(odat);
+    }
+    if (free_ocnt) {
+        Py_XDECREF(ocnt);
+    }
+    if (free_ocon) {
+        Py_XDECREF(ocon);
+    }
 
     return Py_BuildValue("");
 }
@@ -993,6 +1103,7 @@ invert_pixmap_wrap(PyObject *self, PyObject *args) {
     double *xy, *xyin;
     npy_intp *ndim, xyin_dim = 2;
     const double half = 0.5 - DBL_EPSILON;
+    int free_xyout = 0, free_pixmap = 0, free_bbox = 0;
 
     xyin = (double *)malloc(2 * sizeof(double));
 
@@ -1000,14 +1111,12 @@ invert_pixmap_wrap(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    xyout_arr =
-        (PyArrayObject *)PyArray_ContiguousFromAny(xyout, NPY_DOUBLE, 1, 1);
+    xyout_arr = ensure_array(xyout, NPY_DOUBLE, 1, 1, &free_xyout);
     if (!xyout_arr) {
         return PyErr_Format(gl_Error, "Invalid xyout array.");
     }
 
-    pixmap_arr =
-        (PyArrayObject *)PyArray_ContiguousFromAny(pixmap, NPY_DOUBLE, 3, 3);
+    pixmap_arr = ensure_array(pixmap, NPY_DOUBLE, 3, 3, &free_pixmap);
     if (!pixmap_arr) {
         return PyErr_Format(gl_Error, "Invalid pixmap.");
     }
@@ -1021,8 +1130,7 @@ invert_pixmap_wrap(PyObject *self, PyObject *args) {
         par.ymin = 0;
         par.ymax = ndim[0] - 1;
     } else {
-        bbox_arr =
-            (PyArrayObject *)PyArray_ContiguousFromAny(bbox, NPY_DOUBLE, 2, 2);
+        bbox_arr = ensure_array(bbox, NPY_DOUBLE, 2, 2, &free_bbox);
         if (!bbox_arr) {
             return PyErr_Format(gl_Error, "Invalid input bounding box.");
         }
@@ -1042,10 +1150,22 @@ invert_pixmap_wrap(PyObject *self, PyObject *args) {
         return Py_BuildValue("");
     }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
     PyArrayObject *arr = (PyArrayObject *)PyArray_SimpleNewFromData(
         1, &xyin_dim, NPY_DOUBLE, xyin);
+#pragma GCC diagnostic pop
 
     PyArray_ENABLEFLAGS(arr, NPY_ARRAY_OWNDATA);
+    if (free_xyout) {
+        Py_XDECREF(xyout_arr);
+    }
+    if (free_pixmap) {
+        Py_XDECREF(pixmap_arr);
+    }
+    if (free_bbox) {
+        Py_XDECREF(bbox_arr);
+    }
 
     return Py_BuildValue("N", arr);
 }
@@ -1059,17 +1179,18 @@ clip_polygon_wrap(PyObject *self, PyObject *args) {
     PyArrayObject *pin_arr, *qin_arr;
     struct polygon p, q, pq;
     PyObject *list, *tuple;
+    int free_pin = 0, free_qin = 0;
 
     if (!PyArg_ParseTuple(args, "OO:clip_polygon", &pin, &qin)) {
         return NULL;
     }
 
-    pin_arr = (PyArrayObject *)PyArray_ContiguousFromAny(pin, NPY_DOUBLE, 2, 2);
+    pin_arr = ensure_array(pin, NPY_DOUBLE, 2, 2, &free_pin);
     if (!pin_arr) {
         return PyErr_Format(gl_Error, "Invalid P.");
     }
 
-    qin_arr = (PyArrayObject *)PyArray_ContiguousFromAny(qin, NPY_DOUBLE, 2, 2);
+    qin_arr = ensure_array(qin, NPY_DOUBLE, 2, 2, &free_qin);
     if (!qin_arr) {
         return PyErr_Format(gl_Error, "Invalid Q.");
     }
@@ -1095,6 +1216,12 @@ clip_polygon_wrap(PyObject *self, PyObject *args) {
         PyTuple_SetItem(tuple, 0, PyFloat_FromDouble(pq.v[k].x));
         PyTuple_SetItem(tuple, 1, PyFloat_FromDouble(pq.v[k].y));
         PyList_SetItem(list, k, tuple);
+    }
+    if (free_pin) {
+        Py_XDECREF(pin_arr);
+    }
+    if (free_qin) {
+        Py_XDECREF(qin_arr);
     }
 
     return Py_BuildValue("N", list);

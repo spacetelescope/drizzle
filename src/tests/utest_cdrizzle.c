@@ -4,16 +4,26 @@
 #include <string.h>
 #include <Python.h>
 #ifndef NPY_NO_DEPRECATED_API
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#define NPY_NO_DEPRECATED_API NPY_1_21_API_VERSION
 #endif
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <numpy/arrayobject.h>
 #include <numpy/npy_math.h>
+#pragma GCC diagnostic pop
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
+// too much work to check whether this is critical (Wmaybe-uninitialized).
+// TODO: consider replacing fct.h with another test framework
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #ifdef WIN32
 #include "fct.h"
 #else
 #include "pandokia_fct.h"
 #endif
+#pragma GCC diagnostic pop
 
 #include "cdrizzlebox.h"
 #include "cdrizzleblot.h"
