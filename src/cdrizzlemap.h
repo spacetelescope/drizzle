@@ -40,7 +40,7 @@ struct vertex {
  */
 struct polygon {
     struct vertex v[2 * IMAGE_OUTLINE_NPTS]; /**< polygon vertices */
-    int npv; /**< actual number of polygon vertices */
+    int npv;                                 /**< actual number of polygon vertices */
 };
 
 /** edge structure.
@@ -56,8 +56,8 @@ struct edge {
     double m;         /**< edge's slope */
     double b;         /**< edge's interceipt */
     double c;         /**< modified interceipt */
-    int p; /**< edge's position: -1 for left-side edge and +1 for right-side
-              edge */
+    int p;            /**< edge's position: -1 for left-side edge and +1 for right-side
+                         edge */
 };
 
 /** scanner structure.
@@ -79,54 +79,57 @@ struct scanner {
     int nright;         /**< number of right edges */
     double min_y;       /**< minimum y-coordinate of all polygon vertices */
     double max_y;       /**< maximum y-coordinate of all polygon vertices */
-    int xmin; /**< min valid pixels' x-coord in pixmap (from bounding box
-                 carried over from driz_param_t) rounded to int */
-    int xmax; /**< max valid pixels' x-coord in pixmap (from bounding box
-                 carried over from driz_param_t) rounded to int */
-    int ymin; /**< min valid pixels' y-coord in pixmap (from bounding box
-                 carried over from driz_param_t) rounded to int */
-    int ymax; /**< max valid pixels' y-coord in pixmap (from bounding box
-                 carried over from driz_param_t) rounded to int */
+    int xmin;           /**< min valid pixels' x-coord in pixmap (from bounding box
+                           carried over from driz_param_t) rounded to int */
+    int xmax;           /**< max valid pixels' x-coord in pixmap (from bounding box
+                           carried over from driz_param_t) rounded to int */
+    int ymin;           /**< min valid pixels' y-coord in pixmap (from bounding box
+                           carried over from driz_param_t) rounded to int */
+    int ymax;           /**< max valid pixels' y-coord in pixmap (from bounding box
+                           carried over from driz_param_t) rounded to int */
     // overlap_valid: 1 if polygon intersection and coord inversion worked;
     //                0 if computation of xmin, xmax, ymin, ymax has
     //                  failed in which case they are carried over from
     //                  driz_param_t.
-    int overlap_valid; /**< 1 if x/y min/max updated from polygon intersection
-                          and 0 if carried over from driz_param_t */
+    int overlap_valid;               /**< 1 if x/y min/max updated from polygon intersection
+                                        and 0 if carried over from driz_param_t */
     struct polygon bounding_polygon; /**< bounding polygon in input image
                                         outlining the scan region */
 };
 
-int interpolate_point(struct driz_param_t *par, double xin, double yin,
-                      double *xout, double *yout);
+int
+interpolate_point(struct driz_param_t *par, double xin, double yin, double *xout, double *yout);
 
-int interpolate_four_points(struct driz_param_t *par, int ixcen, int iycen,
-                            double h, double *x1, double *x2, double *x3,
-                            double *x4, double *y1, double *y2, double *y3,
-                            double *y4);
+int
+interpolate_four_points(
+    struct driz_param_t *par, int ixcen, int iycen, double h, double *x1, double *x2, double *x3,
+    double *x4, double *y1, double *y2, double *y3, double *y4);
 
-int map_point(struct driz_param_t *par, double xin, double yin, double *xout,
-              double *yout);
+int
+map_point(struct driz_param_t *par, double xin, double yin, double *xout, double *yout);
 
-int map_pixel(PyArrayObject *pixmap, int i, int j, double *x, double *y);
+int
+map_pixel(PyArrayObject *pixmap, int i, int j, double *x, double *y);
 
-int shrink_image_section(PyArrayObject *pixmap, int *xmin, int *xmax, int *ymin,
-                         int *ymax);
+int
+shrink_image_section(PyArrayObject *pixmap, int *xmin, int *xmax, int *ymin, int *ymax);
 
-int invert_pixmap(struct driz_param_t *par, double xout, double yout,
-                  double *xin, double *yin);
+int
+invert_pixmap(struct driz_param_t *par, double xout, double yout, double *xin, double *yin);
 
-int clip_polygon_to_window(const struct polygon *p, const struct polygon *wnd,
-                           struct polygon *cp);
+int
+clip_polygon_to_window(const struct polygon *p, const struct polygon *wnd, struct polygon *cp);
 
-int init_scanner(struct polygon *p, struct driz_param_t *par,
-                 struct scanner *s);
+int
+init_scanner(struct polygon *p, struct driz_param_t *par, struct scanner *s);
 
-int get_scanline_limits(struct scanner *s, int y, int *x1, int *x2);
+int
+get_scanline_limits(struct scanner *s, int y, int *x1, int *x2);
 
-int init_image_scanner(struct driz_param_t *par, struct scanner *s, int *ymin,
-                       int *ymax);
+int
+init_image_scanner(struct driz_param_t *par, struct scanner *s, int *ymin, int *ymax);
 
-int polygon_centroid(const struct polygon *p, double *cx, double *cy);
+int
+polygon_centroid(const struct polygon *p, double *cx, double *cy);
 
 #endif /* CDRIZZLEMAP_H */

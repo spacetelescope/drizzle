@@ -20,15 +20,19 @@ In V1.6 this was simplified to use the DRIVAL routine and also to
 include some limited multi-kernel support.
 */
 
-integer_t compute_bit_value(integer_t uuid);
+integer_t
+compute_bit_value(integer_t uuid);
 
-int dobox(struct driz_param_t *p);
+int
+dobox(struct driz_param_t *p);
 
-double compute_area(double is, double js, const double x[4], const double y[4]);
-int compute_pscale_ratio(struct driz_param_t *p,
-                         struct polygon *bounding_polygon, float *pscale_ratio);
+double
+compute_area(double is, double js, const double x[4], const double y[4]);
+int
+compute_pscale_ratio(struct driz_param_t *p, struct polygon *bounding_polygon, float *pscale_ratio);
 
-double boxer(double is, double js, const double x[4], const double y[4]);
+double
+boxer(double is, double js, const double x[4], const double y[4]);
 
 typedef int (*kernel_handler_t)(struct driz_param_t *);
 

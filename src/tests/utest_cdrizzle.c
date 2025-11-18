@@ -11,18 +11,22 @@
 #pragma GCC diagnostic ignored "-Wpedantic"
 #include <numpy/arrayobject.h>
 #include <numpy/npy_math.h>
-#pragma GCC diagnostic pop
 
-#pragma GCC diagnostic push
+#if !defined(__clang__) && defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
 // too much work to check whether this is critical (Wmaybe-uninitialized).
 // TODO: consider replacing fct.h with another test framework
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
+#pragma GCC diagnostic ignored "-Wunused-function"
+
 #ifdef WIN32
-#include "fct.h"
+#include "cextern/fct.h"
 #else
 #include "pandokia_fct.h"
 #endif
+
 #pragma GCC diagnostic pop
 
 #include "cdrizzlebox.h"
@@ -43,8 +47,10 @@ static PyArrayObject *test_context;
 static char log_file[] = "";
 
 void
-set_test_arrays(PyArrayObject *dat, PyArrayObject *wei, PyArrayObject *map,
-                PyArrayObject *odat, PyArrayObject *ocnt, PyArrayObject *ocon) {
+set_test_arrays(
+    PyArrayObject *dat, PyArrayObject *wei, PyArrayObject *map, PyArrayObject *odat,
+    PyArrayObject *ocnt, PyArrayObject *ocon)
+{
     test_data = dat;
     test_weights = wei;
     test_pixmap = map;
@@ -57,7 +63,8 @@ set_test_arrays(PyArrayObject *dat, PyArrayObject *wei, PyArrayObject *map,
 }
 
 void
-set_pixmap(struct driz_param_t *p, int xmin, int xmax, int ymin, int ymax) {
+set_pixmap(struct driz_param_t *p, int xmin, int xmax, int ymin, int ymax)
+{
     int i, j;
     double xpix, ypix;
 
@@ -76,13 +83,15 @@ set_pixmap(struct driz_param_t *p, int xmin, int xmax, int ymin, int ymax) {
 }
 
 void
-init_pixmap(struct driz_param_t *p) {
+init_pixmap(struct driz_param_t *p)
+{
     set_pixmap(p, 0, image_size[0], 0, image_size[1]);
     return;
 }
 
 void
-stretch_pixmap(struct driz_param_t *p, double sx, double sy) {
+stretch_pixmap(struct driz_param_t *p, double sx, double sy)
+{
     int i, j;
     double xpix, ypix;
 
@@ -101,7 +110,8 @@ stretch_pixmap(struct driz_param_t *p, double sx, double sy) {
 }
 
 void
-nan_pixmap(struct driz_param_t *p) {
+nan_pixmap(struct driz_param_t *p)
+{
     int i, j;
 
     for (j = 0; j < image_size[1]; j++) {
@@ -115,7 +125,8 @@ nan_pixmap(struct driz_param_t *p) {
 }
 
 void
-nan_pixel(struct driz_param_t *p, int xpix, int ypix) {
+nan_pixel(struct driz_param_t *p, int xpix, int ypix)
+{
     int idim;
     for (idim = 0; idim < 2; ++idim) {
         get_pixmap(p->pixmap, xpix, ypix)[idim] = NPY_NAN;
@@ -123,7 +134,8 @@ nan_pixel(struct driz_param_t *p, int xpix, int ypix) {
 }
 
 void
-offset_pixmap(struct driz_param_t *p, double x_offset, double y_offset) {
+offset_pixmap(struct driz_param_t *p, double x_offset, double y_offset)
+{
     int i, j;
     double xpix, ypix;
 
@@ -142,7 +154,8 @@ offset_pixmap(struct driz_param_t *p, double x_offset, double y_offset) {
 }
 
 void
-fill_image(PyArrayObject *image, double value) {
+fill_image(PyArrayObject *image, double value)
+{
     npy_intp *ndim = PyArray_DIMS(image);
     int ypix, xpix;
 
@@ -156,7 +169,8 @@ fill_image(PyArrayObject *image, double value) {
 }
 
 void
-fill_image_block(PyArrayObject *image, double value, int lo, int hi) {
+fill_image_block(PyArrayObject *image, double value, int lo, int hi)
+{
     int ypix, xpix;
 
     for (ypix = lo; ypix < hi; ++ypix) {
@@ -168,7 +182,8 @@ fill_image_block(PyArrayObject *image, double value, int lo, int hi) {
     return;
 }
 void
-unset_context(PyArrayObject *context) {
+unset_context(PyArrayObject *context)
+{
     npy_intp *ndim = PyArray_DIMS(context);
     int ypix, xpix;
 
@@ -182,7 +197,8 @@ unset_context(PyArrayObject *context) {
 }
 
 void
-print_image(char *title, PyArrayObject *image, int lo, int hi) {
+print_image(char *title, PyArrayObject *image, int lo, int hi)
+{
     int j, i;
 
     if (logptr) {
@@ -199,14 +215,16 @@ print_image(char *title, PyArrayObject *image, int lo, int hi) {
 }
 
 void
-print_status(char *title) {
+print_status(char *title)
+{
     if (logptr) {
         fprintf(logptr, "%s\n", title);
     }
 }
 
 void
-print_context(char *title, struct driz_param_t *p, int lo, int hi) {
+print_context(char *title, struct driz_param_t *p, int lo, int hi)
+{
     int j, i;
     integer_t bv;
     if (!p->output_context) {
@@ -229,7 +247,8 @@ print_context(char *title, struct driz_param_t *p, int lo, int hi) {
 }
 
 void
-print_pixmap(char *title, struct driz_param_t *p, int lo, int hi) {
+print_pixmap(char *title, struct driz_param_t *p, int lo, int hi)
+{
     int i, j, k;
     char *axis[2] = {"x", "y"};
 
@@ -240,12 +259,13 @@ print_pixmap(char *title, struct driz_param_t *p, int lo, int hi) {
             for (j = 0; j < image_size[1]; j++) {
                 for (i = 0; i < image_size[0]; i++) {
                     if (i >= lo && i < hi && j >= lo && j < hi) {
-                        fprintf(logptr, "%10.2f",
-                                get_pixmap(p->pixmap, i, j)[k]);
+                        fprintf(logptr, "%10.2f", get_pixmap(p->pixmap, i, j)[k]);
                     }
                 }
 
-                if (j >= lo && j < hi) fprintf(logptr, "\n");
+                if (j >= lo && j < hi) {
+                    fprintf(logptr, "\n");
+                }
             }
         }
     }
@@ -254,13 +274,14 @@ print_pixmap(char *title, struct driz_param_t *p, int lo, int hi) {
 }
 
 struct driz_param_t *
-setup_parameters(void) {
+setup_parameters(void)
+{
     struct driz_error_t *error;
 
     /* Initialize the parameter struct with vanilla defaults */
 
     struct driz_param_t *p;
-    p = (struct driz_param_t *)malloc(sizeof(struct driz_param_t));
+    p = (struct driz_param_t *) malloc(sizeof(struct driz_param_t));
 
     driz_param_init(p);
 
@@ -287,7 +308,7 @@ setup_parameters(void) {
     p->nmiss = 0;
     p->nskip = 0;
 
-    error = (struct driz_error_t *)malloc(sizeof(struct driz_error_t));
+    error = (struct driz_error_t *) malloc(sizeof(struct driz_error_t));
     driz_error_init(error);
     p->error = error;
     init_pixmap(p);
@@ -308,7 +329,8 @@ setup_parameters(void) {
 }
 
 void
-teardown_parameters(struct driz_param_t *p) {
+teardown_parameters(struct driz_param_t *p)
+{
     if (logptr) {
         fclose(logptr);
         logptr = NULL;
@@ -318,15 +340,18 @@ teardown_parameters(struct driz_param_t *p) {
     free(p);
 }
 
-FCT_BGN_FN(utest_cdrizzle) {
-    FCT_FIXTURE_SUITE_BGN("unit tests for drizzle") {
+FCT_BGN_FN(utest_cdrizzle)
+{
+    FCT_FIXTURE_SUITE_BGN("unit tests for drizzle")
+    {
         FCT_SETUP_BGN() {}
         FCT_SETUP_END();
 
         FCT_TEARDOWN_BGN() {}
         FCT_TEARDOWN_END();
 
-        FCT_TEST_BGN(utest_shrink_bbox) {
+        FCT_TEST_BGN(utest_shrink_bbox)
+        {
             int xmin, xmax, ymin, ymax;
             struct driz_param_t *p; /* parameter structure */
 
@@ -358,7 +383,8 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_map_lookup_01) {
+        FCT_TEST_BGN(utest_map_lookup_01)
+        {
             struct driz_param_t *p;
             p = setup_parameters();
             stretch_pixmap(p, 1.0, 1000.0);
@@ -373,7 +399,8 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_map_lookup_02) {
+        FCT_TEST_BGN(utest_map_lookup_02)
+        {
             struct driz_param_t *p;
             p = setup_parameters();
             stretch_pixmap(p, 1.0, 1000.0);
@@ -388,7 +415,8 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_map_lookup_03) {
+        FCT_TEST_BGN(utest_map_lookup_03)
+        {
             struct driz_param_t *p;
             p = setup_parameters();
             stretch_pixmap(p, 1.0, 1000.0);
@@ -402,7 +430,8 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_map_lookup_04) {
+        FCT_TEST_BGN(utest_map_lookup_04)
+        {
             struct driz_param_t *p;
             p = setup_parameters();
             stretch_pixmap(p, 1.0, 1000.0);
@@ -416,7 +445,8 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_compute_pscale_ratio) {
+        FCT_TEST_BGN(utest_compute_pscale_ratio)
+        {
             struct driz_param_t *p;
             struct polygon bp;
             float pscale_ratio;
@@ -427,26 +457,25 @@ FCT_BGN_FN(utest_cdrizzle) {
             bp.npv = 4;
             bp.v[0].x = 0.0;
             bp.v[0].y = 0.0;
-            bp.v[1].x = (double)p->xmax;
+            bp.v[1].x = (double) p->xmax;
             bp.v[1].y = 0.0;
-            bp.v[2].x = (double)p->xmax;
-            bp.v[2].y = (double)p->ymax;
+            bp.v[2].x = (double) p->xmax;
+            bp.v[2].y = (double) p->ymax;
             bp.v[2].x = 0.0;
-            bp.v[2].y = (double)p->ymax;
+            bp.v[2].y = (double) p->ymax;
 
             compute_pscale_ratio(p, &bp, &pscale_ratio);
 
             fct_xchk(
-                (int)(fabs(pscale_ratio - pscale_ratio_truth) < 5.0f * FLT_EPSILON),
-                "chk_eq_flt: %f != %f",
-                pscale_ratio,
-                pscale_ratio_truth);
+                (int) (fabs(pscale_ratio - pscale_ratio_truth) < 5.0f * FLT_EPSILON),
+                "chk_eq_flt: %f != %f", pscale_ratio, pscale_ratio_truth);
 
             teardown_parameters(p);
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_map_point_01) {
+        FCT_TEST_BGN(utest_map_point_01)
+        {
             double ix, iy, ox, oy;
             struct driz_param_t *p;
 
@@ -465,7 +494,8 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_map_point_02) {
+        FCT_TEST_BGN(utest_map_point_02)
+        {
             double ix, iy, ox, oy;
             struct driz_param_t *p;
 
@@ -484,7 +514,8 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_map_point_03) {
+        FCT_TEST_BGN(utest_map_point_03)
+        {
             double ix, iy, ox, oy;
             int status;
             struct driz_param_t *p;
@@ -512,7 +543,8 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_map_point_04) {
+        FCT_TEST_BGN(utest_map_point_04)
+        {
             double ix, iy, ox, oy;
             int status;
             struct driz_param_t *p;
@@ -541,7 +573,8 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_check_line_overlap_01) {
+        FCT_TEST_BGN(utest_check_line_overlap_01)
+        {
             struct scanner s;
             int ymin, ymax, shift, status;
 
@@ -553,7 +586,7 @@ FCT_BGN_FN(utest_cdrizzle) {
 
             p = setup_parameters();
             shift = 0;
-            offset_pixmap(p, (double)shift, 0.0);
+            offset_pixmap(p, (double) shift, 0.0);
 
             init_image_scanner(p, &s, &ymin, &ymax);
             status = get_scanline_limits(&s, j, &xbounds[0], &xbounds[1]);
@@ -562,14 +595,14 @@ FCT_BGN_FN(utest_cdrizzle) {
             fct_chk_eq_int(ymin, 0);
             fct_chk_eq_int(ymax, image_size[1] - 1);
             fct_chk_eq_int(xbounds[0], MIN(MAX(0, -shift), image_size[0] - 1));
-            fct_chk_eq_int(xbounds[1], MAX(0, MIN(image_size[0] - 1 - shift,
-                                                  image_size[0] - 1)));
+            fct_chk_eq_int(xbounds[1], MAX(0, MIN(image_size[0] - 1 - shift, image_size[0] - 1)));
 
             teardown_parameters(p);
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_check_line_overlap_02) {
+        FCT_TEST_BGN(utest_check_line_overlap_02)
+        {
             struct scanner s;
             int ymin, ymax, shift, status;
 
@@ -581,7 +614,7 @@ FCT_BGN_FN(utest_cdrizzle) {
 
             p = setup_parameters();
             shift = 70;
-            offset_pixmap(p, (double)shift, 0.0);
+            offset_pixmap(p, (double) shift, 0.0);
 
             init_image_scanner(p, &s, &ymin, &ymax);
             status = get_scanline_limits(&s, j, &xbounds[0], &xbounds[1]);
@@ -590,14 +623,14 @@ FCT_BGN_FN(utest_cdrizzle) {
             fct_chk_eq_int(ymin, 0);
             fct_chk_eq_int(ymax, image_size[1] - 1);
             fct_chk_eq_int(xbounds[0], MIN(MAX(0, -shift), image_size[0] - 1));
-            fct_chk_eq_int(xbounds[1], MAX(0, MIN(image_size[0] - 1 - shift,
-                                                  image_size[0] - 1)));
+            fct_chk_eq_int(xbounds[1], MAX(0, MIN(image_size[0] - 1 - shift, image_size[0] - 1)));
 
             teardown_parameters(p);
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_check_line_overlap_03) {
+        FCT_TEST_BGN(utest_check_line_overlap_03)
+        {
             struct scanner s;
             int ymin, ymax, shift, status;
 
@@ -609,7 +642,7 @@ FCT_BGN_FN(utest_cdrizzle) {
 
             p = setup_parameters();
             shift = -70;
-            offset_pixmap(p, (double)shift, 0.0);
+            offset_pixmap(p, (double) shift, 0.0);
 
             init_image_scanner(p, &s, &ymin, &ymax);
             status = get_scanline_limits(&s, j, &xbounds[0], &xbounds[1]);
@@ -618,14 +651,14 @@ FCT_BGN_FN(utest_cdrizzle) {
             fct_chk_eq_int(ymin, 0);
             fct_chk_eq_int(ymax, image_size[1] - 1);
             fct_chk_eq_int(xbounds[0], MIN(MAX(0, -shift), image_size[0] - 1));
-            fct_chk_eq_int(xbounds[1], MAX(0, MIN(image_size[0] - 1 - shift,
-                                                  image_size[0] - 1)));
+            fct_chk_eq_int(xbounds[1], MAX(0, MIN(image_size[0] - 1 - shift, image_size[0] - 1)));
 
             teardown_parameters(p);
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_check_image_overlap_02) {
+        FCT_TEST_BGN(utest_check_image_overlap_02)
+        {
             struct scanner s;
             int ymin, ymax, shift;
 
@@ -635,19 +668,19 @@ FCT_BGN_FN(utest_cdrizzle) {
 
             p = setup_parameters();
             shift = 70;
-            offset_pixmap(p, 0.0, (double)shift);
+            offset_pixmap(p, 0.0, (double) shift);
 
             init_image_scanner(p, &s, &ymin, &ymax);
 
             fct_chk_eq_int(ymin, MIN(MAX(0, -shift), image_size[1] - 1));
-            fct_chk_eq_int(ymax, MAX(0, MIN(image_size[1] - 1 - shift,
-                                            image_size[1] - 1)));
+            fct_chk_eq_int(ymax, MAX(0, MIN(image_size[1] - 1 - shift, image_size[1] - 1)));
 
             teardown_parameters(p);
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_check_image_overlap_03) {
+        FCT_TEST_BGN(utest_check_image_overlap_03)
+        {
             struct scanner s;
             int ymin, ymax, shift;
 
@@ -657,19 +690,19 @@ FCT_BGN_FN(utest_cdrizzle) {
 
             p = setup_parameters();
             shift = -70;
-            offset_pixmap(p, 0.0, (double)shift);
+            offset_pixmap(p, 0.0, (double) shift);
 
             init_image_scanner(p, &s, &ymin, &ymax);
 
             fct_chk_eq_int(ymin, MIN(MAX(0, -shift), image_size[1] - 1));
-            fct_chk_eq_int(ymax, MAX(0, MIN(image_size[1] - 1 - shift,
-                                            image_size[1] - 1)));
+            fct_chk_eq_int(ymax, MAX(0, MIN(image_size[1] - 1 - shift, image_size[1] - 1)));
 
             teardown_parameters(p);
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_compute_area_01) {
+        FCT_TEST_BGN(utest_compute_area_01)
+        {
             /* Test compute area with aligned square entirely inside */
             double area;
             double is, js, x[4], y[4];
@@ -691,7 +724,8 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_compute_area_02) {
+        FCT_TEST_BGN(utest_compute_area_02)
+        {
             /* Test compute area with diagonal square entirely inside */
             double area;
             double is, js, x[4], y[4];
@@ -713,7 +747,8 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_compute_area_03) {
+        FCT_TEST_BGN(utest_compute_area_03)
+        {
             /* Test compute area with aligned square with overlap */
             double area;
             double is, js, x[4], y[4];
@@ -735,7 +770,8 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_compute_area_04) {
+        FCT_TEST_BGN(utest_compute_area_04)
+        {
             /* Test compute area with diagonal square with overlap */
             double area;
             double is, js, x[4], y[4];
@@ -757,38 +793,33 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_compute_area_05) {
+        FCT_TEST_BGN(utest_compute_area_05)
+        {
             /* Test compute area with marching diagonal square */
             int i, j;
             double is, js, x[4], y[4], area;
-            double area_ok[7][7] = {{0.125000, 0.218750, 0.250000, 0.218750,
-                                     0.125000, 0.031250, 0.000000},
-                                    {0.218750, 0.375000, 0.437500, 0.375000,
-                                     0.218750, 0.062500, 0.000000},
-                                    {0.250000, 0.437500, 0.500000, 0.437500,
-                                     0.250000, 0.062500, 0.000000},
-                                    {0.218750, 0.375000, 0.437500, 0.375000,
-                                     0.218750, 0.062500, 0.000000},
-                                    {0.125000, 0.218750, 0.250000, 0.218750,
-                                     0.125000, 0.031250, 0.000000},
-                                    {0.031250, 0.062500, 0.062500, 0.062500,
-                                     0.031250, 0.000000, 0.000000},
-                                    {0.000000, 0.000000, 0.000000, 0.000000,
-                                     0.000000, 0.000000, 0.000000}};
+            double area_ok[7][7] = {
+                {0.125000, 0.218750, 0.250000, 0.218750, 0.125000, 0.031250, 0.000000},
+                {0.218750, 0.375000, 0.437500, 0.375000, 0.218750, 0.062500, 0.000000},
+                {0.250000, 0.437500, 0.500000, 0.437500, 0.250000, 0.062500, 0.000000},
+                {0.218750, 0.375000, 0.437500, 0.375000, 0.218750, 0.062500, 0.000000},
+                {0.125000, 0.218750, 0.250000, 0.218750, 0.125000, 0.031250, 0.000000},
+                {0.031250, 0.062500, 0.062500, 0.062500, 0.031250, 0.000000, 0.000000},
+                {0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000}};
 
             is = 1.0;
             js = 1.0;
 
             for (i = 0; i <= 6; ++i) {
                 for (j = 0; j <= 6; ++j) {
-                    x[0] = 0.25 * (double)i;
-                    y[0] = 0.25 * (double)j + 0.5;
-                    x[1] = 0.25 * (double)i + 0.5;
-                    y[1] = 0.25 * (double)j;
-                    x[2] = 0.25 * (double)i + 1.0;
-                    y[2] = 0.25 * (double)j + 0.5;
-                    x[3] = 0.25 * (double)i + 0.5;
-                    y[3] = 0.25 * (double)j + 1.0;
+                    x[0] = 0.25 * (double) i;
+                    y[0] = 0.25 * (double) j + 0.5;
+                    x[1] = 0.25 * (double) i + 0.5;
+                    y[1] = 0.25 * (double) j;
+                    x[2] = 0.25 * (double) i + 1.0;
+                    y[2] = 0.25 * (double) j + 0.5;
+                    x[3] = 0.25 * (double) i + 0.5;
+                    y[3] = 0.25 * (double) j + 1.0;
 
                     area = compute_area(is, js, x, y);
 
@@ -799,7 +830,8 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_do_kernel_square_01) {
+        FCT_TEST_BGN(utest_do_kernel_square_01)
+        {
             /* Simplest case */
 
             integer_t x1;           /* start of in-bounds */
@@ -819,16 +851,15 @@ FCT_BGN_FN(utest_cdrizzle) {
             x2 = n;
 
             fct_chk_eq_int(status, 0);
-            fct_chk_eq_dbl(get_pixel(p->output_data, x1, j),
-                           get_pixel(p->data, x1, j));
-            fct_chk_eq_dbl(get_pixel(p->output_data, x2 - 1, j),
-                           get_pixel(p->data, x2 - 1, j));
+            fct_chk_eq_dbl(get_pixel(p->output_data, x1, j), get_pixel(p->data, x1, j));
+            fct_chk_eq_dbl(get_pixel(p->output_data, x2 - 1, j), get_pixel(p->data, x2 - 1, j));
 
             teardown_parameters(p);
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_do_kernel_square_02) {
+        FCT_TEST_BGN(utest_do_kernel_square_02)
+        {
             /* Offset image */
 
             struct driz_param_t *p; /* parameter structure */
@@ -847,15 +878,15 @@ FCT_BGN_FN(utest_cdrizzle) {
 
             fct_chk_eq_int(status, 0);
             for (k = 1; k < n - 2; k++) {
-                fct_chk_eq_dbl(get_pixel(p->output_data, (k + 1), j),
-                               get_pixel(p->data, k, j));
+                fct_chk_eq_dbl(get_pixel(p->output_data, (k + 1), j), get_pixel(p->data, k, j));
             }
 
             teardown_parameters(p);
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_do_kernel_square_03) {
+        FCT_TEST_BGN(utest_do_kernel_square_03)
+        {
             /* Single pixel set */
 
             struct driz_param_t *p; /* parameter structure */
@@ -876,14 +907,14 @@ FCT_BGN_FN(utest_cdrizzle) {
             k = 3;
             do_kernel_square(p);
 
-            fct_chk_eq_dbl(get_pixel(p->output_data, (k + 2), k),
-                           get_pixel(p->data, k, k));
+            fct_chk_eq_dbl(get_pixel(p->output_data, (k + 2), k), get_pixel(p->data, k, k));
 
             teardown_parameters(p);
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_do_kernel_square_04) {
+        FCT_TEST_BGN(utest_do_kernel_square_04)
+        {
             /* Single pixel, fractional pixel offset */
 
             struct driz_param_t *p; /* parameter structure */
@@ -902,8 +933,7 @@ FCT_BGN_FN(utest_cdrizzle) {
 
             for (i = 2; i <= 3; ++i) {
                 for (j = 2; j <= 3; ++j) {
-                    fct_chk_eq_dbl(get_pixel(p->output_data, (i + k), (j + k)),
-                                   value / 4.0);
+                    fct_chk_eq_dbl(get_pixel(p->output_data, (i + k), (j + k)), value / 4.0);
                 }
             }
 
@@ -911,7 +941,8 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_do_kernel_square_05) {
+        FCT_TEST_BGN(utest_do_kernel_square_05)
+        {
             /* Diagonal line, fractional pixel offset */
 
             struct driz_param_t *p; /* parameter structure */
@@ -933,17 +964,16 @@ FCT_BGN_FN(utest_cdrizzle) {
 
             for (i = 4; i < n - 2; ++i) {
                 fct_chk_eq_dbl(get_pixel(p->output_data, i, i), value / 2.0);
-                fct_chk_eq_dbl(get_pixel(p->output_data, i - 1, i),
-                               value / 4.0);
-                fct_chk_eq_dbl(get_pixel(p->output_data, i, i - 1),
-                               value / 4.0);
+                fct_chk_eq_dbl(get_pixel(p->output_data, i - 1, i), value / 4.0);
+                fct_chk_eq_dbl(get_pixel(p->output_data, i, i - 1), value / 4.0);
             }
 
             teardown_parameters(p);
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_do_kernel_square_06) {
+        FCT_TEST_BGN(utest_do_kernel_square_06)
+        {
             /* Block of pixels, whole number offset */
 
             struct driz_param_t *p; /* parameter structure */
@@ -967,8 +997,7 @@ FCT_BGN_FN(utest_cdrizzle) {
 
             for (i = 0; i < k; ++i) {
                 for (j = 0; j < k; ++j) {
-                    fct_chk_eq_dbl(get_pixel(p->output_data, (i + 2), (j + 2)),
-                                   value);
+                    fct_chk_eq_dbl(get_pixel(p->output_data, (i + 2), (j + 2)), value);
                 }
             }
 
@@ -976,7 +1005,8 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_do_kernel_square_07) {
+        FCT_TEST_BGN(utest_do_kernel_square_07)
+        {
             /* Block of pixels, fractional offset */
 
             struct driz_param_t *p; /* parameter structure */
@@ -1012,7 +1042,8 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_dobox_01) {
+        FCT_TEST_BGN(utest_dobox_01)
+        {
             /* Single pixel set, whole number offset */
 
             struct driz_param_t *p; /* parameter structure */
@@ -1030,13 +1061,13 @@ FCT_BGN_FN(utest_cdrizzle) {
             set_pixel(p->data, k, k, value);
             dobox(p);
 
-            fct_chk_eq_dbl(get_pixel(p->output_data, (k + 2), (k + 2)),
-                           get_pixel(p->data, k, k));
+            fct_chk_eq_dbl(get_pixel(p->output_data, (k + 2), (k + 2)), get_pixel(p->data, k, k));
             fct_chk_eq_int(p->nskip, 2);
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_dobox_02) {
+        FCT_TEST_BGN(utest_dobox_02)
+        {
             /* Single pixel, fractional pixel offset */
 
             struct driz_param_t *p; /* parameter structure */
@@ -1056,14 +1087,14 @@ FCT_BGN_FN(utest_cdrizzle) {
 
             for (i = 2; i <= 3; ++i) {
                 for (j = 2; j <= 3; ++j) {
-                    fct_chk_eq_dbl(get_pixel(p->output_data, (i + k), (j + k)),
-                                   value / 4.0);
+                    fct_chk_eq_dbl(get_pixel(p->output_data, (i + k), (j + k)), value / 4.0);
                 }
             }
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_dobox_03) {
+        FCT_TEST_BGN(utest_dobox_03)
+        {
             /* Turbo mode kernel, diagonal line of pixels set */
 
             struct driz_param_t *p; /* parameter structure */
@@ -1086,17 +1117,16 @@ FCT_BGN_FN(utest_cdrizzle) {
 
             for (i = 4; i < n; ++i) {
                 fct_chk_eq_dbl(get_pixel(p->output_data, i, i), value / 2.0);
-                fct_chk_eq_dbl(get_pixel(p->output_data, i - 1, i),
-                               value / 4.0);
-                fct_chk_eq_dbl(get_pixel(p->output_data, i, i - 1),
-                               value / 4.0);
+                fct_chk_eq_dbl(get_pixel(p->output_data, i - 1, i), value / 4.0);
+                fct_chk_eq_dbl(get_pixel(p->output_data, i, i - 1), value / 4.0);
             }
 
             teardown_parameters(p);
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_dobox_04) {
+        FCT_TEST_BGN(utest_dobox_04)
+        {
             /* Check that context map is set for the affected pixels */
 
             struct driz_param_t *p; /* parameter structure */
@@ -1126,7 +1156,8 @@ FCT_BGN_FN(utest_cdrizzle) {
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_doblot_01) {
+        FCT_TEST_BGN(utest_doblot_01)
+        {
             /* Single pixel set blinear interpolation */
 
             struct driz_param_t *p; /* parameter structure */
@@ -1145,12 +1176,12 @@ FCT_BGN_FN(utest_cdrizzle) {
             set_pixel(p->data, k, k, value);
             doblot(p);
 
-            fct_chk_eq_dbl(get_pixel(p->output_data, (k + 2), (k + 2)),
-                           get_pixel(p->data, k, k));
+            fct_chk_eq_dbl(get_pixel(p->output_data, (k + 2), (k + 2)), get_pixel(p->data, k, k));
         }
         FCT_TEST_END();
 
-        FCT_TEST_BGN(utest_doblot_02) {
+        FCT_TEST_BGN(utest_doblot_02)
+        {
             /* Single pixel set quintic interpolation*/
 
             struct driz_param_t *p; /* parameter structure */
@@ -1169,13 +1200,12 @@ FCT_BGN_FN(utest_cdrizzle) {
             set_pixel(p->data, k, k, value);
             doblot(p);
 
-            fct_chk_eq_dbl(get_pixel(p->output_data, (k + 2), (k + 2)),
-                           get_pixel(p->data, k, k));
+            fct_chk_eq_dbl(get_pixel(p->output_data, (k + 2), (k + 2)), get_pixel(p->data, k, k));
         }
         FCT_TEST_END();
     }
     FCT_FIXTURE_SUITE_END();
 }
 {
-FCT_END_FN();
+    FCT_END_FN();
 }
