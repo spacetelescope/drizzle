@@ -28,43 +28,41 @@ static PyObject *gl_Error;
 FILE *driz_log_handle = NULL;
 
 static PyArrayObject *
-ensure_array(PyObject *obj, int npy_type, int min_depth, int max_depth,
-             int *is_copy) {
-    if (PyArray_CheckExact(obj) &&
-        PyArray_IS_C_CONTIGUOUS((PyArrayObject *)obj) &&
-        PyArray_TYPE((PyArrayObject *)obj) == npy_type) {
+ensure_array(PyObject *obj, int npy_type, int min_depth, int max_depth, int *is_copy)
+{
+    if (PyArray_CheckExact(obj) && PyArray_IS_C_CONTIGUOUS((PyArrayObject *) obj) &&
+        PyArray_TYPE((PyArrayObject *) obj) == npy_type) {
         *is_copy = 0;
-        return (PyArrayObject *)obj;
+        return (PyArrayObject *) obj;
     } else {
         *is_copy = 1;
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
         PyArray_Descr *dtype_descr =
-            (PyArray_Descr *)((void *)PyArray_DescrFromType((int)npy_type));
+            (PyArray_Descr *) ((void *) PyArray_DescrFromType((int) npy_type));
 #pragma GCC diagnostic pop
 
         if (dtype_descr == NULL) {
-            PyErr_SetString(PyExc_TypeError,
-                            "Invalid numpy type for array conversion.");
+            PyErr_SetString(PyExc_TypeError, "Invalid numpy type for array conversion.");
             *is_copy = 0;
             return NULL;
         }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-        return (PyArrayObject *)PyArray_FromAny(
-            obj, dtype_descr, min_depth, max_depth,
-            NPY_ARRAY_DEFAULT | NPY_ARRAY_ENSUREARRAY, NULL);
+        return (PyArrayObject *) PyArray_FromAny(
+            obj, dtype_descr, min_depth, max_depth, NPY_ARRAY_DEFAULT | NPY_ARRAY_ENSUREARRAY,
+            NULL);
 #pragma GCC diagnostic pop
     }
 }
 
 static int
-process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
-                   const char *name, PyArrayObject ***arrays, int *nmax,
-                   int allow_none, int *n_none, int **free_arrays,
-                   struct driz_error_t *error) {
+process_array_list(
+    PyObject *list, integer_t *nx, integer_t *ny, const char *name, PyArrayObject ***arrays,
+    int *nmax, int allow_none, int *n_none, int **free_arrays, struct driz_error_t *error)
+{
     npy_intp *ndim;
     int inx, iny;
     PyObject *list_elem = NULL;
@@ -81,27 +79,23 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
     }
 
     if (list == NULL || list == Py_None) {
-        driz_error_set(error, PyExc_ValueError,
-                       "Array list '%s' is None or NULL.", name);
+        driz_error_set(error, PyExc_ValueError, "Array list '%s' is None or NULL.", name);
         return 1;
     }
 
     if (PyArray_CheckExact(list)) {
-        if (!(arr_list = (PyArrayObject **)malloc(sizeof(PyArrayObject *)))) {
-            driz_error_set(error, PyExc_MemoryError,
-                           "Memory allocation failed.");
+        if (!(arr_list = (PyArrayObject **) malloc(sizeof(PyArrayObject *)))) {
+            driz_error_set(error, PyExc_MemoryError, "Memory allocation failed.");
             return 1;
         }
-        if (!(*free_arrays = (int *)malloc(sizeof(int)))) {
-            driz_error_set(error, PyExc_MemoryError,
-                           "Memory allocation failed.");
+        if (!(*free_arrays = (int *) malloc(sizeof(int)))) {
+            driz_error_set(error, PyExc_MemoryError, "Memory allocation failed.");
             return 1;
         }
         arr = ensure_array(list, NPY_FLOAT, 2, 2, &cpy);
         (*free_arrays)[0] = cpy;
         if (!arr) {
-            driz_error_set(error, PyExc_ValueError, "Invalid '%s' array.",
-                           name);
+            driz_error_set(error, PyExc_ValueError, "Invalid '%s' array.", name);
             free(arr_list);
             return 1;
         }
@@ -109,16 +103,15 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
         *nmax = 1;
         *n_none = 0;
         ndim = PyArray_DIMS(arr);
-        *nx = (int)ndim[1];
-        *ny = (int)ndim[0];
+        *nx = (int) ndim[1];
+        *ny = (int) ndim[0];
         *arrays = arr_list;
         return 0;
 
     } else if (!PyList_Check(list) && !PyTuple_Check(list)) {
         driz_error_set(
             error, PyExc_TypeError,
-            "Argument '%s' is not a list or a tuple of numpy.ndarray or None.",
-            name);
+            "Argument '%s' is not a list or a tuple of numpy.ndarray or None.", name);
     }
 
     at_least_one = 0;
@@ -127,21 +120,21 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
         return 0;
     }
 
-    arr_list = (PyArrayObject **)calloc(*nmax, sizeof(PyArrayObject *));
+    arr_list = (PyArrayObject **) calloc(*nmax, sizeof(PyArrayObject *));
     if (!arr_list) {
         driz_error_set(error, PyExc_MemoryError, "Memory allocation failed.");
         return 1;
     }
-    if (!(*free_arrays = (int *)calloc(*nmax, sizeof(int)))) {
+    if (!(*free_arrays = (int *) calloc(*nmax, sizeof(int)))) {
         driz_error_set(error, PyExc_MemoryError, "Memory allocation failed.");
         return 1;
     }
 
     for (i = 0; i < *nmax; ++i) {
         if (!(list_elem = PySequence_GetItem(list, i))) {
-            driz_error_set(error, PyExc_RuntimeError,
-                           "Error retrieving array %d from the '%s' list.", i,
-                           name);
+            driz_error_set(
+                error, PyExc_RuntimeError, "Error retrieving array %d from the '%s' list.", i,
+                name);
             goto _exit_on_err;
         }
 
@@ -158,16 +151,14 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
                 *n_none = 1;
                 driz_error_set(
                     error, PyExc_ValueError,
-                    "Element %d of '%s' list is None which is not allowed.", i,
-                    name);
+                    "Element %d of '%s' list is None which is not allowed.", i, name);
                 goto _exit_on_err;
             }
         } else {
             arr = ensure_array(list_elem, NPY_FLOAT, 2, 2, &cpy);
             if (!arr) {
-                driz_error_set(error, PyExc_ValueError,
-                               "Invalid array in '%s' at position %d.", name,
-                               i);
+                driz_error_set(
+                    error, PyExc_ValueError, "Invalid array in '%s' at position %d.", name, i);
                 goto _exit_on_err;
             }
             (*free_arrays)[i] = cpy;
@@ -179,16 +170,16 @@ process_array_list(PyObject *list, integer_t *nx, integer_t *ny,
 
         if (*nx < 0) {
             ndim = PyArray_DIMS(arr);
-            *nx = (int)ndim[1];
-            *ny = (int)ndim[0];
+            *nx = (int) ndim[1];
+            *ny = (int) ndim[0];
         } else {
             ndim = PyArray_DIMS(arr);
-            inx = (int)ndim[1];
-            iny = (int)ndim[0];
+            inx = (int) ndim[1];
+            iny = (int) ndim[0];
             if ((*nx != inx) || (*ny != iny)) {
                 driz_error_set(
-                    error, PyExc_ValueError,
-                    "Inconsistent image shape in the '%s' image list.", name);
+                    error, PyExc_ValueError, "Inconsistent image shape in the '%s' image list.",
+                    name);
                 goto _exit_on_err;
             }
         }
@@ -225,21 +216,19 @@ _exit_on_err:
  * Top level function for drizzling, interfaces with python code
  */
 static PyObject *
-tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
-    (void)self;
+tdriz(PyObject *self, PyObject *args, PyObject *keywords)
+{
+    (void) self;
 
-    const char *kwlist[] = {"input",        "weights",  "pixmap",  "output",
-                            "counts",       "context",  "input2",  "output2",
-                            "dq",           "outdq",    "uniqid",  "xmin",
-                            "xmax",         "ymin",     "ymax",    "iscale",
-                            "pscale_ratio", "scale",    "pixfrac", "kernel",
-                            "in_units",     "expscale", "wtscale", "fillstr",
-                            "fillstr2",     NULL};
+    const char *kwlist[] = {
+        "input",    "weights", "pixmap",       "output",   "counts",  "context", "input2",
+        "output2",  "dq",      "outdq",        "uniqid",   "xmin",    "xmax",    "ymin",
+        "ymax",     "iscale",  "pscale_ratio", "scale",    "pixfrac", "kernel",  "in_units",
+        "expscale", "wtscale", "fillstr",      "fillstr2", NULL};
 
     /* Arguments in the order they appear */
     PyObject *oimg, *owei, *pixmap, *oout, *owht, *ocon, *odq = NULL;
-    PyObject *oimg2 = NULL, *oout2 = NULL, *ooutdq = NULL,
-             *opscale_ratio = NULL, *oscale = NULL;
+    PyObject *oimg2 = NULL, *oout2 = NULL, *ooutdq = NULL, *opscale_ratio = NULL, *oscale = NULL;
     int i, n_none;
     int nsq_args, nsq_arr = 0, nsq_arr_out = 0;
     int *free_arrays2 = NULL, *free_out_arrays2 = NULL;
@@ -262,8 +251,8 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
 
     /* Derived values */
 
-    PyArrayObject *img = NULL, *wei = NULL, *out = NULL, *wht = NULL,
-                  *con = NULL, *map = NULL, *dq = NULL, *outdq = NULL;
+    PyArrayObject *img = NULL, *wei = NULL, *out = NULL, *wht = NULL, *con = NULL, *map = NULL,
+                  *dq = NULL, *outdq = NULL;
 
     int free_img = 0, free_wei = 0, free_out = 0, free_wht = 0;
     int free_con = 0, free_map = 0, free_dq = 0, free_outdq = 0;
@@ -289,26 +278,25 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     driz_error_init(&error);
 
     if (!PyArg_ParseTupleAndKeywords(
-            args, keywords, "OOOOOO|OOOOiiiiifOOdssffss:tdriz", (char **)kwlist,
-            &oimg, &owei, &pixmap, &oout, &owht, &ocon, /* OOOOOO */
-            &oimg2, &oout2, &odq, &ooutdq,              /* OOOO */
-            &uniqid, &xmin, &xmax, &ymin, &ymax,        /* iiiii */
-            &iscale, &opscale_ratio, &oscale,           /* fOO */
-            &pfract, &kernel_str, &inun_str,            /* dss */
-            &expin, &wtscl, &fillstr, &fillstr2)        /* ffss */
+            args, keywords, "OOOOOO|OOOOiiiiifOOdssffss:tdriz", (char **) kwlist, &oimg, &owei,
+            &pixmap, &oout, &owht, &ocon,        /* OOOOOO */
+            &oimg2, &oout2, &odq, &ooutdq,       /* OOOO */
+            &uniqid, &xmin, &xmax, &ymin, &ymax, /* iiiii */
+            &iscale, &opscale_ratio, &oscale,    /* fOO */
+            &pfract, &kernel_str, &inun_str,     /* dss */
+            &expin, &wtscl, &fillstr, &fillstr2) /* ffss */
     ) {
         return NULL;
     }
 
     if (oscale != NULL && oscale != Py_None) {
-        scale = (float)PyFloat_AsDouble(oscale);
+        scale = (float) PyFloat_AsDouble(oscale);
         if (PyErr_Occurred()) {
             driz_error_set_message(&error, "Argument 'scale' is not a number.");
             goto _exit;
         }
         if (scale <= 0.0f || !isfinite(scale)) {
-            driz_error_set_message(
-                &error, "Argument 'scale' must be positive and finite.");
+            driz_error_set_message(&error, "Argument 'scale' must be positive and finite.");
             goto _exit;
         }
         iscale = scale * scale;
@@ -325,22 +313,19 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
 
     } else {
         if (iscale <= 0.0f || !isfinite(iscale)) {
-            driz_error_set_message(
-                &error, "Argument 'iscale' must be positive and finite.");
+            driz_error_set_message(&error, "Argument 'iscale' must be positive and finite.");
             goto _exit;
         }
 
         if (opscale_ratio != NULL && opscale_ratio != Py_None) {
-            pscale_ratio = (float)PyFloat_AsDouble(opscale_ratio);
+            pscale_ratio = (float) PyFloat_AsDouble(opscale_ratio);
             if (PyErr_Occurred()) {
-                driz_error_set_message(
-                    &error, "Argument 'pscale_ratio' is not a number.");
+                driz_error_set_message(&error, "Argument 'pscale_ratio' is not a number.");
                 goto _exit;
             }
             if (pscale_ratio <= 0.0f || !isfinite(pscale_ratio)) {
                 driz_error_set_message(
-                    &error,
-                    "Argument 'pscale_ratio' must be positive and finite.");
+                    &error, "Argument 'pscale_ratio' must be positive and finite.");
                 goto _exit;
             }
         }
@@ -399,9 +384,7 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
 
     if (ooutdq == Py_None || ooutdq == NULL) {
         if (dq != NULL) {
-            driz_error_set_message(
-                &error,
-                "When 'dq' is provided, 'outdq' must also be provided.");
+            driz_error_set_message(&error, "When 'dq' is provided, 'outdq' must also be provided.");
             goto _exit;
         }
         outdq = NULL;
@@ -419,8 +402,7 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
         do_fill = 0;
         fill_value = 0.0;
 
-    } else if (strncmp(fillstr, "NaN", 4) == 0 ||
-               strncmp(fillstr, "nan", 4) == 0) {
+    } else if (strncmp(fillstr, "NaN", 4) == 0 || strncmp(fillstr, "nan", 4) == 0) {
         do_fill = 1;
         fill_value = NPY_NANF;
 
@@ -437,14 +419,12 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
 #endif
     }
 
-    if (fillstr2 == NULL || *fillstr2 == 0 ||
-        strncmp(fillstr2, "INDEF", 6) == 0 ||
+    if (fillstr2 == NULL || *fillstr2 == 0 || strncmp(fillstr2, "INDEF", 6) == 0 ||
         strncmp(fillstr2, "indef", 6) == 0) {
         do_fill2 = 0;
         fill_value2 = 0.0;
 
-    } else if (strncmp(fillstr2, "NaN", 4) == 0 ||
-               strncmp(fillstr2, "nan", 4) == 0) {
+    } else if (strncmp(fillstr2, "NaN", 4) == 0 || strncmp(fillstr2, "nan", 4) == 0) {
         do_fill2 = 1;
         fill_value2 = NPY_NANF;
 
@@ -467,14 +447,15 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     iny = ndim[0];
 
     ndim = PyArray_DIMS(map);
-    size[0] = (integer_t)ndim[1];
-    size[1] = (integer_t)ndim[0];
+    size[0] = (integer_t) ndim[1];
+    size[1] = (integer_t) ndim[0];
 
     if (size[0] != inx || size[1] != iny) {
-        if (snprintf(warn_msg, 128,
-                     "Pixel map dimensions (%d, %d) != input dimensions "
-                     "(%d, %d).",
-                     size[0], size[1], inx, iny) < 1) {
+        if (snprintf(
+                warn_msg, 128,
+                "Pixel map dimensions (%d, %d) != input dimensions "
+                "(%d, %d).",
+                size[0], size[1], inx, iny) < 1) {
             strcpy(warn_msg, "Pixel map dimensions != input dimensions.");
         }
         driz_error_set_message(&error, warn_msg);
@@ -488,12 +469,12 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     if (wei) {
         get_dimensions(wei, size);
         if (size[0] != inx || size[1] != iny) {
-            if (snprintf(warn_msg, 128,
-                         "Weights array dimensions (%d, %d) != input "
-                         "dimensions (%d, %d).",
-                         size[0], size[1], inx, iny) < 1) {
-                strcpy(warn_msg,
-                       "Weights array dimensions != input dimensions.");
+            if (snprintf(
+                    warn_msg, 128,
+                    "Weights array dimensions (%d, %d) != input "
+                    "dimensions (%d, %d).",
+                    size[0], size[1], inx, iny) < 1) {
+                strcpy(warn_msg, "Weights array dimensions != input dimensions.");
             }
             driz_error_set_message(&error, warn_msg);
             goto _exit;
@@ -507,10 +488,11 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
 
     get_dimensions(wht, size);
     if (size[0] != onx || size[1] != ony) {
-        if (snprintf(warn_msg, 128,
-                     "Output weight dimensions (%d, %d) != output dimensions "
-                     "(%d, %d).",
-                     size[0], size[1], onx, ony) < 1) {
+        if (snprintf(
+                warn_msg, 128,
+                "Output weight dimensions (%d, %d) != output dimensions "
+                "(%d, %d).",
+                size[0], size[1], onx, ony) < 1) {
             strcpy(warn_msg, "Output weight dimensions != output dimensions.");
         }
 
@@ -521,10 +503,11 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     if (con) {
         get_dimensions(con, size);
         if (size[0] != onx || size[1] != ony) {
-            if (snprintf(warn_msg, 128,
-                         "Context dimensions (%d, %d) != output dimensions "
-                         "(%d, %d).",
-                         size[0], size[1], onx, ony) < 1) {
+            if (snprintf(
+                    warn_msg, 128,
+                    "Context dimensions (%d, %d) != output dimensions "
+                    "(%d, %d).",
+                    size[0], size[1], onx, ony) < 1) {
                 strcpy(warn_msg, "Context dimensions != output dimensions.");
             }
             driz_error_set_message(&error, warn_msg);
@@ -534,13 +517,14 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
 
     /* Handle optional arguments that supply arrays for resampling with
      * squared coefficients */
-    nsq_args = ((int)(oimg2 != NULL && oimg2 != Py_None)) +
-               ((int)(oout2 != NULL && oout2 != Py_None));
+    nsq_args =
+        ((int) (oimg2 != NULL && oimg2 != Py_None)) + ((int) (oout2 != NULL && oout2 != Py_None));
     if (nsq_args == 2) {
         nx = inx;
         ny = iny;
-        if (process_array_list(oimg2, &nx, &ny, "input2", &img2_list, &nsq_arr,
-                               1, &n_none, &free_arrays2, &error)) {
+        if (process_array_list(
+                oimg2, &nx, &ny, "input2", &img2_list, &nsq_arr, 1, &n_none, &free_arrays2,
+                &error)) {
             goto _exit;
         }
         if (n_none == nsq_arr && img2_list) {
@@ -550,39 +534,37 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
 
         if (nsq_arr) {
             if (nx != inx || ny != iny) {
-                driz_error_set_message(&error,
-                                       "'input2' arrays must have the same "
-                                       "dimensions as the 'input' array.");
+                driz_error_set_message(
+                    &error, "'input2' arrays must have the same "
+                            "dimensions as the 'input' array.");
                 goto _exit;
             }
 
             nx = onx;
             ny = ony;
-            if (process_array_list(oout2, &nx, &ny, "output2", &out2_list,
-                                   &nsq_arr_out, 0, NULL, &free_out_arrays2,
-                                   &error)) {
+            if (process_array_list(
+                    oout2, &nx, &ny, "output2", &out2_list, &nsq_arr_out, 0, NULL,
+                    &free_out_arrays2, &error)) {
                 goto _exit;
             }
             if (nx != onx || ny != ony) {
-                driz_error_set_message(&error,
-                                       "'output2' arrays must have the same "
-                                       "dimensions as the 'output' array.");
+                driz_error_set_message(
+                    &error, "'output2' arrays must have the same "
+                            "dimensions as the 'output' array.");
                 goto _exit;
             }
 
             if (nsq_arr != nsq_arr_out) {
                 driz_error_set_message(
-                    &error,
-                    "The number of 'output2' arrays must match "
-                    "the number of 'input2' arrays.");
+                    &error, "The number of 'output2' arrays must match "
+                            "the number of 'input2' arrays.");
                 goto _exit;
             }
         }
     } else if (nsq_args == 1) {
         driz_error_set_message(
-            &error,
-            "'input2' and 'output2' must both be either None, "
-            "numpy.ndarray, or lists of numpy.ndarray of equal lengths.");
+            &error, "'input2' and 'output2' must both be either None, "
+                    "numpy.ndarray, or lists of numpy.ndarray of equal lengths.");
         goto _exit;
     }
 
@@ -595,35 +577,31 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     }
 
     if (shrink_image_section(map, &xmin, &xmax, &ymin, &ymax)) {
-        driz_error_set_message(&error,
-                               "No or too few valid pixels in the pixel map.");
+        driz_error_set_message(&error, "No or too few valid pixels in the pixel map.");
         goto _exit;
     }
 
     /* Convert strings to enumerations */
-    if (kernel_str2enum(kernel_str, &kernel, &error) ||
-        unit_str2enum(inun_str, &inun, &error)) {
+    if (kernel_str2enum(kernel_str, &kernel, &error) || unit_str2enum(inun_str, &inun, &error)) {
         goto _exit;
     }
 
-    if (kernel == kernel_gaussian || kernel == kernel_lanczos2 ||
-        kernel == kernel_lanczos3) {
-        if (snprintf(warn_msg, 128,
-                     "Kernel '%s' is not a flux-conserving kernel.",
-                     kernel_str) < 1) {
-            strcpy(warn_msg,
-                   "Selected kernel is not a flux-conserving kernel.");
+    if (kernel == kernel_gaussian || kernel == kernel_lanczos2 || kernel == kernel_lanczos3) {
+        if (snprintf(warn_msg, 128, "Kernel '%s' is not a flux-conserving kernel.", kernel_str) <
+            1) {
+            strcpy(warn_msg, "Selected kernel is not a flux-conserving kernel.");
         }
         PyErr_WarnEx(PyExc_Warning, warn_msg, 1);
     }
 
     if (pfract <= 0.001) {
-        if (snprintf(warn_msg, 128,
-                     "Kernel reset to 'point' due to input 'pixfrac' "
-                     " being too small.") < 1) {
-            strcpy(warn_msg,
-                   "Kernel reset to 'point' due to input 'pixfrac' "
-                   " being too small.");
+        if (snprintf(
+                warn_msg, 128,
+                "Kernel reset to 'point' due to input 'pixfrac' "
+                " being too small.") < 1) {
+            strcpy(
+                warn_msg, "Kernel reset to 'point' due to input 'pixfrac' "
+                          " being too small.");
         }
         PyErr_WarnEx(PyExc_Warning, warn_msg, 1);
         kernel_str2enum("point", &kernel, &error);
@@ -680,12 +658,10 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords) {
     if (driz_error_check(&error, "ymax must be > ymin", p.ymax > p.ymin)) {
         goto _exit;
     }
-    if (driz_error_check(&error, "exposure time must be > 0",
-                         p.exposure_time > 0.0f)) {
+    if (driz_error_check(&error, "exposure time must be > 0", p.exposure_time > 0.0f)) {
         goto _exit;
     }
-    if (driz_error_check(&error, "weight scale must be > 0",
-                         p.weight_scale > 0.0f)) {
+    if (driz_error_check(&error, "weight scale must be > 0", p.weight_scale > 0.0f)) {
         goto _exit;
     }
 
@@ -753,8 +729,7 @@ _exit:
         PyErr_SetString(error.type, driz_error_get_message(&error));
         return NULL;
     } else {
-        return Py_BuildValue("sii", "Callable C-based DRIZZLE Version 2.1.0",
-                             p.nmiss, p.nskip);
+        return Py_BuildValue("sii", "Callable C-based DRIZZLE Version 2.1.0", p.nmiss, p.nskip);
     }
 }
 
@@ -763,12 +738,12 @@ _exit:
  */
 
 static PyObject *
-tblot(PyObject *self, PyObject *args, PyObject *keywords) {
-    (void)self;
+tblot(PyObject *self, PyObject *args, PyObject *keywords)
+{
+    (void) self;
 
-    const char *kwlist[] = {"source",  "pixmap", "output", "xmin",
-                            "xmax",    "ymin",   "ymax",   "iscale",
-                            "kscale",  "scale",  "interp", "exptime",
+    const char *kwlist[] = {"source",  "pixmap", "output", "xmin",  "xmax",   "ymin",
+                            "ymax",    "iscale", "kscale", "scale", "interp", "exptime",
                             "fillval", "misval", "sinscl", NULL};
 
     /* Arguments in the order they appear */
@@ -800,17 +775,17 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
     driz_error_init(&error);
 
     if (!PyArg_ParseTupleAndKeywords(
-            args, keywords, "OOO|llllOOOsOOOf:tblot", (char **)kwlist, /* */
-            &oimg, &pixmap, &oout,                                     /* OOO */
-            &xmin, &xmax, &ymin, &ymax,                     /* llll */
-            &oiscale, &okscale, &oscale, &interp_str, &oef, /* fOOsO */
-            &ofillval, &omisval, &sinscl)                   /* OOf */
+            args, keywords, "OOO|llllOOOsOOOf:tblot", (char **) kwlist, /* */
+            &oimg, &pixmap, &oout,                                      /* OOO */
+            &xmin, &xmax, &ymin, &ymax,                                 /* llll */
+            &oiscale, &okscale, &oscale, &interp_str, &oef,             /* fOOsO */
+            &ofillval, &omisval, &sinscl)                               /* OOf */
     ) {
         return NULL;
     }
 
     if (oscale != NULL && !Py_IsNone(oscale)) {
-        scale = (float)PyFloat_AsDouble(oscale);
+        scale = (float) PyFloat_AsDouble(oscale);
 
         if (PyErr_Occurred()) {
             driz_error_set_message(&error, "Argument 'scale' is not a number.");
@@ -818,15 +793,14 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
         }
 
         if (scale <= 0.0f || !isfinite(scale)) {
-            driz_error_set_message(
-                &error, "Argument 'scale' must be positive and finite.");
+            driz_error_set_message(&error, "Argument 'scale' must be positive and finite.");
             goto _exit;
         }
         iscale = 1.0 / (scale * scale);
 
-        if (py_warning(PyExc_DeprecationWarning,
-                       "Argument 'scale' is deprecated, use 'iscale' "
-                       "instead and set it to 1.0 / (scale*scale).") != 0) {
+        if (py_warning(
+                PyExc_DeprecationWarning, "Argument 'scale' is deprecated, use 'iscale' "
+                                          "instead and set it to 1.0 / (scale*scale).") != 0) {
             goto _exit;
         }
 
@@ -834,54 +808,50 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
         if (oiscale == NULL || Py_IsNone(oiscale)) {
             iscale = 1.0f;
         } else {
-            iscale = (float)PyFloat_AsDouble(oiscale);
+            iscale = (float) PyFloat_AsDouble(oiscale);
 
             if (PyErr_Occurred()) {
-                driz_error_set_message(&error,
-                                       "Argument 'iscale' is not a number.");
+                driz_error_set_message(&error, "Argument 'iscale' is not a number.");
                 goto _exit;
             }
         }
         if (iscale <= 0.0f || !isfinite(iscale)) {
-            driz_error_set_message(
-                &error, "Argument 'iscale' must be positive and finite.");
+            driz_error_set_message(&error, "Argument 'iscale' must be positive and finite.");
             goto _exit;
         }
     }
 
     if (okscale != NULL && !Py_IsNone(okscale)) {
-        if (py_warning(PyExc_DeprecationWarning,
-                       "Argument 'kscale' has been deprecated and it will be "
-                       "removed in a future version. It is no longer used by "
-                       "the blotting algorithm and can be safely ignored.") !=
-            0) {
+        if (py_warning(
+                PyExc_DeprecationWarning,
+                "Argument 'kscale' has been deprecated and it will be "
+                "removed in a future version. It is no longer used by "
+                "the blotting algorithm and can be safely ignored.") != 0) {
             goto _exit;
         }
     }
 
     if (omisval != NULL && !Py_IsNone(omisval)) {
-        if (py_warning(PyExc_DeprecationWarning,
-                       "Argument 'misval' has been deprecated and has been "
-                       "replaced by 'fillval' to achieve the same effect.") !=
-            0) {
+        if (py_warning(
+                PyExc_DeprecationWarning,
+                "Argument 'misval' has been deprecated and has been "
+                "replaced by 'fillval' to achieve the same effect.") != 0) {
             goto _exit;
         }
 
-        fillval = (float)PyFloat_AsDouble(omisval);
+        fillval = (float) PyFloat_AsDouble(omisval);
 
         if (ofillval != NULL && !Py_IsNone(ofillval)) {
             driz_error_set_message(
-                &error,
-                "Argument 'fillval' should not be set when 'misval' is set.");
+                &error, "Argument 'fillval' should not be set when 'misval' is set.");
             goto _exit;
         }
     } else {
         if (ofillval != NULL && !Py_IsNone(ofillval)) {
-            fillval = (float)PyFloat_AsDouble(ofillval);
+            fillval = (float) PyFloat_AsDouble(ofillval);
 
             if (PyErr_Occurred()) {
-                driz_error_set_message(&error,
-                                       "Argument 'fillval' is not a number.");
+                driz_error_set_message(&error, "Argument 'fillval' is not a number.");
                 goto _exit;
             }
         } else {
@@ -890,23 +860,21 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
     }
 
     if (oef != NULL && !Py_IsNone(oef)) {
-        if (py_warning(PyExc_DeprecationWarning,
-                       "Argument 'exptime' has been deprecated and it will be "
-                       "removed in a future version. Use 'iscale' to achieve "
-                       "the same.") != 0) {
+        if (py_warning(
+                PyExc_DeprecationWarning, "Argument 'exptime' has been deprecated and it will be "
+                                          "removed in a future version. Use 'iscale' to achieve "
+                                          "the same.") != 0) {
             goto _exit;
         }
 
-        ef = (float)PyFloat_AsDouble(oef);
+        ef = (float) PyFloat_AsDouble(oef);
 
         if (PyErr_Occurred()) {
-            driz_error_set_message(&error,
-                                   "Argument 'exptime' is not a number.");
+            driz_error_set_message(&error, "Argument 'exptime' is not a number.");
             goto _exit;
         }
         if (ef <= 0.0f || !isfinite(ef)) {
-            driz_error_set_message(
-                &error, "Argument 'exptime' must be positive and finite.");
+            driz_error_set_message(&error, "Argument 'exptime' must be positive and finite.");
             goto _exit;
         }
     } else {
@@ -939,10 +907,11 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords) {
     get_dimensions(out, osize);
 
     if (psize[0] != osize[0] || psize[1] != osize[1]) {
-        if (snprintf(warn_msg, 128,
-                     "Pixel map dimensions (%d, %d) != output dimensions "
-                     "(%d, %d).",
-                     psize[0], psize[1], osize[0], osize[1]) < 1) {
+        if (snprintf(
+                warn_msg, 128,
+                "Pixel map dimensions (%d, %d) != output dimensions "
+                "(%d, %d).",
+                psize[0], psize[1], osize[0], osize[1]) < 1) {
             strcpy(warn_msg, "Pixel map dimensions != output dimensions.");
         }
         driz_error_set_message(&error, warn_msg);
@@ -1021,20 +990,20 @@ _exit:
  */
 
 static PyObject *
-test_cdrizzle(PyObject *self, PyObject *args) {
-    (void)self;
+test_cdrizzle(PyObject *self, PyObject *args)
+{
+    (void) self;
 
-    PyObject *data, *weights, *pixmap, *output_data, *output_counts,
-        *output_context;
+    PyObject *data, *weights, *pixmap, *output_data, *output_counts, *output_context;
     PyArrayObject *dat, *wei, *map, *odat, *ocnt, *ocon;
     int argc = 1;
     char *argv[] = {"utest_cdrizzle", NULL};
     int free_data = 0, free_wei = 0, free_map = 0;
     int free_odat = 0, free_ocnt = 0, free_ocon = 0;
 
-    if (!PyArg_ParseTuple(args, "OOOOOO:test_cdrizzle", &data, &weights,
-                          &pixmap, &output_data, &output_counts,
-                          &output_context)) {
+    if (!PyArg_ParseTuple(
+            args, "OOOOOO:test_cdrizzle", &data, &weights, &pixmap, &output_data, &output_counts,
+            &output_context)) {
         return NULL;
     }
 
@@ -1094,8 +1063,9 @@ test_cdrizzle(PyObject *self, PyObject *args) {
 }
 
 static PyObject *
-invert_pixmap_wrap(PyObject *self, PyObject *args) {
-    (void)self;
+invert_pixmap_wrap(PyObject *self, PyObject *args)
+{
+    (void) self;
 
     PyObject *pixmap, *xyout, *bbox;
     PyArrayObject *xyout_arr, *pixmap_arr, *bbox_arr;
@@ -1105,7 +1075,7 @@ invert_pixmap_wrap(PyObject *self, PyObject *args) {
     const double half = 0.5 - DBL_EPSILON;
     int free_xyout = 0, free_pixmap = 0, free_bbox = 0;
 
-    xyin = (double *)malloc(2 * sizeof(double));
+    xyin = (double *) malloc(2 * sizeof(double));
 
     if (!PyArg_ParseTuple(args, "OOO:invpixmap", &pixmap, &xyout, &bbox)) {
         return NULL;
@@ -1134,17 +1104,13 @@ invert_pixmap_wrap(PyObject *self, PyObject *args) {
         if (!bbox_arr) {
             return PyErr_Format(gl_Error, "Invalid input bounding box.");
         }
-        par.xmin =
-            (integer_t)(*(double *)PyArray_GETPTR2(bbox_arr, 0, 0) - half);
-        par.xmax =
-            (integer_t)(*(double *)PyArray_GETPTR2(bbox_arr, 0, 1) + half);
-        par.ymin =
-            (integer_t)(*(double *)PyArray_GETPTR2(bbox_arr, 1, 0) - half);
-        par.ymax =
-            (integer_t)(*(double *)PyArray_GETPTR2(bbox_arr, 1, 1) + half);
+        par.xmin = (integer_t) (*(double *) PyArray_GETPTR2(bbox_arr, 0, 0) - half);
+        par.xmax = (integer_t) (*(double *) PyArray_GETPTR2(bbox_arr, 0, 1) + half);
+        par.ymin = (integer_t) (*(double *) PyArray_GETPTR2(bbox_arr, 1, 0) - half);
+        par.ymax = (integer_t) (*(double *) PyArray_GETPTR2(bbox_arr, 1, 1) + half);
     }
 
-    xy = (double *)PyArray_DATA(xyout_arr);
+    xy = (double *) PyArray_DATA(xyout_arr);
 
     if (invert_pixmap(&par, xy[0], xy[1], &xyin[0], &xyin[1])) {
         return Py_BuildValue("");
@@ -1152,8 +1118,8 @@ invert_pixmap_wrap(PyObject *self, PyObject *args) {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-    PyArrayObject *arr = (PyArrayObject *)PyArray_SimpleNewFromData(
-        1, &xyin_dim, NPY_DOUBLE, xyin);
+    PyArrayObject *arr =
+        (PyArrayObject *) PyArray_SimpleNewFromData(1, &xyin_dim, NPY_DOUBLE, xyin);
 #pragma GCC diagnostic pop
 
     PyArray_ENABLEFLAGS(arr, NPY_ARRAY_OWNDATA);
@@ -1171,8 +1137,9 @@ invert_pixmap_wrap(PyObject *self, PyObject *args) {
 }
 
 static PyObject *
-clip_polygon_wrap(PyObject *self, PyObject *args) {
-    (void)self;
+clip_polygon_wrap(PyObject *self, PyObject *args)
+{
+    (void) self;
 
     int k;
     PyObject *pin, *qin;
@@ -1197,14 +1164,14 @@ clip_polygon_wrap(PyObject *self, PyObject *args) {
 
     p.npv = PyArray_SHAPE(pin_arr)[0];
     for (k = 0; k < p.npv; ++k) {
-        p.v[k].x = *((double *)PyArray_GETPTR2(pin_arr, k, 0));
-        p.v[k].y = *((double *)PyArray_GETPTR2(pin_arr, k, 1));
+        p.v[k].x = *((double *) PyArray_GETPTR2(pin_arr, k, 0));
+        p.v[k].y = *((double *) PyArray_GETPTR2(pin_arr, k, 1));
     }
 
     q.npv = PyArray_SHAPE(qin_arr)[0];
     for (k = 0; k < q.npv; ++k) {
-        q.v[k].x = *((double *)PyArray_GETPTR2(qin_arr, k, 0));
-        q.v[k].y = *((double *)PyArray_GETPTR2(qin_arr, k, 1));
+        q.v[k].x = *((double *) PyArray_GETPTR2(qin_arr, k, 0));
+        q.v[k].y = *((double *) PyArray_GETPTR2(qin_arr, k, 1));
     }
 
     clip_polygon_to_window(&p, &q, &pq);
@@ -1239,21 +1206,20 @@ clip_polygon_wrap(PyObject *self, PyObject *args) {
 #endif
 
 static struct PyMethodDef cdrizzle_methods[] = {
-    {"tdriz", (PyCFunction)(void (*)(void))tdriz, METH_VARARGS | METH_KEYWORDS,
+    {"tdriz", (PyCFunction) (void (*)(void)) tdriz, METH_VARARGS | METH_KEYWORDS,
      "tdriz(image, weights, pixmap, output, counts, context, image2, "
      "output2, dq, outdq, uniqid, xmin, xmax, ymin, ymax, iscale, "
      "pscale_ratio, pixfrac, kernel, in_units, expscale, wtscale, fillstr, "
      "fillstr2)"},
-    {"tblot", (PyCFunction)(void (*)(void))(PyCFunctionWithKeywords)tblot,
+    {"tblot", (PyCFunction) (void (*)(void))(PyCFunctionWithKeywords) tblot,
      METH_VARARGS | METH_KEYWORDS,
      "tblot(image, pixmap, output, xmin, xmax, ymin, ymax, iscale, "
      "interp, exptime, fillval, misval, sinscl)"},
-    {"test_cdrizzle", (PyCFunction)test_cdrizzle, METH_VARARGS,
+    {"test_cdrizzle", (PyCFunction) test_cdrizzle, METH_VARARGS,
      "test_cdrizzle(data, weights, pixmap, output_data, output_counts)"},
-    {"invert_pixmap", (PyCFunction)invert_pixmap_wrap, METH_VARARGS,
+    {"invert_pixmap", (PyCFunction) invert_pixmap_wrap, METH_VARARGS,
      "invert_pixmap(pixmap, xyout, bbox)"},
-    {"clip_polygon", (PyCFunction)clip_polygon_wrap, METH_VARARGS,
-     "clip_polygon(p, q)"},
+    {"clip_polygon", (PyCFunction) clip_polygon_wrap, METH_VARARGS, "clip_polygon(p, q)"},
     {NULL, NULL} /* sentinel */
 };
 #if defined(__GNUC__)
@@ -1267,9 +1233,10 @@ static struct PyMethodDef cdrizzle_methods[] = {
 
 #if PY_MAJOR_VERSION < 3
 PyMODINIT_FUNC
-initcdrizzle(void) {
+initcdrizzle(void)
+{
     /* Create the module and add the functions */
-    (void)Py_InitModule("cdrizzle", cdrizzle_methods);
+    (void) Py_InitModule("cdrizzle", cdrizzle_methods);
 
     /* Check for errors */
     if (PyErr_Occurred()) {
@@ -1280,18 +1247,12 @@ initcdrizzle(void) {
 }
 
 #else
-static struct PyModuleDef moduledef = {PyModuleDef_HEAD_INIT,
-                                       "cdrizzle",
-                                       NULL,
-                                       -1,
-                                       cdrizzle_methods,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL};
+static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT, "cdrizzle", NULL, -1, cdrizzle_methods, NULL, NULL, NULL, NULL};
 
 PyMODINIT_FUNC
-PyInit_cdrizzle(void) {
+PyInit_cdrizzle(void)
+{
     PyObject *m;
     m = PyModule_Create(&moduledef);
 

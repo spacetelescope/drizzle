@@ -10,12 +10,14 @@ from setuptools import Extension, setup
 
 def get_extensions():
     srcdir = os.path.join(os.path.dirname(__file__), 'src')
-    cdriz_sources = ['cdrizzleapi.c',
-                     'cdrizzleblot.c',
-                     'cdrizzlebox.c',
-                     'cdrizzlemap.c',
-                     'cdrizzleutil.c',
-                     os.path.join('tests', 'utest_cdrizzle.c')]
+    cdriz_sources = [
+        'cdrizzleapi.c',
+        'cdrizzleblot.c',
+        'cdrizzlebox.c',
+        'cdrizzlemap.c',
+        'cdrizzleutil.c',
+        os.path.join('tests', 'utest_cdrizzle.c'),
+    ]
     sources = [os.path.join(srcdir, x) for x in cdriz_sources]
 
     cfg = {
@@ -25,6 +27,7 @@ def get_extensions():
     }
     cfg['include_dirs'].append(numpy.get_include())
     cfg['include_dirs'].append(srcdir)
+    cfg['include_dirs'].append(os.path.join(srcdir, 'tests'))
 
     if sys.platform == 'win32':
         cfg['define_macros'].extend(

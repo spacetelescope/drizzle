@@ -30,8 +30,9 @@ static const double lut_delta = 0.003; /* spacing of Lanczos LUT */
  */
 
 inline_macro static int
-update_data(struct driz_param_t *p, const integer_t ii, const integer_t jj,
-            const float d, const float dow) {
+update_data(
+    struct driz_param_t *p, const integer_t ii, const integer_t jj, const float d, const float dow)
+{
     double vc_plus_dow;
     float vc;
 
@@ -46,8 +47,7 @@ update_data(struct driz_param_t *p, const integer_t ii, const integer_t jj,
 
     if (vc == 0.0f) {
         if (oob_pixel(p->output_data, ii, jj)) {
-            driz_error_format_message(p->error, "OOB in output_data[%d,%d]", ii,
-                                      jj);
+            driz_error_format_message(p->error, "OOB in output_data[%d,%d]", ii, jj);
             return 1;
         } else {
             set_pixel(p->output_data, ii, jj, d);
@@ -55,20 +55,17 @@ update_data(struct driz_param_t *p, const integer_t ii, const integer_t jj,
 
     } else {
         if (oob_pixel(p->output_data, ii, jj)) {
-            driz_error_format_message(p->error, "OOB in output_data[%d,%d]", ii,
-                                      jj);
+            driz_error_format_message(p->error, "OOB in output_data[%d,%d]", ii, jj);
             return 1;
         } else {
             double value;
-            value = (get_pixel(p->output_data, ii, jj) * vc + dow * d) /
-                    (vc_plus_dow);
+            value = (get_pixel(p->output_data, ii, jj) * vc + dow * d) / (vc_plus_dow);
             set_pixel(p->output_data, ii, jj, value);
         }
     }
 
     if (oob_pixel(p->output_counts, ii, jj)) {
-        driz_error_format_message(p->error, "OOB in output_counts[%d,%d]", ii,
-                                  jj);
+        driz_error_format_message(p->error, "OOB in output_counts[%d,%d]", ii, jj);
         return 1;
     } else {
         set_pixel(p->output_counts, ii, jj, vc_plus_dow);
@@ -91,8 +88,10 @@ update_data(struct driz_param_t *p, const integer_t ii, const integer_t jj,
  *      (i.e., variance arrays)
  */
 inline_macro static int
-update_data_var(struct driz_param_t *p, const integer_t ii, const integer_t jj,
-                const float d, const float dow, float *d2, unsigned int dq) {
+update_data_var(
+    struct driz_param_t *p, const integer_t ii, const integer_t jj, const float d, const float dow,
+    float *d2, unsigned int dq)
+{
     double vc_plus_dow, vc_plus_dow2;
     double v, vc2, dow2;
     float vc;
@@ -101,8 +100,7 @@ update_data_var(struct driz_param_t *p, const integer_t ii, const integer_t jj,
     PyArrayObject **arr2;
 
     if (oob_output_pixel(p, ii, jj)) {
-        driz_error_format_message(
-            p->error, "OOB in accessing output data [%d,%d]", ii, jj);
+        driz_error_format_message(p->error, "OOB in accessing output data [%d,%d]", ii, jj);
         return 1;
     }
 
@@ -134,8 +132,7 @@ update_data_var(struct driz_param_t *p, const integer_t ii, const integer_t jj,
             vc2 = vc * vc;
             vc_plus_dow2 = vc_plus_dow * vc_plus_dow;
             for (i = 0; i < p->ndata2; ++i) {
-                v = (get_pixel(arr2[i], ii, jj) * vc2 + dow2 * d2[i]) /
-                    vc_plus_dow2;
+                v = (get_pixel(arr2[i], ii, jj) * vc2 + dow2 * d2[i]) / vc_plus_dow2;
                 set_pixel(arr2[i], ii, jj, v);
             }
         }
@@ -156,13 +153,14 @@ update_data_var(struct driz_param_t *p, const integer_t ii, const integer_t jj,
  */
 
 integer_t
-compute_bit_value(integer_t uuid) {
+compute_bit_value(integer_t uuid)
+{
     integer_t bv;
     int np, bit_no;
 
     np = (uuid - 1) / 32 + 1;
     bit_no = (uuid - 1 - (32 * (np - 1)));
-    bv = (integer_t)(1 << bit_no);
+    bv = (integer_t) (1 << bit_no);
 
     return bv;
 }
@@ -173,7 +171,8 @@ This is used by BOXER.
 */
 
 static inline_macro double
-sgarea(const double x1, const double y1, const double x2, const double y2) {
+sgarea(const double x1, const double y1, const double x2, const double y2)
+{
     double xlo, xhi, ylo, yhi, xtop;
     double dx, dy, det, sgn_dx;
 
@@ -278,7 +277,8 @@ sgarea(const double x1, const double y1, const double x2, const double y2) {
 */
 
 double
-boxer(double is, double js, const double x[4], const double y[4]) {
+boxer(double is, double js, const double x[4], const double y[4])
+{
     integer_t i;
     double sum;
     double px[4], py[4];
@@ -321,7 +321,8 @@ boxer(double is, double js, const double x[4], const double y[4]) {
  */
 
 double
-compute_area(double is, double js, const double x[4], const double y[4]) {
+compute_area(double is, double js, const double x[4], const double y[4])
+{
     int ipoint, jpoint, idim, jdim, iside, outside, count;
     int positive[2];
     double area, width;
@@ -402,8 +403,7 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
 
                     midpoint[idim] = border[iside][idim];
 
-                    midpoint[jdim] = (delta[1] * segment[0][jdim] -
-                                      delta[0] * segment[1][jdim]) /
+                    midpoint[jdim] = (delta[1] * segment[0][jdim] - delta[0] * segment[1][jdim]) /
                                      (delta[1] - delta[0]);
 
                     if (count == 0) {
@@ -458,15 +458,17 @@ compute_area(double is, double js, const double x[4], const double y[4]) {
  */
 
 static inline_macro double
-over(const integer_t i, const integer_t j, const double xmin, const double xmax,
-     const double ymin, const double ymax) {
+over(
+    const integer_t i, const integer_t j, const double xmin, const double xmax, const double ymin,
+    const double ymax)
+{
     double dx, dy;
 
     assert(xmin <= xmax);
     assert(ymin <= ymax);
 
-    dx = MIN(xmax, (double)(i) + 0.5) - MAX(xmin, (double)(i)-0.5);
-    dy = MIN(ymax, (double)(j) + 0.5) - MAX(ymin, (double)(j)-0.5);
+    dx = MIN(xmax, (double) (i) + 0.5) - MAX(xmin, (double) (i) -0.5);
+    dy = MIN(ymax, (double) (j) + 0.5) - MAX(ymin, (double) (j) -0.5);
 
     if (dx > 0.0 && dy > 0.0) {
         return dx * dy;
@@ -500,8 +502,8 @@ over(const integer_t i, const integer_t j, const double xmin, const double xmax,
  * p->error.
  */
 int
-compute_pscale_ratio(struct driz_param_t *p, struct polygon *bounding_polygon,
-                     float *pscale_ratio) {
+compute_pscale_ratio(struct driz_param_t *p, struct polygon *bounding_polygon, float *pscale_ratio)
+{
     integer_t i, j, nx, ny, mapsize[2];
     double cx, cy;
     double ox, oy, ox1, oy1, ox2, oy2;
@@ -511,8 +513,8 @@ compute_pscale_ratio(struct driz_param_t *p, struct polygon *bounding_polygon,
         goto _error;
     }
     // estimate pixel scale ratio:
-    i = (integer_t)cx;
-    j = (integer_t)cy;
+    i = (integer_t) cx;
+    j = (integer_t) cy;
 
     get_dimensions(p->pixmap, mapsize);
     nx = mapsize[0];
@@ -524,8 +526,7 @@ compute_pscale_ratio(struct driz_param_t *p, struct polygon *bounding_polygon,
     i = MAX(MIN(i, nx - 2), 0);
     j = MAX(MIN(j, ny - 2), 0);
 
-    if (map_pixel(p->pixmap, i, j, &ox, &oy) ||
-        map_pixel(p->pixmap, i + 1, j, &ox1, &oy1) ||
+    if (map_pixel(p->pixmap, i, j, &ox, &oy) || map_pixel(p->pixmap, i + 1, j, &ox1, &oy1) ||
         map_pixel(p->pixmap, i, j + 1, &ox2, &oy2)) {
         goto _error;
     }
@@ -534,7 +535,7 @@ compute_pscale_ratio(struct driz_param_t *p, struct polygon *bounding_polygon,
     cd12 = oy1 - oy;
     cd21 = ox2 - ox;
     cd22 = oy2 - oy;
-    *pscale_ratio = (float)sqrt(fabs(cd11 * cd22 - cd12 * cd21));
+    *pscale_ratio = (float) sqrt(fabs(cd11 * cd22 - cd12 * cd21));
 
     return 0;
 
@@ -550,7 +551,8 @@ _error:
  */
 
 static int
-do_kernel_point_var(struct driz_param_t *p) {
+do_kernel_point_var(struct driz_param_t *p)
+{
     struct scanner s;
     integer_t i, j, ii, jj, k;
     integer_t osize[2];
@@ -576,15 +578,15 @@ do_kernel_point_var(struct driz_param_t *p) {
     if (ndata2 > 0) {
         iscale2 = p->iscale * p->iscale;
 
-        if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
-            driz_error_set(p->error, PyExc_MemoryError,
-                           "Memory allocation failed.");
+        if (!(d2 = (float *) malloc(p->ndata2 * sizeof(float)))) {
+            driz_error_set(p->error, PyExc_MemoryError, "Memory allocation failed.");
             return 1;
         }
         if (!p->output_data2) {
-            driz_error_set(p->error, PyExc_RuntimeError,
-                           "'output_data2' must be a valid pointer when "
-                           "'data2' is valid.");
+            driz_error_set(
+                p->error, PyExc_RuntimeError,
+                "'output_data2' must be a valid pointer when "
+                "'data2' is valid.");
             free(d2);
             return 1;
         }
@@ -654,7 +656,7 @@ do_kernel_point_var(struct driz_param_t *p) {
                     }
 
                     if (p->dq) {
-                        dqval = (int)get_uint_pixel(p->dq, i, j);
+                        dqval = (int) get_uint_pixel(p->dq, i, j);
                     }
 
                     /* If we are creating or modifying the context image,
@@ -684,7 +686,8 @@ do_kernel_point_var(struct driz_param_t *p) {
  */
 
 static int
-do_kernel_gaussian_var(struct driz_param_t *p) {
+do_kernel_gaussian_var(struct driz_param_t *p)
+{
     struct scanner s;
     integer_t bv, i, j, ii, jj, k, nxi, nxa, nyi, nya, nhit;
     integer_t osize[2];
@@ -713,10 +716,10 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
         return 1;
     }
 
-    kscale2 = (double)p->pscale_ratio * (double)p->pscale_ratio;
+    kscale2 = (double) p->pscale_ratio * (double) p->pscale_ratio;
 
-    pfo = nsig * p->pixel_fraction / 2.3548 / (double)p->pscale_ratio;
-    pfo = CLAMP_ABOVE(pfo, 1.2 / (double)p->pscale_ratio);
+    pfo = nsig * p->pixel_fraction / 2.3548 / (double) p->pscale_ratio;
+    pfo = CLAMP_ABOVE(pfo, 1.2 / (double) p->pscale_ratio);
 
     ac = 1.0 / (p->pixel_fraction * p->pixel_fraction);
     bv = compute_bit_value(p->uuid);
@@ -733,15 +736,15 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
 
     if (ndata2 > 0) {
         iscale2 = p->iscale * p->iscale;
-        if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
-            driz_error_set(p->error, PyExc_MemoryError,
-                           "Memory allocation failed.");
+        if (!(d2 = (float *) malloc(p->ndata2 * sizeof(float)))) {
+            driz_error_set(p->error, PyExc_MemoryError, "Memory allocation failed.");
             return 1;
         }
         if (!p->output_data2) {
-            driz_error_set(p->error, PyExc_RuntimeError,
-                           "'output_data2' must be a valid pointer when "
-                           "'data2' is valid.");
+            driz_error_set(
+                p->error, PyExc_RuntimeError,
+                "'output_data2' must be a valid pointer when "
+                "'data2' is valid.");
             free(d2);
             return 1;
         }
@@ -813,9 +816,9 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
 
                 /* Loop over output pixels which could be affected */
                 for (jj = nyi; jj <= nya; ++jj) {
-                    ddy = oy - (double)jj;
+                    ddy = oy - (double) jj;
                     for (ii = nxi; ii <= nxa; ++ii) {
-                        ddx = ox - (double)ii;
+                        ddx = ox - (double) ii;
                         /* Radial distance */
                         r2 = ddx * ddx + ddy * ddy;
 
@@ -826,7 +829,7 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
                         /* Count the hits */
                         ++nhit;
 
-                        dow = (float)dover * w;
+                        dow = (float) dover * w;
 
                         /* If we are creating or modifying the context
                            image, we do so here. */
@@ -865,7 +868,8 @@ do_kernel_gaussian_var(struct driz_param_t *p) {
  */
 
 static int
-do_kernel_lanczos_var(struct driz_param_t *p) {
+do_kernel_lanczos_var(struct driz_param_t *p)
+{
     struct scanner s;
     integer_t bv, i, j, ii, jj, k, nxi, nxa, nyi, nya, nhit;
     integer_t osize[2];
@@ -880,9 +884,9 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
     unsigned int dqval = 0;
 
     if (fabs(p->pixel_fraction - 1.0) > 1.0e-5) {
-        py_warning(NULL,
-                   "In lanczos kernel, pixel_fraction is ignored and "
-                   "assumed to be 1.0");
+        py_warning(
+            NULL, "In lanczos kernel, pixel_fraction is ignored and "
+                  "assumed to be 1.0");
     }
 
     ndata2 = p->ndata2;
@@ -893,7 +897,7 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
 
     /* Set up a look-up-table for Lanczos-style interpolation
        kernels */
-    nlut = (size_t)ceil(kernel_order / lut_delta) + 1;
+    nlut = (size_t) ceil(kernel_order / lut_delta) + 1;
     if ((lut = malloc(nlut * sizeof(double))) == NULL) {
         driz_error_set_message(p->error, "Out of memory");
         return driz_error_is_set(p->error);
@@ -912,7 +916,7 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
         return 1;
     }
 
-    pfo = (double)kernel_order / (double)p->pscale_ratio;
+    pfo = (double) kernel_order / (double) p->pscale_ratio;
     sdp = p->pscale_ratio / lut_delta;
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
@@ -925,16 +929,16 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
     if (ndata2 > 0) {
         iscale2 = p->iscale * p->iscale;
 
-        if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
-            driz_error_set(p->error, PyExc_MemoryError,
-                           "Memory allocation failed.");
+        if (!(d2 = (float *) malloc(p->ndata2 * sizeof(float)))) {
+            driz_error_set(p->error, PyExc_MemoryError, "Memory allocation failed.");
             free(lut);
             return 1;
         }
         if (!p->output_data2) {
-            driz_error_set(p->error, PyExc_RuntimeError,
-                           "'output_data2' must be a valid pointer when "
-                           "'data2' is valid.");
+            driz_error_set(
+                p->error, PyExc_RuntimeError,
+                "'output_data2' must be a valid pointer when "
+                "'data2' is valid.");
             free(lut);
             free(d2);
             return 1;
@@ -976,10 +980,10 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
                 nhit = 0;
 
             } else {
-                nxi = MAX((integer_t)floor(xx - pfo) + 1, 0);
-                nxa = MIN((integer_t)floor(xx + pfo), osize[0] - 1);
-                nyi = MAX((integer_t)floor(yy - pfo) + 1, 0);
-                nya = MIN((integer_t)floor(yy + pfo), osize[1] - 1);
+                nxi = MAX((integer_t) floor(xx - pfo) + 1, 0);
+                nxa = MIN((integer_t) floor(xx + pfo), osize[0] - 1);
+                nyi = MAX((integer_t) floor(yy - pfo) + 1, 0);
+                nya = MIN((integer_t) floor(yy + pfo), osize[1] - 1);
 
                 nhit = 0;
 
@@ -1007,8 +1011,8 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
                 for (jj = nyi; jj <= nya; ++jj) {
                     for (ii = nxi; ii <= nxa; ++ii) {
                         /* X and Y offsets */
-                        ix = nintd(fabs((xx - (double)ii) * sdp));
-                        iy = nintd(fabs((yy - (double)jj) * sdp));
+                        ix = nintd(fabs((xx - (double) ii) * sdp));
+                        iy = nintd(fabs((yy - (double) jj) * sdp));
                         if (ix >= nlut || iy >= nlut) {
                             continue;
                         }
@@ -1021,7 +1025,7 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
                          * Y */
                         dover = lut[ix] * lut[iy];
 
-                        dow = (float)(dover * w);
+                        dow = (float) (dover * w);
 
                         /* If we are creating or modifying the context
                            image, we do so here. */
@@ -1064,7 +1068,8 @@ do_kernel_lanczos_var(struct driz_param_t *p) {
  */
 
 static int
-do_kernel_turbo_var(struct driz_param_t *p) {
+do_kernel_turbo_var(struct driz_param_t *p)
+{
     struct scanner s;
     integer_t bv, i, j, ii, jj, k, nhit, iis, iie, jjs, jje;
     integer_t osize[2];
@@ -1093,7 +1098,7 @@ do_kernel_turbo_var(struct driz_param_t *p) {
     }
 
     pfo = p->pixel_fraction / p->pscale_ratio / 2.0;
-    dover_scale = ac * (double)p->pscale_ratio * (double)p->pscale_ratio;
+    dover_scale = ac * (double) p->pscale_ratio * (double) p->pscale_ratio;
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -1105,15 +1110,15 @@ do_kernel_turbo_var(struct driz_param_t *p) {
     if (ndata2 > 0) {
         iscale2 = p->iscale * p->iscale;
 
-        if (!(d2 = (float *)malloc(ndata2 * sizeof(float)))) {
-            driz_error_set(p->error, PyExc_MemoryError,
-                           "Memory allocation failed.");
+        if (!(d2 = (float *) malloc(ndata2 * sizeof(float)))) {
+            driz_error_set(p->error, PyExc_MemoryError, "Memory allocation failed.");
             return 1;
         }
         if (!p->output_data2) {
-            driz_error_set(p->error, PyExc_RuntimeError,
-                           "'output_data2' must be a valid pointer when "
-                           "'data2' is valid.");
+            driz_error_set(
+                p->error, PyExc_RuntimeError,
+                "'output_data2' must be a valid pointer when "
+                "'data2' is valid.");
             return 1;
         }
         for (i = 0; i < ndata2; ++i) {
@@ -1201,7 +1206,7 @@ do_kernel_turbo_var(struct driz_param_t *p) {
                             /* Count the hits */
                             ++nhit;
 
-                            dow = (float)(dover * w);
+                            dow = (float) (dover * w);
 
                             /* If we are creating or modifying the context
                                image, we do so here. */
@@ -1243,7 +1248,8 @@ do_kernel_turbo_var(struct driz_param_t *p) {
  */
 
 int
-do_kernel_square_var(struct driz_param_t *p) {
+do_kernel_square_var(struct driz_param_t *p)
+{
     integer_t bv, i, j, ii, jj, k, min_ii, max_ii, min_jj, max_jj, nhit;
     integer_t osize[2], mapsize[2];
     float d, dow, *d2 = NULL, iscale2 = 1.0f;
@@ -1279,15 +1285,15 @@ do_kernel_square_var(struct driz_param_t *p) {
     if (ndata2 > 0) {
         iscale2 = p->iscale * p->iscale;
 
-        if (!(d2 = (float *)malloc(p->ndata2 * sizeof(float)))) {
-            driz_error_set(p->error, PyExc_MemoryError,
-                           "Memory allocation failed.");
+        if (!(d2 = (float *) malloc(p->ndata2 * sizeof(float)))) {
+            driz_error_set(p->error, PyExc_MemoryError, "Memory allocation failed.");
             return 1;
         }
         if (!p->output_data2) {
-            driz_error_set(p->error, PyExc_RuntimeError,
-                           "'output_data2' must be a valid pointer when "
-                           "'data2' is valid.");
+            driz_error_set(
+                p->error, PyExc_RuntimeError,
+                "'output_data2' must be a valid pointer when "
+                "'data2' is valid.");
             free(d2);
             return 1;
         }
@@ -1323,8 +1329,8 @@ do_kernel_square_var(struct driz_param_t *p) {
         }
 
         /* Set the input corner positions */
-        yin[1] = yin[0] = (double)j + dh;
-        yin[3] = yin[2] = (double)j - dh;
+        yin[1] = yin[0] = (double) j + dh;
+        yin[3] = yin[2] = (double) j - dh;
 
         for (i = xmin; i <= xmax; ++i) {
             nhit = 0;
@@ -1344,17 +1350,16 @@ do_kernel_square_var(struct driz_param_t *p) {
              * that pixfrac<1 and that we are using a square grid.
              */
             if (i > 0 && i < mapsize[0] - 2 && j > 0 && j < mapsize[1] - 2) {
-                if (interpolate_four_points(p, i, j, dh, xout, xout + 1,
-                                            xout + 2, xout + 3, yout, yout + 1,
-                                            yout + 2, yout + 3)) {
+                if (interpolate_four_points(
+                        p, i, j, dh, xout, xout + 1, xout + 2, xout + 3, yout, yout + 1, yout + 2,
+                        yout + 3)) {
                     goto _miss;
                 }
             } else {
-                xin[3] = xin[0] = (double)i - dh;
-                xin[2] = xin[1] = (double)i + dh;
+                xin[3] = xin[0] = (double) i - dh;
+                xin[2] = xin[1] = (double) i + dh;
                 for (ii = 0; ii < 4; ++ii) {
-                    if (interpolate_point(p, xin[ii], yin[ii], xout + ii,
-                                          yout + ii)) {
+                    if (interpolate_point(p, xin[ii], yin[ii], xout + ii, yout + ii)) {
                         goto _miss;
                     }
                 }
@@ -1401,12 +1406,12 @@ do_kernel_square_var(struct driz_param_t *p) {
                     /* Call boxer to calculate overlap */
                     // dover = compute_area((double)ii, (double)jj, xout,
                     // yout);
-                    dover = boxer((double)ii, (double)jj, xout, yout);
+                    dover = boxer((double) ii, (double) jj, xout, yout);
 
                     /* Could be positive or negative, depending on the sign
                      * of jaco */
                     if (dover != 0.0) {
-                        dow = (float)(dover * w);
+                        dow = (float) (dover * w);
 
                         /* Count the hits */
                         ++nhit;
@@ -1449,7 +1454,8 @@ do_kernel_square_var(struct driz_param_t *p) {
  */
 
 static int
-do_kernel_point(struct driz_param_t *p) {
+do_kernel_point(struct driz_param_t *p)
+{
     struct scanner s;
     integer_t i, j, ii, jj;
     integer_t osize[2];
@@ -1540,7 +1546,8 @@ do_kernel_point(struct driz_param_t *p) {
  */
 
 static int
-do_kernel_gaussian(struct driz_param_t *p) {
+do_kernel_gaussian(struct driz_param_t *p)
+{
     struct scanner s;
     integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit;
     integer_t osize[2];
@@ -1566,11 +1573,11 @@ do_kernel_gaussian(struct driz_param_t *p) {
        divided by the scale so that there are never holes in the
        output */
 
-    pfo = nsig * p->pixel_fraction / 2.3548 / (double)p->pscale_ratio;
-    pfo = CLAMP_ABOVE(pfo, 1.2 / (double)p->pscale_ratio);
+    pfo = nsig * p->pixel_fraction / 2.3548 / (double) p->pscale_ratio;
+    pfo = CLAMP_ABOVE(pfo, 1.2 / (double) p->pscale_ratio);
 
     ac = 1.0 / (p->pixel_fraction * p->pixel_fraction);
-    kscale2 = (double)p->pscale_ratio * (double)p->pscale_ratio;
+    kscale2 = (double) p->pscale_ratio * (double) p->pscale_ratio;
     bv = compute_bit_value(p->uuid);
 
     gaussian_efac = (2.3548 * 2.3548) * kscale2 * ac / 2.0;
@@ -1632,9 +1639,9 @@ do_kernel_gaussian(struct driz_param_t *p) {
 
                 /* Loop over output pixels which could be affected */
                 for (jj = nyi; jj <= nya; ++jj) {
-                    ddy = oy - (double)jj;
+                    ddy = oy - (double) jj;
                     for (ii = nxi; ii <= nxa; ++ii) {
-                        ddx = ox - (double)ii;
+                        ddx = ox - (double) ii;
                         /* Radial distance */
                         r2 = ddx * ddx + ddy * ddy;
 
@@ -1645,7 +1652,7 @@ do_kernel_gaussian(struct driz_param_t *p) {
                         /* Count the hits */
                         ++nhit;
 
-                        dow = (float)dover * w;
+                        dow = (float) dover * w;
 
                         /* If we are creating or modifying the context
                            image, we do so here. */
@@ -1678,7 +1685,8 @@ do_kernel_gaussian(struct driz_param_t *p) {
  */
 
 static int
-do_kernel_lanczos(struct driz_param_t *p) {
+do_kernel_lanczos(struct driz_param_t *p)
+{
     struct scanner s;
     integer_t bv, i, j, ii, jj, nxi, nxa, nyi, nya, nhit;
     integer_t osize[2];
@@ -1692,9 +1700,9 @@ do_kernel_lanczos(struct driz_param_t *p) {
     int xmin, xmax, ymin, ymax, n;
 
     if (fabs(p->pixel_fraction - 1.0) > 1.0e-5) {
-        py_warning(NULL,
-                   "In lanczos kernel, pixel_fraction is ignored and "
-                   "assumed to be 1.0");
+        py_warning(
+            NULL, "In lanczos kernel, pixel_fraction is ignored and "
+                  "assumed to be 1.0");
     }
 
     kernel_order = (p->kernel == kernel_lanczos2) ? 2 : 3;
@@ -1703,7 +1711,7 @@ do_kernel_lanczos(struct driz_param_t *p) {
 
     /* Set up a look-up-table for Lanczos-style interpolation
        kernels */
-    nlut = (size_t)ceil(kernel_order / lut_delta) + 1;
+    nlut = (size_t) ceil(kernel_order / lut_delta) + 1;
     if ((lut = malloc(nlut * sizeof(double))) == NULL) {
         driz_error_set_message(p->error, "Out of memory");
         return driz_error_is_set(p->error);
@@ -1722,8 +1730,8 @@ do_kernel_lanczos(struct driz_param_t *p) {
         return 1;
     }
 
-    pfo = (double)kernel_order / (double)p->pscale_ratio;
-    sdp = (double)p->pscale_ratio / lut_delta;
+    pfo = (double) kernel_order / (double) p->pscale_ratio;
+    sdp = (double) p->pscale_ratio / lut_delta;
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -1756,10 +1764,10 @@ do_kernel_lanczos(struct driz_param_t *p) {
                 nhit = 0;
 
             } else {
-                nxi = MAX((integer_t)floor(xx - pfo) + 1, 0);
-                nxa = MIN((integer_t)floor(xx + pfo), osize[0] - 1);
-                nyi = MAX((integer_t)floor(yy - pfo) + 1, 0);
-                nya = MIN((integer_t)floor(yy + pfo), osize[1] - 1);
+                nxi = MAX((integer_t) floor(xx - pfo) + 1, 0);
+                nxa = MIN((integer_t) floor(xx + pfo), osize[0] - 1);
+                nyi = MAX((integer_t) floor(yy - pfo) + 1, 0);
+                nya = MIN((integer_t) floor(yy + pfo), osize[1] - 1);
 
                 nhit = 0;
 
@@ -1780,8 +1788,8 @@ do_kernel_lanczos(struct driz_param_t *p) {
                 for (jj = nyi; jj <= nya; ++jj) {
                     for (ii = nxi; ii <= nxa; ++ii) {
                         /* X and Y offsets */
-                        ix = nintd(fabs((xx - (double)ii) * sdp));
-                        iy = nintd(fabs((yy - (double)jj) * sdp));
+                        ix = nintd(fabs((xx - (double) ii) * sdp));
+                        iy = nintd(fabs((yy - (double) jj) * sdp));
                         if (ix >= nlut || iy >= nlut) {
                             continue;
                         }
@@ -1794,7 +1802,7 @@ do_kernel_lanczos(struct driz_param_t *p) {
                          * Y */
                         dover = lut[ix] * lut[iy];
 
-                        dow = (float)(dover * w);
+                        dow = (float) (dover * w);
 
                         /* If we are creating or modifying the context
                            image, we do so here. */
@@ -1830,7 +1838,8 @@ do_kernel_lanczos(struct driz_param_t *p) {
  */
 
 static int
-do_kernel_turbo(struct driz_param_t *p) {
+do_kernel_turbo(struct driz_param_t *p)
+{
     struct scanner s;
     integer_t bv, i, j, ii, jj, nhit, iis, iie, jjs, jje;
     integer_t osize[2];
@@ -1856,7 +1865,7 @@ do_kernel_turbo(struct driz_param_t *p) {
     }
 
     pfo = p->pixel_fraction / p->pscale_ratio / 2.0;
-    dover_scale = ac * (double)p->pscale_ratio * (double)p->pscale_ratio;
+    dover_scale = ac * (double) p->pscale_ratio * (double) p->pscale_ratio;
 
     p->nskip = (p->ymax - p->ymin) - (ymax - ymin);
     p->nmiss = p->nskip * (p->xmax - p->xmin);
@@ -1932,7 +1941,7 @@ do_kernel_turbo(struct driz_param_t *p) {
                             /* Count the hits */
                             ++nhit;
 
-                            dow = (float)(dover * w);
+                            dow = (float) (dover * w);
 
                             /* If we are creating or modifying the context
                                image, we do so here. */
@@ -1970,7 +1979,8 @@ do_kernel_turbo(struct driz_param_t *p) {
  */
 
 int
-do_kernel_square(struct driz_param_t *p) {
+do_kernel_square(struct driz_param_t *p)
+{
     integer_t bv, i, j, ii, jj, min_ii, max_ii, min_jj, max_jj, nhit;
     integer_t osize[2], mapsize[2];
     float d, dow;
@@ -2019,8 +2029,8 @@ do_kernel_square(struct driz_param_t *p) {
         }
 
         /* Set the input corner positions */
-        yin[1] = yin[0] = (double)j + dh;
-        yin[3] = yin[2] = (double)j - dh;
+        yin[1] = yin[0] = (double) j + dh;
+        yin[3] = yin[2] = (double) j - dh;
 
         for (i = xmin; i <= xmax; ++i) {
             nhit = 0;
@@ -2040,17 +2050,16 @@ do_kernel_square(struct driz_param_t *p) {
              * that pixfrac<1 and that we are using a square grid.
              */
             if (i > 0 && i < mapsize[0] - 2 && j > 0 && j < mapsize[1] - 2) {
-                if (interpolate_four_points(p, i, j, dh, xout, xout + 1,
-                                            xout + 2, xout + 3, yout, yout + 1,
-                                            yout + 2, yout + 3)) {
+                if (interpolate_four_points(
+                        p, i, j, dh, xout, xout + 1, xout + 2, xout + 3, yout, yout + 1, yout + 2,
+                        yout + 3)) {
                     goto _miss;
                 }
             } else {
-                xin[3] = xin[0] = (double)i - dh;
-                xin[2] = xin[1] = (double)i + dh;
+                xin[3] = xin[0] = (double) i - dh;
+                xin[2] = xin[1] = (double) i + dh;
                 for (ii = 0; ii < 4; ++ii) {
-                    if (interpolate_point(p, xin[ii], yin[ii], xout + ii,
-                                          yout + ii)) {
+                    if (interpolate_point(p, xin[ii], yin[ii], xout + ii, yout + ii)) {
                         goto _miss;
                     }
                 }
@@ -2090,12 +2099,12 @@ do_kernel_square(struct driz_param_t *p) {
                     /* Call boxer to calculate overlap */
                     // dover = compute_area((double)ii, (double)jj, xout,
                     // yout);
-                    dover = boxer((double)ii, (double)jj, xout, yout);
+                    dover = boxer((double) ii, (double) jj, xout, yout);
 
                     /* Could be positive or negative, depending on the sign
                      * of jaco */
                     if (dover != 0.0) {
-                        dow = (float)(dover * w);
+                        dow = (float) (dover * w);
 
                         /* Count the hits */
                         ++nhit;
@@ -2132,13 +2141,13 @@ do_kernel_square(struct driz_param_t *p) {
  * point, or by some other function.
  */
 
-static kernel_handler_t kernel_handler_map[] = {
-    do_kernel_square, do_kernel_gaussian, do_kernel_point,
-    do_kernel_turbo,  do_kernel_lanczos,  do_kernel_lanczos};
+static kernel_handler_t kernel_handler_map[] = {do_kernel_square,  do_kernel_gaussian,
+                                                do_kernel_point,   do_kernel_turbo,
+                                                do_kernel_lanczos, do_kernel_lanczos};
 
-static kernel_handler_t kernel_var_handler_map[] = {
-    do_kernel_square_var, do_kernel_gaussian_var, do_kernel_point_var,
-    do_kernel_turbo_var,  do_kernel_lanczos_var,  do_kernel_lanczos_var};
+static kernel_handler_t kernel_var_handler_map[] = {do_kernel_square_var,  do_kernel_gaussian_var,
+                                                    do_kernel_point_var,   do_kernel_turbo_var,
+                                                    do_kernel_lanczos_var, do_kernel_lanczos_var};
 
 /** ---------------------------------------------------------------------------
  * The executive function which calls the kernel which does the actual
@@ -2148,7 +2157,8 @@ static kernel_handler_t kernel_var_handler_map[] = {
  */
 
 int
-dobox(struct driz_param_t *p) {
+dobox(struct driz_param_t *p)
+{
     kernel_handler_t kernel_handler = NULL;
     driz_log_message("starting dobox");
 
