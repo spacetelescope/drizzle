@@ -9,47 +9,47 @@ from setuptools import Extension, setup
 
 
 def get_extensions():
-    srcdir = os.path.join(os.path.dirname(__file__), 'src')
+    srcdir = os.path.join(os.path.dirname(__file__), "src")
     cdriz_sources = [
-        'cdrizzleapi.c',
-        'cdrizzleblot.c',
-        'cdrizzlebox.c',
-        'cdrizzlemap.c',
-        'cdrizzleutil.c',
-        os.path.join('tests', 'utest_cdrizzle.c'),
+        "cdrizzleapi.c",
+        "cdrizzleblot.c",
+        "cdrizzlebox.c",
+        "cdrizzlemap.c",
+        "cdrizzleutil.c",
+        os.path.join("tests", "utest_cdrizzle.c"),
     ]
     sources = [os.path.join(srcdir, x) for x in cdriz_sources]
 
     cfg = {
-        'include_dirs': [],
-        'libraries': [],
-        'define_macros': [],
+        "include_dirs": [],
+        "libraries": [],
+        "define_macros": [],
     }
-    cfg['include_dirs'].append(numpy.get_include())
-    cfg['include_dirs'].append(srcdir)
-    cfg['include_dirs'].append(os.path.join(srcdir, 'tests'))
+    cfg["include_dirs"].append(numpy.get_include())
+    cfg["include_dirs"].append(srcdir)
+    cfg["include_dirs"].append(os.path.join(srcdir, "tests"))
 
-    if sys.platform == 'win32':
-        cfg['define_macros'].extend(
+    if sys.platform == "win32":
+        cfg["define_macros"].extend(
             [
-                ('WIN32', None),
-                ('__STDC__', 1),
-                ('_CRT_SECURE_NO_WARNINGS', None),
+                ("WIN32", None),
+                ("__STDC__", 1),
+                ("_CRT_SECURE_NO_WARNINGS", None),
             ]
         )
     else:
-        cfg['libraries'].append('m')
-        cfg['extra_compile_args'] = [
-            '-O3',
-            '-Wall',
-            '-Wextra',
-            '-Wpedantic',
-            '-Wno-unused-parameter',
-            '-Wincompatible-pointer-types'
+        cfg["libraries"].append("m")
+        cfg["extra_compile_args"] = [
+            "-O3",
+            "-Wall",
+            "-Wextra",
+            "-Wpedantic",
+            "-Wno-unused-parameter",
+            "-Wincompatible-pointer-types",
         ]
     # importing these extension modules is tested in `.github/workflows/build.yml`;
     # when adding new modules here, make sure to add them to the `test_command` entry there
-    return [Extension(str('drizzle.cdrizzle'), sources, **cfg)]
+    return [Extension(str("drizzle.cdrizzle"), sources, **cfg)]
 
 
 setup(

@@ -2,6 +2,7 @@
 The `drizzle` module defines the `Drizzle` class, for combining input
 images into a single output image using the drizzle algorithm.
 """
+
 import warnings
 
 import numpy as np
@@ -220,10 +221,22 @@ class Drizzle:
 
     """
 
-    def __init__(self, kernel="square", fillval=None, fillval2=None,
-                 out_shape=None, out_img=None, out_wht=None, out_ctx=None,
-                 out_img2=None, out_dq=None, exptime=0.0, begin_ctx_id=0,
-                 max_ctx_id=None, disable_ctx=False):
+    def __init__(
+        self,
+        kernel="square",
+        fillval=None,
+        fillval2=None,
+        out_shape=None,
+        out_img=None,
+        out_wht=None,
+        out_ctx=None,
+        out_img2=None,
+        out_dq=None,
+        exptime=0.0,
+        begin_ctx_id=0,
+        max_ctx_id=None,
+        disable_ctx=False,
+    ):
         """
         kernel: str, optional
             The name of the kernel used to combine the input. The choice of
@@ -307,7 +320,7 @@ class Drizzle:
 
         begin_ctx_id : int, optional
             The context ID number (0-based) of the first image that will be
-            resampled (using `add_image`). Subsequent images will be asigned
+            resampled (using `add_image`). Subsequent images will be assigned
             consecutively increasing ID numbers. This parameter is ignored
             when ``disable_ctx`` is `True`.
 
@@ -318,7 +331,7 @@ class Drizzle:
             context image. If the actual number of input images that will be
             resampled will exceed initial allocation for the context image,
             additional context planes will be added as needed (context array
-            will "grow" in the third dimention as new input images are added.)
+            will "grow" in the third dimension as new input images are added.)
             The default value of `None` is equivalent to setting ``max_ctx_id``
             equal to ``begin_ctx_id``. This parameter is ignored either when
             ``out_ctx`` is provided or when ``disable_ctx`` is `True`.
@@ -350,18 +363,15 @@ class Drizzle:
         if exptime < 0.0:
             raise ValueError("Exposure time must be non-negative.")
 
-        if (exptime > 0.0 and out_img is None and out_ctx is None and out_wht is None):
+        if exptime > 0.0 and out_img is None and out_ctx is None and out_wht is None:
             raise ValueError(
                 "Exposure time must be 0.0 for the first resampling "
-                "(when no ouput resampled images have been provided)."
+                "(when no output resampled images have been provided)."
             )
 
-        if (
-            exptime == 0.0 and
-                (
-                    (out_ctx is not None and np.sum(out_ctx) > 0) or
-                    (out_wht is not None and np.sum(out_wht) > 0)
-                )
+        if exptime == 0.0 and (
+            (out_ctx is not None and np.sum(out_ctx) > 0)
+            or (out_wht is not None and np.sum(out_wht) > 0)
         ):
             raise ValueError(
                 "Inconsistent exposure time and context and/or weight images: "
@@ -400,10 +410,9 @@ class Drizzle:
 
         if out_dq is not None:
             t = np.min_scalar_type(out_dq)
-            if t.kind not in ['i', 'u'] or t.itemsize > 4:
+            if t.kind not in ["i", "u"] or t.itemsize > 4:
                 raise TypeError(
-                    "'out_dq' must be of an unsigned integer type with "
-                    "itemsize of 4 bytes or less."
+                    "'out_dq' must be of an unsigned integer type with itemsize of 4 bytes or less."
                 )
             out_dq = np.asarray(out_dq, dtype=np.uint32)
             shapes.add(out_dq.shape)
@@ -502,7 +511,7 @@ class Drizzle:
     @property
     def out_dq(self):
         """Output DQ image computed by OR-combining DQ bitfields of input
-        images' pixels that have contributed to a given ouput pixel.
+        images' pixels that have contributed to a given output pixel.
 
         """
         return self._out_dq
@@ -512,8 +521,7 @@ class Drizzle:
         """Total exposure time of all resampled images."""
         return self._texptime
 
-    def _alloc_output_arrays(self, out_shape, max_ctx_id, out_img, out_wht,
-                             out_ctx):
+    def _alloc_output_arrays(self, out_shape, max_ctx_id, out_img, out_wht, out_ctx):
         # allocate arrays as needed:
         if out_wht is None:
             self._out_wht = np.zeros(out_shape, dtype=np.float32)
@@ -525,7 +533,7 @@ class Drizzle:
         else:
             if out_ctx is None:
                 n_ctx_planes = max_ctx_id // CTX_PLANE_BITS + 1
-                ctx_shape = (n_ctx_planes, ) + out_shape
+                ctx_shape = (n_ctx_planes,) + out_shape
                 self._out_ctx = np.zeros(ctx_shape, dtype=np.int32)
             else:
                 self._out_ctx = out_ctx
@@ -533,12 +541,7 @@ class Drizzle:
             if not (out_wht is None and out_ctx is None):
                 # check that input data make sense: weight of pixels with
                 # non-zero context values must be different from zero:
-                if np.any(
-                    np.bitwise_xor(
-                        self._out_wht > 0.0,
-                        np.sum(self._out_ctx, axis=0) > 0
-                    )
-                ):
+                if np.any(np.bitwise_xor(self._out_wht > 0.0, np.sum(self._out_ctx, axis=0) > 0)):
                     raise ValueError(
                         "Inconsistent values of supplied 'out_wht' and "
                         "'out_ctx' arrays. Pixels with non-zero context "
@@ -569,8 +572,7 @@ class Drizzle:
 
         self._out_img2 = []
 
-        if (isinstance(self._fillval2, str) and
-                self._fillval2.strip().upper() == "INDEF"):
+        if isinstance(self._fillval2, str) and self._fillval2.strip().upper() == "INDEF":
             fv = np.nan
         else:
             fv = np.float32(self._fillval2)
@@ -592,8 +594,7 @@ class Drizzle:
             del arr
 
     def _alloc_output_arrays2_add(self, ninputs2=None):
-        if (isinstance(self._fillval2, str) and
-                self._fillval2.strip().upper() == "INDEF"):
+        if isinstance(self._fillval2, str) and self._fillval2.strip().upper() == "INDEF":
             fv = np.nan
         else:
             fv = np.float32(self._fillval2)
@@ -603,12 +604,10 @@ class Drizzle:
                 return
             if self._ncoadds > 0:
                 raise ValueError(
-                    "Mismatch between the number of 'out_img2' images "
-                    "and the number of inputs."
+                    "Mismatch between the number of 'out_img2' images and the number of inputs."
                 )
             self._out_img2 = [
-                np.full(self._out_shape, fill_value=fv, dtype=np.float32)
-                for _ in range(ninputs2)
+                np.full(self._out_shape, fill_value=fv, dtype=np.float32) for _ in range(ninputs2)
             ]
 
         else:
@@ -617,14 +616,9 @@ class Drizzle:
             # replace None values with arrays of _out_shape:
             for k, img in enumerate(self._out_img2):
                 if img is None:
-                    self._out_img2[k] = np.full(
-                        self._out_shape,
-                        fill_value=fv,
-                        dtype=np.float32
-                    )
+                    self._out_img2[k] = np.full(self._out_shape, fill_value=fv, dtype=np.float32)
 
-            if ((ninputs2 is not None and ninputs2 != nimg2) or
-                    (ninputs2 is None and nimg2 > 0)):
+            if (ninputs2 is not None and ninputs2 != nimg2) or (ninputs2 is None and nimg2 > 0):
                 raise ValueError(
                     "Mismatch between the number of 'out_img2' images "
                     "previously set and the number of inputs."
@@ -644,7 +638,7 @@ class Drizzle:
 
         if self._plane_no >= depth:
             # Add a new plane to the context image if planeid overflows
-            plane = np.zeros((1, ) + self._out_shape, np.int32)
+            plane = np.zeros((1,) + self._out_shape, np.int32)
             self._out_ctx = np.append(self._out_ctx, plane, axis=0)
 
         plane_info = (self._plane_no, self._ctx_id % CTX_PLANE_BITS)
@@ -653,10 +647,25 @@ class Drizzle:
 
         return plane_info
 
-    def add_image(self, data, exptime, pixmap, data2=None, dq=None,
-                  scale=_DEPRECATED_ARG, iscale=1.0, pixel_scale_ratio=1.0,
-                  weight_map=None, wht_scale=1.0, pixfrac=1.0, in_units='cps',
-                  xmin=None, xmax=None, ymin=None, ymax=None):
+    def add_image(
+        self,
+        data,
+        exptime,
+        pixmap,
+        data2=None,
+        dq=None,
+        scale=_DEPRECATED_ARG,
+        iscale=1.0,
+        pixel_scale_ratio=1.0,
+        weight_map=None,
+        wht_scale=1.0,
+        pixfrac=1.0,
+        in_units="cps",
+        xmin=None,
+        xmax=None,
+        ymin=None,
+        ymax=None,
+    ):
         """
         Resample and add an image to the cumulative output image. Also, update
         output total weight image and context images.
@@ -675,8 +684,8 @@ class Drizzle:
             (``out_img``) coordinates. ``pixmap`` must be an array of shape
             ``(Ny, Nx, 2)`` where ``(Ny, Nx)`` is the shape of the input image.
             ``pixmap[..., 0]`` forms a 2D array of X-coordinates of input
-            pixels in the ouput frame and ``pixmap[..., 1]`` forms a 2D array of
-            Y-coordinates of input pixels in the ouput coordinate frame.
+            pixels in the output frame and ``pixmap[..., 1]`` forms a 2D array of
+            Y-coordinates of input pixels in the output coordinate frame.
 
         data2 : 2D array of float32, list of 2D arrays of float32 or None, None, optional
             A 2D numpy array (or a list of 2D arrays) with image data to be
@@ -808,7 +817,7 @@ class Drizzle:
                 "it will be removed in a future release. "
                 "Use 'iscale' and 'pixel_scale_ratio' instead and set iscale=pixel_scale_ratio**2 "
                 "to achieve the same effect as with 'scale'.",
-                DeprecationWarning
+                DeprecationWarning,
             )
             iscale = scale * scale
             pixel_scale_ratio = scale
@@ -826,10 +835,7 @@ class Drizzle:
                 pixmap = pixmap.copy()
                 pixmap[:, :, 0] -= pmap_xmin
                 pixmap[:, :, 1] -= pmap_ymin
-                self._out_shape = (
-                    pmap_xmax - pmap_xmin + 1,
-                    pmap_ymax - pmap_ymin + 1
-                )
+                self._out_shape = (pmap_xmax - pmap_xmin + 1, pmap_ymax - pmap_ymin + 1)
             elif nshapes == 1:
                 self._out_shape = next(iter(self._output_shapes))
             else:
@@ -852,9 +858,7 @@ class Drizzle:
             if isinstance(data2, np.ndarray):
                 ninputs2 = 1
                 if data2.shape != data.shape:
-                    raise ValueError(
-                        "'data2' shape is not consistent with 'data' shape."
-                    )
+                    raise ValueError("'data2' shape is not consistent with 'data' shape.")
             else:
                 shapes2 = set()
                 ninputs2 = len(data2)
@@ -865,11 +869,8 @@ class Drizzle:
                     else:
                         shapes2.add(d.shape)
 
-                if ((len(shapes2) == 1 and shapes2.pop() != data.shape) or
-                        len(shapes2) > 1):
-                    raise ValueError(
-                        "'data2' shape(s) is not consistent with 'data' shape."
-                    )
+                if (len(shapes2) == 1 and shapes2.pop() != data.shape) or len(shapes2) > 1:
+                    raise ValueError("'data2' shape(s) is not consistent with 'data' shape.")
 
         self._alloc_output_arrays2_add(ninputs2=ninputs2)
 
@@ -880,7 +881,7 @@ class Drizzle:
 
         # Ensure that the fillval parameter gets properly interpreted
         # for use with tdriz
-        if in_units == 'cps':
+        if in_units == "cps":
             expscale = 1.0
         else:
             expscale = exptime
@@ -892,9 +893,7 @@ class Drizzle:
         in_ymax, in_xmax = data.shape
 
         if pixmap.shape[:2] != data.shape:
-            raise ValueError(
-                "'pixmap' shape is not consistent with 'data' shape."
-            )
+            raise ValueError("'pixmap' shape is not consistent with 'data' shape.")
 
         if xmin is None or xmin < 0:
             xmin = 0
@@ -911,9 +910,7 @@ class Drizzle:
         if weight_map is not None:
             weight_map = np.asarray(weight_map, dtype=np.float32)
             if weight_map.shape != data.shape:
-                raise ValueError(
-                    "'weight_map' shape is not consistent with 'data' shape."
-                )
+                raise ValueError("'weight_map' shape is not consistent with 'data' shape.")
         else:  # TODO: this should not be needed after C code modifications
             weight_map = np.ones_like(data)
 
@@ -928,16 +925,13 @@ class Drizzle:
 
         if dq is not None:
             t = np.min_scalar_type(dq)
-            if t.kind not in ['i', 'u'] or t.itemsize > 4:
+            if t.kind not in ["i", "u"] or t.itemsize > 4:
                 raise TypeError(
-                    "'dq' must be of an unsigned integer type with itemsize "
-                    "of 4 bytes or less."
+                    "'dq' must be of an unsigned integer type with itemsize of 4 bytes or less."
                 )
             dq = np.asarray(dq, dtype=np.uint32)
             if dq.shape != data.shape:
-                raise ValueError(
-                    "'dq' shape is not consistent with 'data' shape."
-                )
+                raise ValueError("'dq' shape is not consistent with 'data' shape.")
             if self._out_dq is None:
                 self._out_dq = np.zeros(self._out_shape, dtype=np.uint32)
 
@@ -965,7 +959,7 @@ class Drizzle:
             ymin=ymin,
             ymax=ymax,
             iscale=iscale,  # scales image intensity. usually equal to 1 or
-                            # (pixel scale ratio)**2
+            # (pixel scale ratio)**2
             pscale_ratio=pixel_scale_ratio,  # scales kernel size. usually equal to pixel scale ratio
             pixfrac=pixfrac,
             kernel=self._kernel,
@@ -981,10 +975,18 @@ class Drizzle:
         return nmiss, nskip
 
 
-def blot_image(data, pixmap, pix_ratio=_DEPRECATED_ARG,
-               exptime=_DEPRECATED_ARG, output_pixel_shape=_DEPRECATED_ARG,
-               out_img=None, fillval=0.0, iscale=1.0, interp='poly5',
-               sinscl=1.0):
+def blot_image(
+    data,
+    pixmap,
+    pix_ratio=_DEPRECATED_ARG,
+    exptime=_DEPRECATED_ARG,
+    output_pixel_shape=_DEPRECATED_ARG,
+    out_img=None,
+    fillval=0.0,
+    iscale=1.0,
+    interp="poly5",
+    sinscl=1.0,
+):
     """
     Resample the ``data`` input image onto an output grid defined by
     the ``pixmap`` array. ``blot_image`` performs resampling using one of
@@ -1008,8 +1010,8 @@ def blot_image(data, pixmap, pix_ratio=_DEPRECATED_ARG,
         (``out_img``) coordinates. ``pixmap`` must be an array of shape
         ``(Ny, Nx, 2)`` where ``(Ny, Nx)`` is the shape of the input image.
         ``pixmap[..., 0]`` forms a 2D array of X-coordinates of input
-        pixels in the ouput frame and ``pixmap[..., 1]`` forms a 2D array of
-        Y-coordinates of input pixels in the ouput coordinate frame.
+        pixels in the output frame and ``pixmap[..., 1]`` forms a 2D array of
+        Y-coordinates of input pixels in the output coordinate frame.
 
     pix_ratio : float
         Ratio of the input image pixel scale to the output image pixel scale as
@@ -1090,7 +1092,7 @@ def blot_image(data, pixmap, pix_ratio=_DEPRECATED_ARG,
             "it will be removed in a future release. "
             "Use 'iscale' instead and set iscale=1.0 / pix_ratio**2 "
             "to achieve the same effect as with 'pix_ratio'.",
-            DeprecationWarning
+            DeprecationWarning,
         )
         iscale /= pix_ratio * pix_ratio
 
@@ -1100,7 +1102,7 @@ def blot_image(data, pixmap, pix_ratio=_DEPRECATED_ARG,
             "it will be removed in a future release. "
             "Use 'iscale' instead and set iscale=exptime "
             "to achieve the same effect as with 'exptime'.",
-            DeprecationWarning
+            DeprecationWarning,
         )
         iscale *= exptime
 
@@ -1111,7 +1113,7 @@ def blot_image(data, pixmap, pix_ratio=_DEPRECATED_ARG,
             "Argument 'output_pixel_shape' has been deprecated since version "
             "3.0 and it will be removed in a future release. It is not needed "
             "since the output image shape can be inferred from 'pixmap'.",
-            DeprecationWarning
+            DeprecationWarning,
         )
         output_shape = output_pixel_shape[::-1]
 
@@ -1120,12 +1122,11 @@ def blot_image(data, pixmap, pix_ratio=_DEPRECATED_ARG,
     else:
         out_img = np.asarray(out_img, dtype=np.float32)
         if out_img.shape != output_shape:
-            raise ValueError(
-                "'output_image' shape is not consistent with 'pixmap' shape."
-            )
+            raise ValueError("'output_image' shape is not consistent with 'pixmap' shape.")
 
-    cdrizzle.tblot(data, pixmap, out_img, iscale=iscale, interp=interp,
-                   fillval=fillval, sinscl=sinscl)
+    cdrizzle.tblot(
+        data, pixmap, out_img, iscale=iscale, interp=interp, fillval=fillval, sinscl=sinscl
+    )
 
     return out_img
 
