@@ -20,11 +20,10 @@ from astropy.modeling.projections import AffineTransformation2D
 __all__ = ["wcs_from_file"]
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
-DATA_DIR = os.path.join(TEST_DIR, 'data')
+DATA_DIR = os.path.join(TEST_DIR, "data")
 
 
-def wcs_from_file(filename, ext=None, return_data=False, crpix_shift=None,
-                  wcs_type="fits"):
+def wcs_from_file(filename, ext=None, return_data=False, crpix_shift=None, wcs_type="fits"):
     """
     Read the WCS from a ".fits" file.
 
@@ -76,12 +75,7 @@ def wcs_from_file(filename, ext=None, return_data=False, crpix_shift=None,
 
     if os.path.splitext(filename)[1] in [".hdr", ".txt"]:
         hdul = None
-        hdr = fits.Header.fromfile(
-            path,
-            sep='\n',
-            endcard=False,
-            padding=False
-        )
+        hdr = fits.Header.fromfile(path, sep="\n", endcard=False, padding=False)
 
     else:
         with fits.open(path) as fits_hdul:
@@ -118,16 +112,12 @@ def wcs_from_file(filename, ext=None, return_data=False, crpix_shift=None,
             data = data_from_hdr(hdr, data=None, shape=shape)
             return (result, data)
 
-        result = (result, )
+        result = (result,)
         if not isinstance(return_data, (list, tuple)):
             return_data = [ext]
         for ext in return_data:
-            data = data_from_hdr(
-                hdul[ext].header,
-                data=hdul[ext].data,
-                shape=shape
-            )
-            result = result + (data, )
+            data = data_from_hdr(hdul[ext].header, data=hdul[ext].data, shape=shape)
+            result = result + (data,)
 
     return result
 
@@ -139,7 +129,7 @@ def _gwcs_from_hst_fits_wcs(w):
         for i in range(mat.shape[0]):
             for j in range(mat.shape[1]):
                 if 0 < i + j <= degree:
-                    setattr(pol, f'c{i}_{j}', mat[i, j])
+                    setattr(pol, f"c{i}_{j}", mat[i, j])
         return pol
 
     nx, ny = w.pixel_shape
@@ -150,8 +140,7 @@ def _gwcs_from_hst_fits_wcs(w):
     if w.sip is None:
         # construct GWCS:
         det2sky = (
-            (Shift(-x0) & Shift(-y0)) |
-            Pix2Sky_TAN() | RotateNative2Celestial(*w.wcs.crval, 180)
+            (Shift(-x0) & Shift(-y0)) | Pix2Sky_TAN() | RotateNative2Celestial(*w.wcs.crval, 180)
         )
     else:
         cfx, cfy = np.dot(cd, [w.sip.a.ravel(), w.sip.b.ravel()])
@@ -169,19 +158,17 @@ def _gwcs_from_hst_fits_wcs(w):
 
         # construct GWCS:
         det2sky = (
-            (Shift(-x0) & Shift(-y0)) | sip |
-            Pix2Sky_TAN() | RotateNative2Celestial(*w.wcs.crval, 180)
+            (Shift(-x0) & Shift(-y0))
+            | sip
+            | Pix2Sky_TAN()
+            | RotateNative2Celestial(*w.wcs.crval, 180)
         )
 
-    detector_frame = Frame2D(
-        name="detector",
-        axes_names=("x", "y"),
-        unit=(units.pix, units.pix)
-    )
+    detector_frame = Frame2D(name="detector", axes_names=("x", "y"), unit=(units.pix, units.pix))
     sky_frame = CelestialFrame(
         reference_frame=getattr(coord, w.wcs.radesys).__call__(),
         name=w.wcs.radesys,
-        unit=(units.deg, units.deg)
+        unit=(units.deg, units.deg),
     )
     pipeline = [(detector_frame, det2sky), (sky_frame, None)]
     gw = gwcs.wcs.WCS(pipeline)
@@ -197,8 +184,8 @@ def _gwcs_from_hst_fits_wcs(w):
             inv_degree=None,
             npoints=64,
             crpix=w.wcs.crpix,
-            projection='TAN',
-            verbose=False
+            projection="TAN",
+            verbose=False,
         )
         winv = fits_wcs.WCS(hdr)
         ap = winv.sip.ap.copy()
@@ -207,17 +194,17 @@ def _gwcs_from_hst_fits_wcs(w):
         bp[0, 1] += 1
         polx_inv = coeffs_to_poly(ap, winv.sip.ap_order)
         poly_inv = coeffs_to_poly(bp, winv.sip.bp_order)
-        af = AffineTransformation2D(
-            matrix=np.linalg.inv(winv.wcs.piximg_matrix)
-        )
+        af = AffineTransformation2D(matrix=np.linalg.inv(winv.wcs.piximg_matrix))
 
         # set analytical inverses:
         sip.inverse = af | Mapping((0, 1, 0, 1)) | (polx_inv & poly_inv)
 
         # construct GWCS:
         det2sky = (
-            (Shift(-x0) & Shift(-y0)) | sip |
-            Pix2Sky_TAN() | RotateNative2Celestial(*w.wcs.crval, 180)
+            (Shift(-x0) & Shift(-y0))
+            | sip
+            | Pix2Sky_TAN()
+            | RotateNative2Celestial(*w.wcs.crval, 180)
         )
 
         pipeline = [(detector_frame, det2sky), (sky_frame, None)]

@@ -48,7 +48,7 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to"):
     pixmap : numpy.ndarray
         A three dimensional array representing the transformation between
         the two. The last dimension is of length two and contains the x and
-        y coordinates of a pixel center, repectively. The other two coordinates
+        y coordinates of a pixel center, respectively. The other two coordinates
         correspond to the two coordinates of the image the first WCS is from.
 
     Raises
@@ -73,7 +73,7 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to"):
             # directly use and bounding_box(order='F') and if it fails,
             # fall back to converting the bounding box to a tuple
             # (of intervals):
-            bbox_from = bbox_from.bounding_box(order='F')
+            bbox_from = bbox_from.bounding_box(order="F")
         except AttributeError:
             bbox_from = tuple(bbox_from)
 
@@ -85,24 +85,20 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to"):
             # directly use and bounding_box(order='F') and if it fails,
             # fall back to converting the bounding box to a tuple
             # (of intervals):
-            bbox_to = bbox_to.bounding_box(order='F')
+            bbox_to = bbox_to.bounding_box(order="F")
         except AttributeError:
             bbox_to = tuple(bbox_to)
 
     if shape is None:
         shape = wcs_from.array_shape
         if shape is None and bbox_from is not None:
-            if (nd := np.ndim(bbox_from)) == 1:
-                bbox_from = (bbox_from, )
-            if nd > 1:
-                shape = tuple(
-                    math.ceil(lim[1] + 0.5) for lim in bbox_from[::-1]
-                )
+            if (ndim := np.ndim(bbox_from)) == 1:
+                bbox_from = (bbox_from,)
+            if ndim > 1:
+                shape = tuple(math.ceil(lim[1] + 0.5) for lim in bbox_from[::-1])
 
     if shape is None:
-        raise ValueError(
-            'The "from" WCS must have pixel_shape property set.'
-        )
+        raise ValueError('The "from" WCS must have pixel_shape property set.')
 
     y, x = np.indices(shape, dtype=np.float64)
 
@@ -112,9 +108,7 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to"):
     if disable_bbox in ["to", "both"] and bbox_to is not None:
         wcs_to.bounding_box = None
     try:
-        x, y = wcs_to.world_to_pixel_values(
-            *wcs_from.pixel_to_world_values(x, y)
-        )
+        x, y = wcs_to.world_to_pixel_values(*wcs_from.pixel_to_world_values(x, y))
     finally:
         if bbox_from is not None:
             wcs_from.bounding_box = bbox_from
@@ -171,8 +165,9 @@ def estimate_pixel_scale_ratio(wcs_from, wcs_to, refpix_from=None, refpix_to=Non
         returned only when ``estimate_pixel_scale_ratio`` is `True`.
 
     """
-    pscale_ratio = (_estimate_pixel_scale(wcs_to, refpix_to) /
-                    _estimate_pixel_scale(wcs_from, refpix_from))
+    pscale_ratio = _estimate_pixel_scale(wcs_to, refpix_to) / _estimate_pixel_scale(
+        wcs_from, refpix_from
+    )
     return pscale_ratio
 
 
@@ -180,7 +175,7 @@ def _estimate_pixel_scale(wcs, refpix):
     # estimate pixel scale (in rad) using approximate algorithm
     # from https://trs.jpl.nasa.gov/handle/2014/40409
     if refpix is None:
-        if hasattr(wcs, 'bounding_box') and wcs.bounding_box is not None:
+        if hasattr(wcs, "bounding_box") and wcs.bounding_box is not None:
             refpix = np.mean(wcs.bounding_box, axis=-1)
         else:
             if wcs.pixel_shape:
@@ -196,9 +191,10 @@ def _estimate_pixel_scale(wcs, refpix):
     l3, phi3 = wcs.pixel_to_world_values(*(refpix + 0.5))
     l4, phi4 = wcs.pixel_to_world_values(*(refpix + [0.5, -0.5]))
     area = _DEG2RAD * abs(
-        0.5 * (
-            (l4 - l2) * (math.sin(_DEG2RAD * phi1) - math.sin(_DEG2RAD * phi3)) +
-            (l1 - l3) * (math.sin(_DEG2RAD * phi2) - math.sin(_DEG2RAD * phi4))
+        0.5
+        * (
+            (l4 - l2) * (math.sin(_DEG2RAD * phi1) - math.sin(_DEG2RAD * phi3))
+            + (l1 - l3) * (math.sin(_DEG2RAD * phi2) - math.sin(_DEG2RAD * phi4))
         )
     )
     return math.sqrt(area)
@@ -268,9 +264,8 @@ def decode_context(context, x, y):
     if x.ndim != 1:
         raise ValueError("Coordinates must be scalars or 1D arrays.")
 
-    if not (np.issubdtype(x.dtype, np.integer) and
-            np.issubdtype(y.dtype, np.integer)):
-        raise ValueError('Pixel coordinates must be integer values')
+    if not (np.issubdtype(x.dtype, np.integer) and np.issubdtype(y.dtype, np.integer)):
+        raise ValueError("Pixel coordinates must be integer values")
 
     nbits = 8 * context.dtype.itemsize
     one = np.array(1, context.dtype)
@@ -278,8 +273,6 @@ def decode_context(context, x, y):
 
     idx = []
     for xi, yi in zip(x, y):
-        idx.append(
-            np.flatnonzero(np.bitwise_and.outer(context[:, yi, xi], flags))
-        )
+        idx.append(np.flatnonzero(np.bitwise_and.outer(context[:, yi, xi], flags)))
 
     return idx

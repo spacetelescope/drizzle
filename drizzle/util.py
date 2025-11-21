@@ -1,6 +1,7 @@
 """
 Module ``util`` has been deprecated.
 """
+
 import warnings
 
 warnings.warn(
@@ -8,7 +9,7 @@ warnings.warn(
     "and it will be removed in a future release. "
     "Please replace calls to 'util.is_blank()' with alternative "
     "implementation.",
-    DeprecationWarning
+    DeprecationWarning,
 )
 
 
@@ -29,6 +30,6 @@ def is_blank(value):
         "'is_blank()' has been deprecated since version 2.0.0 "
         "and it will be removed in a future release. "
         "Please replace calls to 'is_blank()' with alternative implementation.",
-        DeprecationWarning
+        DeprecationWarning,
     )
     return value.strip() == ""

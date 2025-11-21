@@ -21,15 +21,13 @@ def test_map_rectangular():
     naxis1 = 1000
     naxis2 = 10
 
-    pixmap = np.indices((naxis1, naxis2), dtype='float32')
+    pixmap = np.indices((naxis1, naxis2), dtype="float32")
     pixmap = pixmap.transpose()
 
     assert_equal(pixmap[5, 500], (500, 5))
 
 
-@pytest.mark.parametrize(
-    "wcs_type", ["fits", "gwcs"]
-)
+@pytest.mark.parametrize("wcs_type", ["fits", "gwcs"])
 def test_map_to_self(wcs_type):
     """
     Map a pixel array to itself. Should return the same array.
@@ -37,7 +35,7 @@ def test_map_to_self(wcs_type):
     input_wcs = wcs_from_file("j8bt06nyq_sip_flt.fits", ext=1, wcs_type=wcs_type)
     shape = input_wcs.array_shape
 
-    ok_pixmap = np.indices(shape, dtype='float64')
+    ok_pixmap = np.indices(shape, dtype="float64")
     ok_pixmap = ok_pixmap.transpose()
 
     pixmap = calc_pixmap(input_wcs, input_wcs)
@@ -74,26 +72,20 @@ def test_map_to_self(wcs_type):
     assert_equal(pixmap.shape, ok_pixmap.shape)
 
 
-@pytest.mark.parametrize(
-    "wcs_type", ["fits", "gwcs"]
-)
+@pytest.mark.parametrize("wcs_type", ["fits", "gwcs"])
 def test_translated_map(wcs_type):
     """
     Map a pixel array to  at translated array.
     """
-    first_wcs = wcs_from_file(
-        "j8bt06nyq_sip_flt.fits",
-        ext=1,
-        wcs_type=wcs_type
-    )
+    first_wcs = wcs_from_file("j8bt06nyq_sip_flt.fits", ext=1, wcs_type=wcs_type)
     second_wcs = wcs_from_file(
         "j8bt06nyq_sip_flt.fits",
         ext=1,
         crpix_shift=(-2, -2),  # shift loaded WCS by adding this to CRPIX
-        wcs_type=wcs_type
+        wcs_type=wcs_type,
     )
 
-    ok_pixmap = np.indices(first_wcs.array_shape, dtype='float32') - 2.0
+    ok_pixmap = np.indices(first_wcs.array_shape, dtype="float32") - 2.0
     ok_pixmap = ok_pixmap.transpose()
 
     pixmap = calc_pixmap(first_wcs, second_wcs)
@@ -108,19 +100,15 @@ def test_disable_gwcs_bbox():
     """
     Map a pixel array to a translated version ofitself.
     """
-    first_wcs = wcs_from_file(
-        "j8bt06nyq_sip_flt.fits",
-        ext=1,
-        wcs_type="gwcs"
-    )
+    first_wcs = wcs_from_file("j8bt06nyq_sip_flt.fits", ext=1, wcs_type="gwcs")
     second_wcs = wcs_from_file(
         "j8bt06nyq_sip_flt.fits",
         ext=1,
         crpix_shift=(-2, -2),  # shift loaded WCS by adding this to CRPIX
-        wcs_type="gwcs"
+        wcs_type="gwcs",
     )
 
-    ok_pixmap = np.indices(first_wcs.array_shape, dtype='float64') - 2.0
+    ok_pixmap = np.indices(first_wcs.array_shape, dtype="float64") - 2.0
     ok_pixmap = ok_pixmap.transpose()
 
     # Mapping an array to a translated array
@@ -181,7 +169,7 @@ def test_estimate_pixel_scale_no_refpix():
 
     ref_pscale = _estimate_pixel_scale(w, w.wcs.crpix)
 
-    if hasattr(w, 'bounding_box'):
+    if hasattr(w, "bounding_box"):
         del w.bounding_box
     pscale1 = _estimate_pixel_scale(w, None)
     assert np.allclose(ref_pscale, pscale1, atol=0.0, rtol=1.0e-8)
@@ -202,22 +190,37 @@ def test_estimate_pixel_scale_no_refpix():
 
 def test_decode_context():
     ctx = np.array(
-        [[[0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 36196864, 0, 0],
-          [0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0],
-          [0, 0, 537920000, 0, 0, 0]],
-         [[0, 0, 0, 0, 0, 0,],
-          [0, 0, 0, 67125536, 0, 0],
-          [0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0],
-          [0, 0, 163856, 0, 0, 0]],
-         [[0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 8203, 0, 0],
-          [0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0],
-          [0, 0, 32865, 0, 0, 0]]],
-        dtype=np.int32
+        [
+            [
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 36196864, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 537920000, 0, 0, 0],
+            ],
+            [
+                [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                ],
+                [0, 0, 0, 67125536, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 163856, 0, 0, 0],
+            ],
+            [
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 8203, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 32865, 0, 0, 0],
+            ],
+        ],
+        dtype=np.int32,
     )
 
     idx1, idx2 = decode_context(ctx, [3, 2], [1, 4])

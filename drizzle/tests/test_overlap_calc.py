@@ -93,7 +93,8 @@ def test_poly_intersection_with_self():
 
 
 @pytest.mark.parametrize(
-    'shift', [(0.25, 0.1), (-0.25, -0.1), (-0.25, 0.1), (0.25, -0.1)],
+    "shift",
+    [(0.25, 0.1), (-0.25, -0.1), (-0.25, 0.1), (0.25, -0.1)],
 )
 def test_poly_intersection_shifted(shift):
     p = [(0, 0), (1, 0), (1, 1), (0, 1)]
@@ -115,7 +116,8 @@ def test_poly_intersection_shifted(shift):
 
 
 @pytest.mark.parametrize(
-    'shift', [(0, 70), (70, 0), (0, -70), (-70, 0)],
+    "shift",
+    [(0, 70), (70, 0), (0, -70), (-70, 0)],
 )
 def test_poly_intersection_shifted_large(shift):
     p = [(-0.5, -0.5), (99.5, -0.5), (99.5, 99.5), (-0.5, 99.5)]
@@ -149,7 +151,8 @@ def test_poly_intersection_rotated45():
 
 
 @pytest.mark.parametrize(
-    'axis', [0, 1],
+    "axis",
+    [0, 1],
 )
 def test_poly_intersection_flipped_axis(axis):
     p = [(0, 0), (1, 0), (1, 1), (0, 1)]
@@ -177,7 +180,7 @@ def test_poly_intersection_reflect_origin():
 
 
 @pytest.mark.parametrize(
-    'q,small',
+    "q,small",
     [
         ([(0.1, 0.1), (0.9, 0.1), (0.9, 0.9), (0.1, 0.9)], True),
         ([(0.0, 0.0), (1.0, 0.0), (1.0, 0.4), (0.0, 0.4)], True),
@@ -195,7 +198,7 @@ def test_poly_includes_the_other(q, small):
 
 
 @pytest.mark.parametrize(
-    'q',
+    "q",
     [
         [(0, 0), (1, 0), (0.5, 0.6)],
         [(0.1, 0), (0.9, 0), (0.5, 0.6)],
@@ -270,9 +273,7 @@ def test_intersection_case02():
         (1.83500000000000018652, -0.5),
         (-0.03999999999999998002, -0.5),
     ]
-    wnd = [
-        (-0.5, -0.5), (3.5, -0.5), (3.5, 3.5), (-0.5, 3.5)
-    ]
+    wnd = [(-0.5, -0.5), (3.5, -0.5), (3.5, 3.5), (-0.5, 3.5)]
 
     cp_ref = [
         (-0.04, 1.5),
