@@ -7,7 +7,8 @@ __all__ = ["calc_pixmap", "decode_context", "estimate_pixel_scale_ratio"]
 _DEG2RAD = math.pi / 180.0
 
 
-def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to"):
+def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to",
+                stepsize=1, order=1):
     """
     Calculate a discretized on a grid mapping between the pixels of two images
     using provided WCS of the original ("from") image and the destination ("to")
@@ -42,6 +43,17 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to"):
         box are set to `NaN` only if ``wcs_from`` or (and) ``wcs_to`` sets
         world coordinates to NaN when input pixel coordinates are outside of
         the bounding box.
+
+    stepsize : int, optional
+        If stepsize>1, perform the full calculation on a sparser grid
+        and use interpolation to fill in the rest of the pixels.
+        Recommended if the underlying distortion correction is smooth.
+        Default 1.
+
+    order : int, optional
+        Order of the 2D spline to interpolate the sparse pixel mapping
+        if stepsize>1.  Should be either 1 (bilinear) or 3 (bicubic).
+        Default 1.
 
     Returns
     -------
@@ -108,7 +120,30 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to"):
     if disable_bbox in ["to", "both"] and bbox_to is not None:
         wcs_to.bounding_box = None
     try:
-        x, y = wcs_to.world_to_pixel_values(*wcs_from.pixel_to_world_values(x, y))
+        if stepsize == 1:
+            x, y = wcs_to.world_to_pixel_values(*wcs_from.pixel_to_world_values(x, y))
+        else:
+
+            if not order in [1, 3]:
+                raise ValueError("Interpolation order should be either 1 or 3.")
+
+            x_coarse = np.linspace(x[0], x[-1], max(len(x)//stepsize, 10))
+            y_coarse = np.linspace(y[0], y[-1], max(len(y)//stepsize, 10))
+            sparsegrid = np.meshgrid(y_coarse, x_coarse)
+            
+            pixmap_coarse = wcs_to.world_to_pixel_values(
+                *wcs_from.pixel_to_world_values(sparsegrid[1], sparsegrid[0]))
+
+            fx = interpolate.RectBivariateSpline(x_coarse, y_coarse,
+                                                 pixmap_coarse[0],
+                                                 kx=order, ky=order)
+            fy = interpolate.RectBivariateSpline(x_coarse, y_coarse,
+                                                 pixmap_coarse[1],
+                                                 kx=order, ky=order)
+            
+            x = fx(x, y)
+            y = fy(x, y)
+
     finally:
         if bbox_from is not None:
             wcs_from.bounding_box = bbox_from
