@@ -1077,6 +1077,12 @@ def blot_image(
             - "lan3" (3rd order Lanczos interpolation); and
             - "lan5" (5th order Lanczos interpolation).
 
+        .. warning::
+            The "sinc" interpolation is currently investigated for possible
+            issues, see https://github.com/spacetelescope/drizzle/issues/209,
+            and its use is not recommended. Furthermore, sinc interpolation may
+            be removed in future releases.
+
     sincscl : float, optional
         The scaling factor for "sinc" interpolation.
 

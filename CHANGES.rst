@@ -5,7 +5,7 @@ Release Notes
 =============
 
 
-3.0.0 (unreleased)
+2.2.0 (unreleased)
 ==================
 
 - Added support for resampling and co-adding images using squared weights.
@@ -39,6 +39,10 @@ Release Notes
 
 - Added support for propagating DQ bitfields from input images to the output
   image using bitwise-OR. [#206]
+
+- Added a warning when using "sinc" interpolation in ``tblot()``indicating
+  that its use is not recommended while the interpolation is being investigated
+  for possible issues. [#213]
 
 
 2.1.1 (2025-08-14)
