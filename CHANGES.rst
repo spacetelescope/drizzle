@@ -5,7 +5,7 @@ Release Notes
 =============
 
 
-2.2.0 (unreleased)
+2.2.0 (2026-01-06)
 ==================
 
 - Added support for resampling and co-adding images using squared weights.
