@@ -27,7 +27,7 @@ Documentation = "http://spacetelescope.github.io/drizzle/"
 test = [
     "astropy",
     "gwcs",
-    "pytest",
+    "pytest>=9.0",
     "pytest-cov",
     "pytest-doctestplus",
 ]
@@ -55,8 +55,8 @@ include-package-data = false
 [tool.setuptools.packages.find]
 namespaces = false
 
-[tool.pytest.ini_options]
-minversion = "6"
+[tool.pytest]
+minversion = "9.0"
 norecursedirs = [
     "build",
     "docs/_build",
