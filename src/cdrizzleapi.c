@@ -902,6 +902,13 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords)
     if (interp_str2enum(interp_str, &interp, &error)) {
         goto _exit;
     }
+    if (strncmp(interp_str, "sinc", 4) == 0) {
+        if (py_warning(
+                PyExc_DeprecationWarning, "The \"sinc\" interpolation is currently investigated for"
+                                          "possible issues and its use is not recommended.") != 0) {
+            goto _exit;
+        }
+    }
 
     get_dimensions(map, psize);
     get_dimensions(out, osize);
