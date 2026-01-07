@@ -1,5 +1,5 @@
 import math
-
+from scipy import interpolate
 import numpy as np
 
 __all__ = ["calc_pixmap", "decode_context", "estimate_pixel_scale_ratio"]
@@ -45,15 +45,20 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to",
         the bounding box.
 
     stepsize : int, optional
-        If stepsize>1, perform the full calculation on a sparser grid
-        and use interpolation to fill in the rest of the pixels.
-        Recommended if the underlying distortion correction is smooth.
+        If ``stepsize>1``, perform the full WCS calculation on a sparser
+        grid and use interpolation to fill in the rest of the pixels.  This
+        option speeds up pixel map computation by reducing the number of WCS
+        calls, though at the cost of reduced pixel map accuracy.  The loss
+        of accuracy is typically negligible if the underlying distortion
+        correction is smooth, but if the distortion is non-smooth,
+        ``stepsize>1`` is not recommended.  Large ``stepsize`` values are
+        automatically reduced to no more than 1/10 of image size.
         Default 1.
 
     order : int, optional
         Order of the 2D spline to interpolate the sparse pixel mapping
-        if stepsize>1.  Should be either 1 (bilinear) or 3 (bicubic).
-        Default 1.
+        if stepsize>1.  Supported values are: 1 (bilinear) or 3 (bicubic).
+        This Parameter is ignored when ``stepsize <= 1``.  Default 1.
 
     Returns
     -------
@@ -112,8 +117,6 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to",
     if shape is None:
         raise ValueError('The "from" WCS must have pixel_shape property set.')
 
-    y, x = np.indices(shape, dtype=np.float64)
-
     # temporarily disable the bounding box for the "from" WCS:
     if disable_bbox in ["from", "both"] and bbox_from is not None:
         wcs_from.bounding_box = None
@@ -121,18 +124,29 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to",
         wcs_to.bounding_box = None
     try:
         if stepsize == 1:
+            y, x = np.indices(shape, dtype=np.float64)
             x, y = wcs_to.world_to_pixel_values(*wcs_from.pixel_to_world_values(x, y))
         else:
 
             if not order in [1, 3]:
                 raise ValueError("Interpolation order should be either 1 or 3.")
 
-            x_coarse = np.linspace(x[0], x[-1], max(len(x)//stepsize, 10))
-            y_coarse = np.linspace(y[0], y[-1], max(len(y)//stepsize, 10))
-            sparsegrid = np.meshgrid(y_coarse, x_coarse)
-            
+            y_in, x_in = np.arange(shape[0]), np.arange(shape[1])
+
+            # Number of points so that step size is no larger than requested
+            # but at least 10 points are used (or the number of input pixels
+            # in each dimension, if smaller than that).
+
+            npts_x = max(int(math.ceil(shape[1] / stepsize)), min(10, shape[1]))
+            npts_y = max(int(math.ceil(shape[0] / stepsize)), min(10, shape[0]))
+
+            x_coarse = np.linspace(0, x_in[-1], npts_x)
+            y_coarse = np.linspace(0, y_in[-1], npts_y)
+
+            sparsegrid = np.meshgrid(x_coarse, y_coarse)
+
             pixmap_coarse = wcs_to.world_to_pixel_values(
-                *wcs_from.pixel_to_world_values(sparsegrid[1], sparsegrid[0]))
+                *wcs_from.pixel_to_world_values(sparsegrid[0], sparsegrid[1]))
 
             fx = interpolate.RectBivariateSpline(x_coarse, y_coarse,
                                                  pixmap_coarse[0],
@@ -140,9 +154,11 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to",
             fy = interpolate.RectBivariateSpline(x_coarse, y_coarse,
                                                  pixmap_coarse[1],
                                                  kx=order, ky=order)
-            
-            x = fx(x, y)
-            y = fy(x, y)
+
+            # Evaluate the spline on the full grid
+
+            x = fx(x_in, y_in)
+            y = fy(x_in, y_in)
 
     finally:
         if bbox_from is not None:
