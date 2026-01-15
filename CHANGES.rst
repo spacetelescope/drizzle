@@ -5,6 +5,13 @@ Release Notes
 =============
 
 
+2.2.1 (unreleased)
+==================
+
+- Fixed deprecation warning messages (incorrect version number) introduced in
+  release 2.2.0. [#217]
+
+
 2.2.0 (2026-01-06)
 ==================
 
