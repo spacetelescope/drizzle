@@ -813,7 +813,7 @@ class Drizzle:
         """
         if scale is not _DEPRECATED_ARG:
             warnings.warn(
-                "Argument 'scale' has been deprecated since version 3.0 and "
+                "Argument 'scale' has been deprecated since version 2.2.0 and "
                 "it will be removed in a future release. "
                 "Use 'iscale' and 'pixel_scale_ratio' instead and set iscale=pixel_scale_ratio**2 "
                 "to achieve the same effect as with 'scale'.",
@@ -1023,7 +1023,7 @@ def blot_image(
         for the change in pixel area.**
 
         .. warning::
-            Deprecated since version 3.0 and will be removed in a future
+            Deprecated since version 2.2.0 and will be removed in a future
             release. Use ``iscale`` instead and set
             ``iscale=1.0 / pix_ratio**2`` to achieve the same effect as with
             ``pix_ratio``.
@@ -1033,7 +1033,7 @@ def blot_image(
         the output image values.
 
         .. warning::
-            Deprecated since version 3.0 and will be removed in a future
+            Deprecated since version 2.2.0 and will be removed in a future
             release. Use ``iscale`` instead and set
             ``iscale=exptime`` or ``exptime / pix_ratio**2`` to achieve the
             same effect as with ``exptime`` (and ``pix_ratio``).
@@ -1043,7 +1043,7 @@ def blot_image(
         image ``(Nx, Ny)``.
 
         .. warning::
-            Deprecated since version 3.0 and will be removed in a future
+            Deprecated since version 2.2.0 and will be removed in a future
             release. It is not needed since the output image shape can be
             inferred from ``pixmap``.
 
@@ -1094,7 +1094,7 @@ def blot_image(
     """
     if pix_ratio is not _DEPRECATED_ARG:
         warnings.warn(
-            "Argument 'pix_ratio' has been deprecated since version 3.0 and "
+            "Argument 'pix_ratio' has been deprecated since version 2.2.0 and "
             "it will be removed in a future release. "
             "Use 'iscale' instead and set iscale=1.0 / pix_ratio**2 "
             "to achieve the same effect as with 'pix_ratio'.",
@@ -1104,7 +1104,7 @@ def blot_image(
 
     if exptime is not _DEPRECATED_ARG:
         warnings.warn(
-            "Argument 'exptime' has been deprecated since version 3.0 and "
+            "Argument 'exptime' has been deprecated since version 2.2.0 and "
             "it will be removed in a future release. "
             "Use 'iscale' instead and set iscale=exptime "
             "to achieve the same effect as with 'exptime'.",
@@ -1117,7 +1117,7 @@ def blot_image(
     else:
         warnings.warn(
             "Argument 'output_pixel_shape' has been deprecated since version "
-            "3.0 and it will be removed in a future release. It is not needed "
+            "2.2.0 and it will be removed in a future release. It is not needed "
             "since the output image shape can be inferred from 'pixmap'.",
             DeprecationWarning,
         )

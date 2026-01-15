@@ -303,7 +303,7 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords)
         pscale_ratio = scale;
         if (py_warning(
                 PyExc_DeprecationWarning,
-                "Argument 'scale' has been deprecated since version 3.0 "
+                "Argument 'scale' has been deprecated since version 2.2.0 "
                 "and it will be removed in a future release. "
                 "Use 'iscale' and 'pscale_ratio' instead and set "
                 "iscale=pscale_ratio**2 to achieve the same effect as with "
