@@ -109,9 +109,6 @@ enum e_interp_t {
     interp_bilinear,
     interp_poly3,
     interp_poly5,
-    interp_spline3,
-    interp_sinc,
-    interp_lsinc,
     interp_lanczos3,
     interp_lanczos5,
     interp_LAST
@@ -163,7 +160,6 @@ struct driz_param_t {
     enum e_interp_t interpolation;
     float ef;
     float misval;
-    float sinscl;
 
     /* Input images */
     PyArrayObject *data;

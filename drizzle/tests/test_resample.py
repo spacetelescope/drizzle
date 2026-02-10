@@ -511,8 +511,8 @@ def test_zero_input_weight(kernel, fc):
     [
         ("poly5", "point"),
         ("default", "grid"),
-        ("lan3", "grid"),
-        ("lan5", "grid"),
+        ("lanczos3", "grid"),
+        ("lanczos5", "grid"),
     ],
 )
 def test_blot_interpolation(tmpdir, interpolator, test_image_type):

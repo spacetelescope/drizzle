@@ -52,15 +52,6 @@ typedef int(interp_function)(
     assert(error);
 
 /** ---------------------------------------------------------------------------
- * A structure to hold parameters for sinc interpolation.
- */
-
-struct sinc_param_t {
-    /*The scaling factor for sinc interpolation */
-    float sinscl;
-};
-
-/** ---------------------------------------------------------------------------
  * Procedure to evaluate the bicubic polynomial interpolant.  The array coeff
  * contains the coefficients of the 2D interpolant.  The procedure assumes that
  * 1 <= x <= isize[0] and 1 <= y <= isize[1] and that coeff[1+first_point] =
@@ -561,219 +552,6 @@ interpolate_poly5(
 }
 
 /** ---------------------------------------------------------------------------
- * (Was: iinisc)
- */
-
-#define INTERPOLATE_SINC_NCONV 15
-
-static inline_macro int
-interpolate_sinc_(
-    PyArrayObject *data, const integer_t firstt, const integer_t npts, const float *x /*[npts]*/,
-    const float *y /*[npts]*/, const float mindx, const float mindy, const float sinscl,
-    /* Output parameters */
-    float *value, struct driz_error_t *error)
-{
-    /* Unused parameters: */
-    (void) error;
-
-    const integer_t nconv = INTERPOLATE_SINC_NCONV;
-    const integer_t nsinc = (nconv - 1) / 2;
-    /* TODO: This is to match Fortan, but is probably technically less precise
-     */
-
-    const float sconst = powf((float) (M_PI_2 / nsinc), 2.0f);
-    const float a2 = -0.49670f;
-    const float a4 = 0.03705f;
-    float taper[INTERPOLATE_SINC_NCONV];
-    float ac[INTERPOLATE_SINC_NCONV], ar[INTERPOLATE_SINC_NCONV];
-    float sdx, dx, dy, dxn, dyn, dx2;
-    float ax, ay, px, py;
-    float sum, sumx, sumy;
-    float tmp;
-    integer_t minj, maxj, offj;
-    integer_t mink, maxk, offk;
-    integer_t nx, ny;
-    integer_t i, j, k, m, index;
-    integer_t indices[3][4];
-    integer_t isize[2];
-    get_dimensions(data, isize);
-
-    assert(x);
-    assert(y);
-    assert(value);
-    assert(error);
-
-    if ((nsinc % 2) == 0) {
-        sdx = 1.0;
-        for (j = -nsinc; j <= nsinc; ++j) {
-            assert(j + nsinc >= 0 && j + nsinc < INTERPOLATE_SINC_NCONV);
-
-            taper[j + nsinc] = 1.0;
-        }
-    } else {
-        sdx = -1.0;
-        errno = 0;
-        for (j = -nsinc; j <= nsinc; ++j) {
-            assert(j + nsinc >= 0 && j + nsinc < INTERPOLATE_SINC_NCONV);
-
-            dx2 = sconst * (float) j * (float) j;
-            tmp = powf(1.0f + a2 * dx2 + a4 * dx2 * dx2, 2.0);
-            if (errno != 0) {
-                driz_error_set_message(error, "pow failed");
-                return 1;
-            }
-            taper[j + nsinc] = sdx * tmp;
-
-            sdx = -sdx;
-        }
-    }
-
-    for (i = 0; i < npts; ++i) {
-        nx = nintf(x[i]);
-        ny = nintf(y[i]);
-        if (nx < 0 || nx >= isize[0] || ny < 0 || ny >= isize[1]) {
-            value[i] = 0.0;
-            continue;
-        }
-
-        dx = (x[i] - (float) nx) * sinscl;
-        dy = (y[i] - (float) ny) * sinscl;
-
-        if (fabsf(dx) < mindx && fabsf(dy) < mindy) {
-            index = firstt + (ny - 1) * isize[0] + nx - 1; /* TODO: Base check */
-            value[i] = get_pixel_at_pos(data, index);
-            continue;
-        }
-
-        dxn = 1.0f + (float) nsinc + dx;
-        dyn = 1.0f + (float) nsinc + dy;
-        sumx = 0.0f;
-        sumy = 0.0f;
-        for (j = 0; j < nconv; ++j) {
-            /* TODO: These out of range indices also seem to be in Fortran... */
-            ax = dxn - (float) j - 1; /* TODO: Base check */
-            ay = dyn - (float) j - 1; /* TODO: Base check */
-            assert(ax != 0.0);
-            assert(ay != 0.0);
-
-            if (ax == 0.0) {
-                px = 1.0;
-            } else if (dx == 0.0) {
-                px = 0.0;
-            } else {
-                px = taper[j - 1] / ax;
-            }
-
-            if (ay == 0.0) {
-                py = 1.0;
-            } else if (dy == 0.0) {
-                py = 0.0;
-            } else {
-                py = taper[j - 1] / ay;
-            }
-
-            /* TODO: These out of range indices also seem to be in Fortran... */
-            ac[j - 1] = px;
-            ar[j - 1] = py;
-            sumx += px;
-            sumy += py;
-        }
-
-        /* Compute the limits of the convolution */
-        minj = MAX(0, ny - nsinc - 1);    /* TODO: Bases check */
-        maxj = MIN(isize[1], ny + nsinc); /* TODO: Bases check */
-        offj = nsinc - ny;                /* TODO: Bases check */
-
-        mink = MAX(0, nx - nsinc - 1);    /* TODO: Bases check */
-        maxk = MIN(isize[0], nx + nsinc); /* TODO: Bases check */
-        offk = nsinc - nx;                /* TODO: Bases check */
-
-        value[i] = 0.0;
-
-        indices[0][0] = ny - nsinc;
-        indices[0][1] = minj - 1;
-        indices[0][2] = firstt;
-        indices[0][3] = 0;
-
-        indices[1][0] = minj;
-        indices[1][1] = maxj;
-        indices[1][2] = firstt;
-        indices[1][3] = isize[0];
-
-        indices[2][0] = maxj + 1;
-        indices[2][1] = ny + nsinc;
-        indices[2][2] = firstt + (isize[1] - 1) * isize[0];
-        indices[2][3] = 0;
-
-        for (m = 0; m < 3; ++m) {
-            for (j = indices[m][0]; j <= indices[m][1]; ++j) {
-                sum = 0.0;
-                index = indices[m][2] + j * indices[m][3];
-                assert(index >= 0 && index < isize[0] * isize[1] - 1);
-                assert(index + isize[0] >= 0 && index + isize[0] < isize[0] * isize[1]);
-
-                for (k = nx - nsinc; k < mink - 1; ++k) { /* TODO: Bases check */
-                    assert(k + offk >= 0 && k + offk < INTERPOLATE_SINC_NCONV);
-
-                    sum += ac[k + offk] * get_pixel_at_pos(data, index + 1);
-                }
-
-                for (k = mink; k <= maxk; ++k) { /* TODO: Bases check */
-                    assert(k + offk >= 0 && k + offk < INTERPOLATE_SINC_NCONV);
-                    assert(index + k >= 0 && index + k < isize[0] * isize[1]);
-
-                    sum += ac[k + offk] * get_pixel_at_pos(data, index + k);
-                }
-
-                for (k = maxk + 1; k <= nx + nsinc; ++k) {
-                    assert(k + offk >= 0 && k + offk < INTERPOLATE_SINC_NCONV);
-
-                    sum += ac[k + offk] * get_pixel_at_pos(data, index + isize[0]);
-                }
-
-                assert(j + offj >= 0 && j + offj < INTERPOLATE_SINC_NCONV);
-
-                value[i] += ar[j + offj] * sum;
-            }
-        }
-
-        assert(sumx != 0.0);
-        assert(sumy != 0.0);
-
-        value[i] = value[i] / sumx / sumy;
-    }
-
-    return 0;
-}
-
-/** ---------------------------------------------------------------------------
- * Perform sinc interpolation.
- *
- * state: A pointer to a \a sinc_param_t object
- * data:  A 2D data array
- * x:     The fractional x coordinate
- * y:     The fractional y coordinate
- * value: The resulting value at x, y after interpolating the data (output)
- * error: The error structure (output)
- */
-
-static int
-interpolate_sinc(
-    const void *state, PyArrayObject *data, const float x, const float y,
-    /* Output parameters */
-    float *value, struct driz_error_t *error)
-{
-    const struct sinc_param_t *param = (const struct sinc_param_t *) state;
-    integer_t isize[2];
-    get_dimensions(data, isize);
-
-    assert(state);
-    INTERPOLATION_ASSERTS;
-
-    return interpolate_sinc_(data, 0, 1, &x, &y, 0.001f, 0.001f, param->sinscl, value, error);
-}
-
-/** ---------------------------------------------------------------------------
  * Perform Lanczos interpolation.
  *
  * state: A pointer to a \a lanczos_param_t object
@@ -847,15 +625,8 @@ interpolate_lanczos(
  */
 
 interp_function *interp_function_map[interp_LAST] = {
-    &interpolate_nearest_neighbor,
-    &interpolate_bilinear,
-    &interpolate_poly3,
-    &interpolate_poly5,
-    NULL,
-    &interpolate_sinc,
-    &interpolate_sinc,
-    &interpolate_lanczos,
-    &interpolate_lanczos};
+    &interpolate_nearest_neighbor, &interpolate_bilinear, &interpolate_poly3, &interpolate_poly5,
+    &interpolate_lanczos,          &interpolate_lanczos};
 
 /** ---------------------------------------------------------------------------
  * Interpolate grid of pixels onto new grid of different size.
@@ -872,7 +643,6 @@ doblot(struct driz_param_t *p)
     float xo, yo, v, s;
     integer_t i, j;
     interp_function *interpolate;
-    struct sinc_param_t sinc;
     struct lanczos_param_t lanczos;
     void *state = NULL;
 
@@ -908,10 +678,6 @@ doblot(struct driz_param_t *p)
         lanczos.space = lut_delta;
 
         state = &lanczos;
-
-    } else if (p->interpolation == interp_sinc || p->interpolation == interp_lsinc) {
-        sinc.sinscl = p->sinscl;
-        state = &sinc;
 
     } /* Otherwise state is NULL */
 

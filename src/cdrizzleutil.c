@@ -264,8 +264,8 @@ static const char *kernel_string_table[] = {"square",   "gaussian", "point", "tu
 
 static const char *unit_string_table[] = {"counts", "cps", NULL};
 
-static const char *interp_string_table[] = {"nearest", "linear", "poly3", "poly5", "spline3",
-                                            "sinc",    "lsinc",  "lan3",  "lan5",  NULL};
+static const char *interp_string_table[] = {"nearest",  "linear",   "poly3", "poly5",
+                                            "lanczos3", "lanczos5", NULL};
 
 static const char *bool_string_table[] = {"FALSE", "TRUE", NULL};
 

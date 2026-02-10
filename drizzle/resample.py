@@ -984,7 +984,6 @@ def blot_image(
     fillval=0.0,
     iscale=1.0,
     interp="poly5",
-    sinscl=1.0,
 ):
     """
     Resample the ``data`` input image onto an output grid defined by
@@ -1070,20 +1069,10 @@ def blot_image(
 
             - "nearest" (nearest neighbor interpolation);
             - "linear" (bilinear interpolation);
-            - "poly3" (cubic polynomial interpolation);
-            - "poly5" (quintic polynomial interpolation);
-            - "sinc" (sinc interpolation);
-            - "lan3" (3rd order Lanczos interpolation); and
-            - "lan5" (5th order Lanczos interpolation).
-
-        .. warning::
-            The "sinc" interpolation is currently investigated for possible
-            issues, see https://github.com/spacetelescope/drizzle/issues/209,
-            and its use is not recommended. Furthermore, sinc interpolation may
-            be removed in future releases.
-
-    sincscl : float, optional
-        The scaling factor for "sinc" interpolation.
+            - "poly3" (bicubic polynomial interpolation);
+            - "poly5" (biquintic polynomial interpolation);
+            - "lanczos3" (3rd order Lanczos interpolation); and
+            - "lanczos5" (5th order Lanczos interpolation).
 
     Returns
     -------
@@ -1091,6 +1080,15 @@ def blot_image(
         A 2D numpy array containing the resampled image data.
 
     """
+    if interp in ["lan3", "lan5"]:
+        new_interp = interp.replace("lan", "lanczos")
+        warnings.warn(
+            f"Interpolation method '{interp}' has been deprecated and it will "
+            f"be removed in a future release. Use '{new_interp}' instead.",
+            DeprecationWarning,
+        )
+        interp = new_interp
+
     if pix_ratio is not _DEPRECATED_ARG:
         warnings.warn(
             "Argument 'pix_ratio' has been deprecated since version 2.2.0 and "
@@ -1130,7 +1128,7 @@ def blot_image(
             raise ValueError("'output_image' shape is not consistent with 'pixmap' shape.")
 
     cdrizzle.tblot(
-        data, pixmap, out_img, iscale=iscale, interp=interp, fillval=fillval, sinscl=sinscl
+        data, pixmap, out_img, iscale=iscale, interp=interp, fillval=fillval
     )
 
     return out_img
