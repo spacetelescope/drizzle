@@ -10,8 +10,6 @@ Release Notes
 - Fixed deprecation warning messages (incorrect version number) introduced in
   release 2.2.0. [#217]
 
-- Removed version string return value from ``cdrizzle.tdriz()``function. [#219]
-
 - Removed 'sinc' interpolation from ``blot_image`` due to unresolved
   issues - see https://github.com/spacetelescope/drizzle/issues/209 for
   more details - and limited demand in this interpolation. [#220]
