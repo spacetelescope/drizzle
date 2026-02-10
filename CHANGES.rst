@@ -7,6 +7,9 @@ Release Notes
 3.0.0 (unreleased)
 ==================
 
+- Fixed deprecation warning messages (incorrect version number) introduced in
+  release 2.2.0. [#217]
+
 - Removed version string return value from ``cdrizzle.tdriz()``function. [#219]
 
 - Removed 'sinc' interpolation from ``blot_image`` due to unresolved
@@ -17,13 +20,6 @@ Release Notes
   "lanczos3" and "lanczos5", respectively. Support for "lan3" and "lan5" will
   be removed in a future release. Support for "lan3" and "lan5" was removed
   from the C function ``cdrizzle.tblot()``. [#220]
-
-
-2.2.1 (unreleased)
-==================
-
-- Fixed deprecation warning messages (incorrect version number) introduced in
-  release 2.2.0. [#217]
 
 
 2.2.0 (2026-01-06)
