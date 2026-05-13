@@ -7,8 +7,10 @@
 #define NPY_NO_DEPRECATED_API NPY_1_21_API_VERSION
 #endif
 
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 #include <numpy/arrayobject.h>
 #include <numpy/npy_math.h>
 
@@ -19,15 +21,24 @@
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
 
-#pragma GCC diagnostic ignored "-Wunused-function"
-
 #ifdef WIN32
-#include "cextern/fct.h"
-#else
-#include "pandokia_fct.h"
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4477)
 #endif
-
+#include "cextern/fct.h"
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+#else
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunused-function"
+#endif
+#include "pandokia_fct.h"
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
+#endif
+#endif
 
 #include "cdrizzlebox.h"
 #include "cdrizzleblot.h"
@@ -1205,7 +1216,12 @@ FCT_BGN_FN(utest_cdrizzle)
         FCT_TEST_END();
     }
     FCT_FIXTURE_SUITE_END();
-}
-{
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4267) /* conversion from 'size_t' to 'int', possible loss of data */
+#endif
     FCT_END_FN();
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 }
