@@ -7,14 +7,17 @@ Release Notes
 3.0.0 (unreleased)
 ==================
 
-- Removed version string return value from ``cdrizzle.tdriz()``function. [#219]
-
-
-2.2.1 (unreleased)
-==================
-
 - Fixed deprecation warning messages (incorrect version number) introduced in
   release 2.2.0. [#217]
+
+- Removed 'sinc' interpolation from ``blot_image`` due to unresolved
+  issues - see https://github.com/spacetelescope/drizzle/issues/209 for
+  more details - and limited demand in this interpolation. [#220]
+
+- Renamed interpolation methods "lan3" and "lan5" in ``blot_image`` to
+  "lanczos3" and "lanczos5", respectively. Support for "lan3" and "lan5" will
+  be removed in a future release. Support for "lan3" and "lan5" was removed
+  from the C function ``cdrizzle.tblot()``. [#220]
 
 
 2.2.0 (2026-01-06)

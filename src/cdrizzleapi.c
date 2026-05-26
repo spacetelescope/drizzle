@@ -756,9 +756,9 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords)
 {
     (void) self;
 
-    const char *kwlist[] = {"source",  "pixmap", "output", "xmin",  "xmax",   "ymin",
-                            "ymax",    "iscale", "kscale", "scale", "interp", "exptime",
-                            "fillval", "misval", "sinscl", NULL};
+    const char *kwlist[] = {"source", "pixmap",  "output",  "xmin",   "xmax",
+                            "ymin",   "ymax",    "iscale",  "kscale", "scale",
+                            "interp", "exptime", "fillval", "misval", NULL};
 
     /* Arguments in the order they appear */
     PyObject *oimg, *pixmap, *oout;
@@ -773,7 +773,6 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords)
     char *interp_str = "poly5";
     float ef = 1.0f;
     float fillval;
-    float sinscl = 1.0f;
 
     PyArrayObject *img = NULL, *out = NULL, *map = NULL;
     enum e_interp_t interp;
@@ -789,11 +788,11 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords)
     driz_error_init(&error);
 
     if (!PyArg_ParseTupleAndKeywords(
-            args, keywords, "OOO|llllOOOsOOOf:tblot", (char **) kwlist, /* */
-            &oimg, &pixmap, &oout,                                      /* OOO */
-            &xmin, &xmax, &ymin, &ymax,                                 /* llll */
-            &oiscale, &okscale, &oscale, &interp_str, &oef,             /* fOOsO */
-            &ofillval, &omisval, &sinscl)                               /* OOf */
+            args, keywords, "OOO|llllOOOsOOO:tblot", (char **) kwlist, /* */
+            &oimg, &pixmap, &oout,                                     /* OOO */
+            &xmin, &xmax, &ymin, &ymax,                                /* llll */
+            &oiscale, &okscale, &oscale, &interp_str, &oef,            /* fOOsO */
+            &ofillval, &omisval)                                       /* OOf */
     ) {
         return NULL;
     }
@@ -916,13 +915,6 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords)
     if (interp_str2enum(interp_str, &interp, &error)) {
         goto _exit;
     }
-    if (strncmp(interp_str, "sinc", 4) == 0) {
-        if (py_warning(
-                PyExc_DeprecationWarning, "The \"sinc\" interpolation is currently investigated for"
-                                          "possible issues and its use is not recommended.") != 0) {
-            goto _exit;
-        }
-    }
 
     get_dimensions(map, psize);
     get_dimensions(out, osize);
@@ -959,7 +951,6 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords)
     p.interpolation = interp;
     p.ef = ef;
     p.fill_value = fillval;
-    p.sinscl = sinscl;
     p.pixmap = map;
     p.error = &error;
 
@@ -1242,7 +1233,7 @@ static struct PyMethodDef cdrizzle_methods[] = {
     {"tblot", (PyCFunction) (void (*)(void))(PyCFunctionWithKeywords) tblot,
      METH_VARARGS | METH_KEYWORDS,
      "tblot(image, pixmap, output, xmin, xmax, ymin, ymax, iscale, "
-     "interp, exptime, fillval, misval, sinscl)"},
+     "interp, exptime, fillval, misval)"},
     {"test_cdrizzle", (PyCFunction) test_cdrizzle, METH_VARARGS,
      "test_cdrizzle(data, weights, pixmap, output_data, output_counts)"},
     {"invert_pixmap", (PyCFunction) invert_pixmap_wrap, METH_VARARGS,
