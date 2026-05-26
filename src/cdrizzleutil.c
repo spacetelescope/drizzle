@@ -12,11 +12,17 @@
 #define NO_IMPORT_ARRAY
 #define PY_ARRAY_UNIQUE_SYMBOL cdrizzle_util_api
 
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
 #include <numpy/npy_math.h>
 #include <numpy/arrayobject.h>
+
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
+#endif
 
 #include "cdrizzlemap.h"
 #include "cdrizzleutil.h"
@@ -275,7 +281,7 @@ str2enum(const char *s, const char *table[], int *result, struct driz_error_t *e
 
     while (*it != NULL) {
         if (strncmp(s, *it, 32) == 0) {
-            *result = it - table;
+            *result = (int) (it - table);
             return 0;
         }
         ++it;

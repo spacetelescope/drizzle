@@ -829,7 +829,7 @@ do_kernel_gaussian_var(struct driz_param_t *p)
                         /* Count the hits */
                         ++nhit;
 
-                        dow = (float) dover * w;
+                        dow = (float) (dover * w);
 
                         /* If we are creating or modifying the context
                            image, we do so here. */
@@ -1652,7 +1652,7 @@ do_kernel_gaussian(struct driz_param_t *p)
                         /* Count the hits */
                         ++nhit;
 
-                        dow = (float) dover * w;
+                        dow = (float) (dover * w);
 
                         /* If we are creating or modifying the context
                            image, we do so here. */

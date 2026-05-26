@@ -13,10 +13,17 @@
 #ifndef NPY_NO_DEPRECATED_API
 #define NPY_NO_DEPRECATED_API NPY_1_21_API_VERSION
 #endif
+
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
 #include <numpy/arrayobject.h>
+
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
+#endif
 
 /*****************************************************************
  ERROR HANDLING
@@ -276,8 +283,8 @@ get_dimensions(PyArrayObject *image, integer_t size[2])
     npy_intp *ndim = PyArray_DIMS(image);
 
     /* Put dimensions in xy order */
-    size[0] = ndim[1];
-    size[1] = ndim[0];
+    size[0] = (integer_t) ndim[1];
+    size[1] = (integer_t) ndim[0];
 
     return;
 }
@@ -346,20 +353,20 @@ get_pixel_at_pos(PyArrayObject *image, integer_t pos)
 {
     float *imptr;
     imptr = (float *) PyArray_DATA(image);
-    return imptr[pos];
+    return imptr[(Py_ssize_t) pos];
 }
 
 static inline_macro void
 set_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix, double value)
 {
-    *(float *) PyArray_GETPTR2(image, ypix, xpix) = value;
+    *(float *) PyArray_GETPTR2(image, (Py_ssize_t) ypix, (Py_ssize_t) xpix) = (float) value;
     return;
 }
 
 static inline_macro void
 set_uint_pixel(PyArrayObject *image, integer_t xpix, integer_t ypix, unsigned int value)
 {
-    *(unsigned int *) PyArray_GETPTR2(image, ypix, xpix) = value;
+    *(unsigned int *) PyArray_GETPTR2(image, (Py_ssize_t) ypix, (Py_ssize_t) xpix) = value;
     return;
 }
 
@@ -367,21 +374,21 @@ static inline_macro int
 get_bit(PyArrayObject *image, integer_t xpix, integer_t ypix, integer_t bitval)
 {
     integer_t value;
-    value = *(integer_t *) PyArray_GETPTR2(image, ypix, xpix) & bitval;
+    value = *(integer_t *) PyArray_GETPTR2(image, (Py_ssize_t) ypix, (Py_ssize_t) xpix) & bitval;
     return value ? 1 : 0;
 }
 
 static inline_macro void
 set_bit(PyArrayObject *image, integer_t xpix, integer_t ypix, integer_t bitval)
 {
-    *(integer_t *) PyArray_GETPTR2(image, ypix, xpix) |= bitval;
+    *(integer_t *) PyArray_GETPTR2(image, (Py_ssize_t) ypix, (Py_ssize_t) xpix) |= bitval;
     return;
 }
 
 static inline_macro void
 unset_bit(PyArrayObject *image, integer_t xpix, integer_t ypix)
 {
-    *(integer_t *) PyArray_GETPTR2(image, ypix, xpix) = 0;
+    *(integer_t *) PyArray_GETPTR2(image, (Py_ssize_t) ypix, (Py_ssize_t) xpix) = 0;
     return;
 }
 
