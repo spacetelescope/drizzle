@@ -739,6 +739,7 @@ def test_flux_conservation_nondistorted(kernel, fc, pixel_scale_ratio):
             expscale=1.0,
             wtscale=1.0,
         )
+
     else:
         with pytest.warns(Warning, match=f"Kernel '{kernel}' is not a flux-conserving kernel"):
             cdrizzle.tdriz(

@@ -4,6 +4,11 @@
 Release Notes
 =============
 
+3.0.0 (unreleased)
+==================
+
+- Removed version string return value from ``cdrizzle.tdriz()``function. [#219]
+
 
 2.2.1 (unreleased)
 ==================

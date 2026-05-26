@@ -743,7 +743,7 @@ _exit:
         PyErr_SetString(error.type, driz_error_get_message(&error));
         return NULL;
     } else {
-        return Py_BuildValue("sii", "Callable C-based DRIZZLE Version 2.1.0", p.nmiss, p.nskip);
+        return Py_BuildValue("ii", p.nmiss, p.nskip);
     }
 }
 
@@ -1219,9 +1219,10 @@ clip_polygon_wrap(PyObject *self, PyObject *args)
     return Py_BuildValue("N", list);
 }
 
-/** ---------------------------------------------------------------------------
- * Table of functions callable from python
- */
+/***************************
+ * MODULE INITIALIZATION
+ ***************************/
+
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
@@ -1229,6 +1230,8 @@ clip_polygon_wrap(PyObject *self, PyObject *args)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-function-type-mismatch"
 #endif
+
+/* Table of functions callable from python */
 
 static struct PyMethodDef cdrizzle_methods[] = {
     {"tdriz", (PyCFunction) (void (*)(void)) tdriz, METH_VARARGS | METH_KEYWORDS,
@@ -1253,25 +1256,6 @@ static struct PyMethodDef cdrizzle_methods[] = {
 #pragma clang diagnostic pop
 #endif
 
-/** ---------------------------------------------------------------------------
- */
-
-#if PY_MAJOR_VERSION < 3
-PyMODINIT_FUNC
-initcdrizzle(void)
-{
-    /* Create the module and add the functions */
-    (void) Py_InitModule("cdrizzle", cdrizzle_methods);
-
-    /* Check for errors */
-    if (PyErr_Occurred()) {
-        Py_FatalError("can't initialize module cdrizzle");
-    }
-
-    import_array();
-}
-
-#else
 static struct PyModuleDef moduledef = {
     PyModuleDef_HEAD_INIT, "cdrizzle", NULL, -1, cdrizzle_methods, NULL, NULL, NULL, NULL};
 
@@ -1287,7 +1271,6 @@ PyInit_cdrizzle(void)
     }
 
     import_array();
+
     return m;
 }
-
-#endif

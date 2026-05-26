@@ -942,7 +942,7 @@ class Drizzle:
         #       cdrizzleapi.c does not. It should be modified to support this
         #       for performance reasons.
 
-        _vers, nmiss, nskip = cdrizzle.tdriz(
+        nmiss, nskip = cdrizzle.tdriz(
             input=data,
             weights=weight_map,
             pixmap=pixmap,
@@ -969,7 +969,6 @@ class Drizzle:
             fillstr=self._fillval,
             fillstr2=self._fillval2,
         )
-        self._cversion = _vers  # TODO: probably not needed
         self._ncoadds += 1
 
         return nmiss, nskip
