@@ -11,18 +11,28 @@
 #define NPY_NO_DEPRECATED_API NPY_1_21_API_VERSION
 #endif
 
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
 #include <numpy/arrayobject.h>
 #include <numpy/ndarrayobject.h>
 #include <numpy/npy_math.h>
+
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
+#endif
 
 #include "cdrizzleblot.h"
 #include "cdrizzlebox.h"
 #include "cdrizzlemap.h"
 #include "cdrizzleutil.h"
 #include "tests/drizzletest.h"
+
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+#define strtof(str, endptr) ((float) strtod((str), (endptr)))
+#endif
 
 static PyObject *gl_Error;
 FILE *driz_log_handle = NULL;
@@ -37,11 +47,17 @@ ensure_array(PyObject *obj, int npy_type, int min_depth, int max_depth, int *is_
     } else {
         *is_copy = 1;
 
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
         PyArray_Descr *dtype_descr =
             (PyArray_Descr *) ((void *) PyArray_DescrFromType((int) npy_type));
+
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
+#endif
 
         if (dtype_descr == NULL) {
             PyErr_SetString(PyExc_TypeError, "Invalid numpy type for array conversion.");
@@ -49,12 +65,18 @@ ensure_array(PyObject *obj, int npy_type, int min_depth, int max_depth, int *is_
             return NULL;
         }
 
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
         return (PyArrayObject *) PyArray_FromAny(
             obj, dtype_descr, min_depth, max_depth, NPY_ARRAY_DEFAULT | NPY_ARRAY_ENSUREARRAY,
             NULL);
+
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
+#endif
     }
 }
 
@@ -116,7 +138,7 @@ process_array_list(
 
     at_least_one = 0;
 
-    if (!(*nmax = PySequence_Size(list))) {
+    if (!(*nmax = (int) PySequence_Size(list))) {
         return 0;
     }
 
@@ -408,21 +430,17 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords)
 
     } else {
         do_fill = 1;
-#ifdef _WIN32
-        fill_value = atof(fillstr);
-#else
         fill_value = strtof(fillstr, &fillstr_end);
         if (fillstr == fillstr_end || *fillstr_end != '\0') {
             driz_error_set_message(&error, "Illegal fill value");
             goto _exit;
         }
-#endif
     }
 
     if (fillstr2 == NULL || *fillstr2 == 0 || strncmp(fillstr2, "INDEF", 6) == 0 ||
         strncmp(fillstr2, "indef", 6) == 0) {
         do_fill2 = 0;
-        fill_value2 = 0.0;
+        fill_value2 = 0.0f;
 
     } else if (strncmp(fillstr2, "NaN", 4) == 0 || strncmp(fillstr2, "nan", 4) == 0) {
         do_fill2 = 1;
@@ -430,21 +448,17 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords)
 
     } else {
         do_fill2 = 1;
-#ifdef _WIN32
-        fill_value2 = atof(fillstr2);
-#else
         fill_value2 = strtof(fillstr2, &fillstr_end);
         if (fillstr2 == fillstr_end || *fillstr_end != '\0') {
             driz_error_set_message(&error, "Illegal fill value");
             goto _exit;
         }
-#endif
     }
 
     /* Check input array dimensions */
     ndim = PyArray_DIMS(img);
-    inx = ndim[1];
-    iny = ndim[0];
+    inx = (integer_t) ndim[1];
+    iny = (integer_t) ndim[0];
 
     ndim = PyArray_DIMS(map);
     size[0] = (integer_t) ndim[1];
@@ -483,8 +497,8 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords)
 
     /* Check output array dimensions */
     ndim = PyArray_DIMS(out);
-    onx = ndim[1];
-    ony = ndim[0];
+    onx = (integer_t) ndim[1];
+    ony = (integer_t) ndim[0];
 
     get_dimensions(wht, size);
     if (size[0] != onx || size[1] != ony) {
@@ -796,7 +810,7 @@ tblot(PyObject *self, PyObject *args, PyObject *keywords)
             driz_error_set_message(&error, "Argument 'scale' must be positive and finite.");
             goto _exit;
         }
-        iscale = 1.0 / (scale * scale);
+        iscale = 1.0f / (scale * scale);
 
         if (py_warning(
                 PyExc_DeprecationWarning, "Argument 'scale' is deprecated, use 'iscale' "
@@ -1103,9 +1117,9 @@ invert_pixmap_wrap(PyObject *self, PyObject *args)
 
     if (bbox == Py_None) {
         par.xmin = 0;
-        par.xmax = ndim[1] - 1;
+        par.xmax = (int) ndim[1] - 1;
         par.ymin = 0;
-        par.ymax = ndim[0] - 1;
+        par.ymax = (int) ndim[0] - 1;
     } else {
         bbox_arr = ensure_array(bbox, NPY_DOUBLE, 2, 2, &free_bbox);
         if (!bbox_arr) {
@@ -1123,11 +1137,15 @@ invert_pixmap_wrap(PyObject *self, PyObject *args)
         return Py_BuildValue("");
     }
 
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
+#endif
     PyArrayObject *arr =
         (PyArrayObject *) PyArray_SimpleNewFromData(1, &xyin_dim, NPY_DOUBLE, xyin);
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
+#endif
 
     PyArray_ENABLEFLAGS(arr, NPY_ARRAY_OWNDATA);
     if (free_xyout) {
@@ -1169,13 +1187,13 @@ clip_polygon_wrap(PyObject *self, PyObject *args)
         return PyErr_Format(gl_Error, "Invalid Q.");
     }
 
-    p.npv = PyArray_SHAPE(pin_arr)[0];
+    p.npv = (int) PyArray_SHAPE(pin_arr)[0];
     for (k = 0; k < p.npv; ++k) {
         p.v[k].x = *((double *) PyArray_GETPTR2(pin_arr, k, 0));
         p.v[k].y = *((double *) PyArray_GETPTR2(pin_arr, k, 1));
     }
 
-    q.npv = PyArray_SHAPE(qin_arr)[0];
+    q.npv = (int) PyArray_SHAPE(qin_arr)[0];
     for (k = 0; k < q.npv; ++k) {
         q.v[k].x = *((double *) PyArray_GETPTR2(qin_arr, k, 0));
         q.v[k].y = *((double *) PyArray_GETPTR2(qin_arr, k, 1));

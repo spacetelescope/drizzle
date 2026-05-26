@@ -10,11 +10,17 @@
 #define NO_IMPORT_ARRAY
 #define PY_ARRAY_UNIQUE_SYMBOL cdrizzle_blot_api
 
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
 #include <numpy/npy_math.h>
 #include <numpy/arrayobject.h>
+
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
+#endif
 
 #include "driz_portability.h"
 #include "cdrizzlemap.h"
