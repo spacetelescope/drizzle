@@ -706,12 +706,10 @@ doblot(struct driz_param_t *p)
             xo = (float) get_pixmap(p->pixmap, i, j)[0];
             yo = (float) get_pixmap(p->pixmap, i, j)[1];
 
-            if (npy_isnan(xo) || npy_isnan(yo)) {
-                driz_error_format_message(p->error, "NaN in pixmap[%d,%d]", i, j);
-                return 1;
-            }
-
-            /* Check it is on the input image */
+            /* Check it is on the input image. NaN coordinates (no mapping
+               defined for this output pixel) naturally fail this comparison
+               under IEEE-754 and fall through to the missing-value branch
+               below, same as an out-of-bounds mapping. */
             if (xo >= 0.0 && xo < (float) isize[0] && yo >= 0.0 && yo < (float) isize[1]) {
                 /* Check for look-up-table interpolation */
                 if (interpolate(state, p->data, xo, yo, &v, p->error)) {
