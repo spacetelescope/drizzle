@@ -23,7 +23,9 @@ def get_extensions():
     cfg = {
         "include_dirs": [],
         "libraries": [],
-        "define_macros": [],
+        "define_macros": [
+            ("Py_LIMITED_API", 0x030A0000),  # PY_VERSION_HEX for 3.10
+        ],
     }
     cfg["include_dirs"].append(numpy.get_include())
     cfg["include_dirs"].append(srcdir)
@@ -54,4 +56,5 @@ def get_extensions():
 
 setup(
     ext_modules=get_extensions(),
+    options={'bdist_wheel': {'py_limited_api': 'cp310'}},
 )
