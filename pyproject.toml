@@ -53,7 +53,7 @@ build = [
     "cp310-*",  # build for CPython 3.10 Stable API
     "cp3*t-*"  # also build free-threaded wheels
 ] 
-test-command = "python -c 'from drizzle import cdrizzle'"
+test-command = 'python -c "from drizzle import cdrizzle"'
 
 [tool.setuptools]
 zip-safe = false
