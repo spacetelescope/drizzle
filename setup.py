@@ -3,9 +3,12 @@
 
 import os
 import sys
+import sysconfig
 
 import numpy
 from setuptools import Extension, setup
+
+FREE_THREADED_PYTHON = sysconfig.get_config_var("Py_GIL_DISABLED") == 1
 
 
 def get_extensions():
@@ -28,6 +31,10 @@ def get_extensions():
     cfg["include_dirs"].append(numpy.get_include())
     cfg["include_dirs"].append(srcdir)
     cfg["include_dirs"].append(os.path.join(srcdir, "tests"))
+
+    if not FREE_THREADED_PYTHON:
+        cfg["py_limited_api"] = True
+        cfg["define_macros"].append(("Py_LIMITED_API", 0x030A0000))  # PY_VERSION_HEX for 3.10
 
     if sys.platform == "win32":
         cfg["define_macros"].extend(
@@ -52,6 +59,11 @@ def get_extensions():
     return [Extension(str("drizzle.cdrizzle"), sources, **cfg)]
 
 
+SETUPTOOLS_OPTIONS = {}
+if not FREE_THREADED_PYTHON:
+    SETUPTOOLS_OPTIONS["bdist_wheel"] = {"py_limited_api": "cp310"}
+
 setup(
     ext_modules=get_extensions(),
+    options=SETUPTOOLS_OPTIONS,
 )
