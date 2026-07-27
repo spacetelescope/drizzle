@@ -1127,9 +1127,7 @@ def blot_image(
         if out_img.shape != output_shape:
             raise ValueError("'output_image' shape is not consistent with 'pixmap' shape.")
 
-    cdrizzle.tblot(
-        data, pixmap, out_img, iscale=iscale, interp=interp, fillval=fillval
-    )
+    cdrizzle.tblot(data, pixmap, out_img, iscale=iscale, interp=interp, fillval=fillval)
 
     return out_img
 
