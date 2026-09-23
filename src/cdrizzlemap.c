@@ -986,12 +986,6 @@ get_scanline_limits(struct scanner *s, int y, int *x1, int *x2)
     xlt = s->left->m * y + s->left->c - MAX_INV_ERR;
     xrt = s->right->m * y + s->right->c + MAX_INV_ERR;
 
-    // a degenerate edge would make the limits NaN, and converting NaN to int
-    // is undefined (INT_MIN on x86-64); treat the line as empty instead:
-    if (!(isfinite(xlb) && isfinite(xrb) && isfinite(xlt) && isfinite(xrt))) {
-        return 3;
-    }
-
     xmin = s->xmin;
     xmax = s->xmax;
     if (s->xmax >= s->xmin) {
@@ -1158,7 +1152,6 @@ init_image_scanner(struct driz_param_t *par, struct scanner *s, int *ymin, int *
 
     s->overlap_valid = 1;
     orient_ccw(&inpq);
-    simplify_polygon(&inpq);
 
 _setup_scanner:
 
