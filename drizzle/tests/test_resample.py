@@ -1359,17 +1359,19 @@ def test_resample_corner_just_outside_output(delta):
     The two points where the input image edges cross the output edge are then
     closer than the pixmap inversion tolerance and invert to the same input
     point. The resulting zero-length edge of the bounding polygon used to give
-    NaN scanline limits, and a segfault on x86-64.
+    NaN scanline limits, and a segfault on x86-64. The scanner only started on
+    that edge when the corner was input pixel (0, 0) and the pixmap flipped
+    parity.
 
     """
     in_shape = (64, 64)
     out_shape = (64, 64)
 
-    # rotation, parity flip, and 2x magnification, with a small distortion
-    # curving the first input row towards the output image:
+    # rotation and parity flip, with a small distortion curving the first
+    # input row towards the output image:
     theta = np.deg2rad(-39.0)
     c, s = np.cos(theta), np.sin(theta)
-    a = 2.0 * np.array([[c, -s], [s, c]]) @ np.diag([1.0, -1.0])
+    a = np.array([[c, -s], [s, c]]) @ np.diag([1.0, -1.0])
     y, x = np.indices(in_shape, dtype=float)
     # offsets from the input image corner at (-0.5, -0.5):
     u = x + 0.5
