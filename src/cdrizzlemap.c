@@ -1089,6 +1089,7 @@ int
 init_image_scanner(struct driz_param_t *par, struct scanner *s, int *ymin, int *ymax)
 {
     struct polygon p, q, pq, inpq;
+    struct vertex vin;
     int k, n;
     npy_intp *ndim;
 
@@ -1135,14 +1136,18 @@ init_image_scanner(struct driz_param_t *par, struct scanner *s, int *ymin, int *
     }
 
     // convert coordinates of vertices of the intersection polygon
-    // back to input image coordinate system:
+    // back to input image coordinate system. Pixmap inversion is only
+    // accurate to MAX_INV_ERR, so distinct vertices in the output frame may
+    // invert to the same input point; drop such duplicates, since a
+    // zero-length edge gives the scanner NaN limits.
+    inpq.npv = 0;
     for (k = 0; k < pq.npv; k++) {
-        if (map_vertex_to_input(par, pq.v[k], &inpq.v[k])) {
+        if (map_vertex_to_input(par, pq.v[k], &vin)) {
             s->overlap_valid = 0;
             goto _setup_scanner;
         }
+        append_vertex(&inpq, vin);
     }
-    inpq.npv = pq.npv;
 
     s->overlap_valid = 1;
     orient_ccw(&inpq);

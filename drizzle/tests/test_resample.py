@@ -1350,6 +1350,53 @@ def test_resample_edge_collinear():
     assert np.allclose(np.sum(driz.out_wht), 6.0, rtol=0, atol=1.0e-6)
 
 
+@pytest.mark.parametrize("delta", [1e-3, 1e-2])
+def test_resample_corner_just_outside_output(delta):
+    """
+    Test that resample does not crash when a corner of the input image maps
+    just outside an edge of the output image.
+
+    The two points where the input image edges cross the output edge are then
+    closer than the pixmap inversion tolerance and invert to the same input
+    point. The resulting zero-length edge of the bounding polygon used to give
+    NaN scanline limits, and a segfault on x86-64. The scanner only started on
+    that edge when the corner was input pixel (0, 0) and the pixmap flipped
+    parity.
+
+    """
+    in_shape = (64, 64)
+    out_shape = (64, 64)
+
+    # rotation and parity flip, with a small distortion curving the first
+    # input row towards the output image:
+    theta = np.deg2rad(-39.0)
+    c, s = np.cos(theta), np.sin(theta)
+    a = np.array([[c, -s], [s, c]]) @ np.diag([1.0, -1.0])
+    y, x = np.indices(in_shape, dtype=float)
+    # offsets from the input image corner at (-0.5, -0.5):
+    u = x + 0.5
+    v = y + 0.5
+    xout = a[0, 0] * u + a[0, 1] * v + 0.62 * out_shape[1]
+    yout = a[1, 0] * u + a[1, 1] * v - 0.01 * u**2
+    # put the input image corner just above the top edge of the output image:
+    yout += out_shape[0] - 0.5 + delta
+    pixmap = np.dstack([xout, yout])
+
+    img = np.full(in_shape, 42, dtype=np.float32)
+
+    driz = resample.Drizzle(
+        kernel="square",
+        fillval="nan",
+        out_shape=out_shape,
+        disable_ctx=True,
+    )
+    driz.add_image(img, exptime=1.0, pixmap=pixmap, pixfrac=1.0)
+
+    good = np.isfinite(driz.out_img)
+    assert np.any(good)
+    np.testing.assert_allclose(driz.out_img[good], img[0, 0], rtol=1e-6)
+
+
 @pytest.mark.parametrize(
     "kernel,fc",
     [

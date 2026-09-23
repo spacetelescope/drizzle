@@ -19,6 +19,10 @@ Release Notes
   be removed in a future release. Support for "lan3" and "lan5" was removed
   from the C function ``cdrizzle.tblot()``. [#220]
 
+- Fixed a crash (segfault on x86-64) when a corner of the input image maps
+  just outside an edge of the output image, which made the bounding polygon
+  used to scan the input image contain a duplicate vertex. [#235]
+
 
 2.2.0 (2026-01-06)
 ==================
