@@ -558,6 +558,28 @@ def test_blot_interpolation(tmpdir, interpolator, test_image_type):
     assert max_diff < 1.0e-5
 
 
+@pytest.mark.parametrize("interp", ["nearest", "linear", "poly3", "poly5", "lanczos3", "lanczos5"])
+@pytest.mark.parametrize("nan_axis", [0, 1, slice(None)], ids=["x", "y", "xy"])
+def test_blot_nan_pixmap(interp, nan_axis):
+    """NaN entries in the pixmap (no mapping defined for that output pixel)
+    are treated like an out-of-bounds mapping and filled with ``fillval``
+    instead of raising an error. See issue
+    https://github.com/spacetelescope/drizzle/issues/174
+    """
+    data = np.ones((10, 10), dtype=np.float32)
+    y, x = np.indices((10, 10), dtype=np.float64)
+    pixmap = np.dstack([x, y])
+    pixmap[3, 4, nan_axis] = np.nan
+
+    blotted = resample.blot_image(data, pixmap=pixmap, fillval=42.0, interp=interp)
+
+    assert blotted[3, 4] == 42.0
+    mask = np.ones((10, 10), dtype=bool)
+    mask[3, 4] = False
+    # lanczos does not reproduce a constant image exactly
+    np.testing.assert_allclose(blotted[mask], 1.0, rtol=5e-3)
+
+
 def test_context_planes():
     """Reproduce error seen in issue #50"""
     shape = (10, 10)
@@ -1507,9 +1529,8 @@ def test_drizzle_weights_squared(kernel, fc):
 @pytest.mark.filterwarnings("ignore:Kernel '")
 @pytest.mark.parametrize(
     "kernel_fc, pscale, weights",
-    (
-        x
-        for x in product(
+    list(
+        product(
             [
                 ("square", True),
                 ("turbo", True),
@@ -1811,9 +1832,8 @@ def test_drizzle_weights_squared_array_shape_mismatch():
 
 @pytest.mark.parametrize(
     "kernel_fc, pscale_ratio, kscale_none",
-    (
-        x
-        for x in product(
+    list(
+        product(
             [
                 ("square", True),
                 ("point", True),
@@ -2144,9 +2164,8 @@ def test_drizzle_dq_propagation_wrong_type():
 
 @pytest.mark.parametrize(
     "kernel, pscale_ratio, use_var",
-    (
-        x
-        for x in product(
+    list(
+        product(
             [
                 "square",
                 "point",

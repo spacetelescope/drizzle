@@ -706,13 +706,10 @@ doblot(struct driz_param_t *p)
             xo = (float) get_pixmap(p->pixmap, i, j)[0];
             yo = (float) get_pixmap(p->pixmap, i, j)[1];
 
-            if (npy_isnan(xo) || npy_isnan(yo)) {
-                driz_error_format_message(p->error, "NaN in pixmap[%d,%d]", i, j);
-                return 1;
-            }
-
-            /* Check it is on the input image */
-            if (xo >= 0.0 && xo < (float) isize[0] && yo >= 0.0 && yo < (float) isize[1]) {
+            /* Check it is on the input image; NaN means no mapping is
+               defined for this output pixel and it is treated as missing */
+            if (!npy_isnan(xo) && !npy_isnan(yo) && xo >= 0.0 && xo < (float) isize[0] &&
+                yo >= 0.0 && yo < (float) isize[1]) {
                 /* Check for look-up-table interpolation */
                 if (interpolate(state, p->data, xo, yo, &v, p->error)) {
                     goto doblot_exit_;
