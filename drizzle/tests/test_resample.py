@@ -558,7 +558,9 @@ def test_blot_interpolation(tmpdir, interpolator, test_image_type):
     assert max_diff < 1.0e-5
 
 
-def test_blot_nan_pixmap():
+@pytest.mark.parametrize("interp", ["nearest", "linear", "poly3", "poly5", "lanczos3", "lanczos5"])
+@pytest.mark.parametrize("nan_axis", [0, 1, slice(None)], ids=["x", "y", "xy"])
+def test_blot_nan_pixmap(interp, nan_axis):
     """NaN entries in the pixmap (no mapping defined for that output pixel)
     are treated like an out-of-bounds mapping and filled with ``fillval``
     instead of raising an error. See issue
@@ -567,14 +569,15 @@ def test_blot_nan_pixmap():
     data = np.ones((10, 10), dtype=np.float32)
     y, x = np.indices((10, 10), dtype=np.float64)
     pixmap = np.dstack([x, y])
-    pixmap[3, 4] = np.nan
+    pixmap[3, 4, nan_axis] = np.nan
 
-    blotted = resample.blot_image(data, pixmap=pixmap, fillval=42.0)
+    blotted = resample.blot_image(data, pixmap=pixmap, fillval=42.0, interp=interp)
 
     assert blotted[3, 4] == 42.0
     mask = np.ones((10, 10), dtype=bool)
     mask[3, 4] = False
-    assert np.all(blotted[mask] == 1.0)
+    # lanczos does not reproduce a constant image exactly
+    np.testing.assert_allclose(blotted[mask], 1.0, rtol=5e-3)
 
 
 def test_context_planes():

@@ -4,6 +4,13 @@
 Release Notes
 =============
 
+3.0.1 (unreleased)
+==================
+
+- ``blot_image`` now fills output pixels whose ``pixmap`` entry contains NaN
+  with ``fillval`` instead of raising an error. [#224]
+
+
 3.0.0 (2026-09-23)
 ==================
 
