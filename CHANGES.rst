@@ -4,7 +4,7 @@
 Release Notes
 =============
 
-3.0.0 (unreleased)
+3.0.0 (2026-09-23)
 ==================
 
 - Fixed deprecation warning messages (incorrect version number) introduced in
