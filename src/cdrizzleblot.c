@@ -344,6 +344,71 @@ interpolate_bilinear(
 }
 
 /** ---------------------------------------------------------------------------
+ * Return the value of pixel (i, j), extending the image beyond its edges by
+ * point reflection about the edge pixel:
+ *
+ *     data[-k]        = 2 * data[0]     - data[k]
+ *     data[last + k]  = 2 * data[last]  - data[last - k]
+ *
+ * which keeps linear trends continuous across the edge. The reflection is
+ * applied in x and then in y, so pixels beyond a corner are reflected in both
+ * directions. The requested pixel must be less than isize pixels beyond an
+ * edge so that the reflected pixel lies inside the image.
+ */
+
+static inline_macro float
+get_pixel_reflect_x(PyArrayObject *data, const integer_t isize[2], integer_t i, integer_t j)
+{
+    const integer_t last = isize[0] - 1;
+
+    assert(i > -isize[0] && i < 2 * isize[0] - 1);
+
+    if (i < 0) {
+        return 2.0f * get_pixel(data, 0, j) - get_pixel(data, -i, j);
+    } else if (i > last) {
+        return 2.0f * get_pixel(data, last, j) - get_pixel(data, 2 * last - i, j);
+    }
+    return get_pixel(data, i, j);
+}
+
+static inline_macro float
+get_pixel_reflect(PyArrayObject *data, const integer_t isize[2], integer_t i, integer_t j)
+{
+    const integer_t last = isize[1] - 1;
+
+    assert(j > -isize[1] && j < 2 * isize[1] - 1);
+
+    if (j < 0) {
+        return 2.0f * get_pixel_reflect_x(data, isize, i, 0) -
+               get_pixel_reflect_x(data, isize, i, -j);
+    } else if (j > last) {
+        return 2.0f * get_pixel_reflect_x(data, isize, i, last) -
+               get_pixel_reflect_x(data, isize, i, 2 * last - j);
+    }
+    return get_pixel_reflect_x(data, isize, i, j);
+}
+
+/** ---------------------------------------------------------------------------
+ * Copy the n x n block of pixels starting at pixel (i0, j0) into block, as
+ * block[row][col] = data[j0 + row, i0 + col], reflecting across the image
+ * edges where the block extends beyond them.
+ */
+
+static inline_macro void
+get_pixel_block(
+    PyArrayObject *data, const integer_t isize[2], const integer_t i0, const integer_t j0,
+    const integer_t n, float *block /* [n][n] */)
+{
+    integer_t row, col;
+
+    for (row = 0; row < n; ++row) {
+        for (col = 0; col < n; ++col) {
+            block[row * n + col] = get_pixel_reflect(data, isize, i0 + col, j0 + row);
+        }
+    }
+}
+
+/** ---------------------------------------------------------------------------
  * Perform cubic polynomial interpolation.
  *
  * state: A pointer to any constant values specific to this interpolation type.
@@ -363,86 +428,19 @@ interpolate_poly3(
 
     integer_t nx, ny;
     const integer_t rowleh = 4;
-    const integer_t nterms = 4;
     float coeff[4][4];
-    integer_t i, j;
-    integer_t firstw, lastrw;
     float xval, yval;
-    float *ci;
     integer_t isize[2];
     get_dimensions(data, isize);
 
     assert(state == NULL);
     INTERPOLATION_ASSERTS;
-    ;
 
     nx = (integer_t) x;
     ny = (integer_t) y;
 
-    ci = &coeff[0][0];
-    for (j = ny - 1; j <= ny + 2; ++j) {
-        if (j >= 0 && j < isize[1]) {
-            for (i = nx - 1; i <= nx + 2; ++i, ++ci) {
-                if (i < 0) {
-                    *ci = 2.0f * get_pixel(data, 0, j) - get_pixel(data, -i, j);
-                } else if (i >= isize[0]) {
-                    *ci = 2.0f * get_pixel(data, isize[0] - 1, j) -
-                          get_pixel(data, 2 * isize[0] - 2 - i, j);
-                } else {
-                    *ci = get_pixel(data, i, j);
-                }
-            }
-        } else if (j == ny + 2) {
-            for (i = nx - 1; i <= nx + 2; ++i, ++ci) {
-                if (i < 0) {
-                    *ci =
-                        2.0f * get_pixel(data, 0, isize[1] - 3) - get_pixel(data, -i, isize[1] - 3);
-                } else if (i >= isize[0]) {
-                    *ci = 2.0f * get_pixel(data, isize[0] - 1, isize[1] - 3) -
-                          get_pixel(data, 2 * isize[0] - 2 - i, isize[1] - 3);
-                } else {
-                    *ci = get_pixel(data, i, isize[1] - 3);
-                }
-            }
-        } else {
-            ci += 4;
-        }
-    }
-
-    firstw = MAX(0, 1 - ny);
-    if (firstw > 0) {
-        assert(firstw < nterms);
-
-        for (j = 0; j < firstw; ++j) {
-            assert(2 * firstw - j >= 0 && 2 * firstw - j < nterms);
-
-            weighted_sum_vectors(
-                nterms, &coeff[firstw][0], 2.0, &coeff[2 * firstw - j][0], -1.0, &coeff[j][0]);
-        }
-    }
-
-    lastrw = MIN(nterms - 1, isize[1] - ny);
-    if (lastrw < nterms - 1) {
-        assert(lastrw >= 1 && lastrw < nterms);
-
-        for (j = lastrw + 1; j <= nterms - 2; ++j) {
-            assert(2 * lastrw - j >= 0 && 2 * lastrw - j < nterms);
-
-            weighted_sum_vectors(
-                nterms, &coeff[lastrw][0], 2.0, &coeff[2 * lastrw - j][0], -1.0, &coeff[j][0]);
-        }
-
-        /* The last row reflects to a row beyond the coefficient array; that
-           data row (isize[1] - 3) was already loaded into coeff[3] above */
-        if (lastrw == 1) {
-            weighted_sum_vectors(nterms, &coeff[lastrw][0], 2.0, &coeff[3][0], -1.0, &coeff[3][0]);
-        } else {
-            assert(2 * lastrw - 3 >= 0 && 2 * lastrw - 3 < nterms);
-
-            weighted_sum_vectors(
-                nterms, &coeff[lastrw][0], 2.0, &coeff[2 * lastrw - 3][0], -1.0, &coeff[3][0]);
-        }
-    }
+    /* The 4x4 block of pixels around (x, y), with (nx, ny) at coeff[1][1] */
+    get_pixel_block(data, isize, nx - 1, ny - 1, 4, &coeff[0][0]);
 
     xval = 2.0f + (x - (float) nx);
     yval = 2.0f + (y - (float) ny);
@@ -469,12 +467,8 @@ interpolate_poly5(
 
     integer_t nx, ny;
     const integer_t rowleh = 6;
-    const integer_t nterms = 6;
     float coeff[6][6];
-    integer_t i, j;
-    integer_t firstw, lastrw;
     float xval, yval;
-    float *ci;
     integer_t isize[2];
     get_dimensions(data, isize);
 
@@ -484,70 +478,8 @@ interpolate_poly5(
     nx = (integer_t) x;
     ny = (integer_t) y;
 
-    ci = &coeff[0][0];
-    for (j = ny - 2; j <= ny + 3; ++j) {
-        if (j >= 0 && j < isize[1]) {
-            for (i = nx - 2; i <= nx + 3; ++i, ++ci) {
-                if (i < 0) {
-                    *ci = 2.0f * get_pixel(data, 0, j) - get_pixel(data, -i, j);
-                } else if (i >= isize[0]) {
-                    *ci = 2.0f * get_pixel(data, isize[0] - 1, j) -
-                          get_pixel(data, 2 * isize[0] - 2 - i, j);
-                } else {
-                    *ci = get_pixel(data, i, j);
-                }
-            }
-        } else if (j == (ny + 3)) {
-            for (i = nx - 2; i <= nx + 3; ++i, ++ci) {
-                if (i < 0) {
-                    *ci =
-                        2.0f * get_pixel(data, 0, isize[1] - 4) - get_pixel(data, -i, isize[1] - 4);
-                } else if (i >= isize[0]) {
-                    *ci = 2.0f * get_pixel(data, isize[0] - 1, isize[1] - 4) -
-                          get_pixel(data, 2 * isize[0] - 2 - i, isize[1] - 4);
-                } else {
-                    *ci = get_pixel(data, i, isize[1] - 4);
-                }
-            }
-        } else {
-            ci += 6;
-        }
-    }
-
-    firstw = MAX(0, 2 - ny);
-    assert(firstw >= 0 && firstw < nterms);
-
-    if (firstw > 0) {
-        for (j = 0; j <= firstw; ++j) {
-            assert(2 * firstw - j >= 0 && 2 * firstw - j < nterms);
-
-            weighted_sum_vectors(
-                nterms, &coeff[firstw][0], 2.0, &coeff[2 * firstw - j][0], -1.0, &coeff[j][0]);
-        }
-    }
-
-    lastrw = MIN(nterms - 1, isize[1] - ny + 1);
-    assert(lastrw < nterms);
-
-    if (lastrw < nterms - 1) {
-        for (j = lastrw + 1; j <= nterms - 2; ++j) {
-            assert(2 * lastrw - j >= 0 && 2 * lastrw - j < nterms);
-
-            weighted_sum_vectors(
-                nterms, &coeff[lastrw][0], 2.0, &coeff[2 * lastrw - j][0], -1.0, &coeff[j][0]);
-        }
-
-        /* The last row reflects to a row beyond the coefficient array; that
-           data row (isize[1] - 4) was already loaded into coeff[5] above */
-        if (lastrw == 2) {
-            weighted_sum_vectors(nterms, &coeff[2][0], 2.0, &coeff[5][0], -1.0, &coeff[5][0]);
-        } else {
-            assert(2 * lastrw - 5 >= 0 && 2 * lastrw - 5 < nterms);
-
-            weighted_sum_vectors(
-                nterms, &coeff[lastrw][0], 2.0, &coeff[2 * lastrw - 5][0], -1.0, &coeff[5][0]);
-        }
-    }
+    /* The 6x6 block of pixels around (x, y), with (nx, ny) at coeff[2][2] */
+    get_pixel_block(data, isize, nx - 2, ny - 2, 6, &coeff[0][0]);
 
     xval = 3.0f + (x - (float) nx);
     yval = 3.0f + (y - (float) ny);
