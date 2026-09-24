@@ -1051,7 +1051,8 @@ def blot_image(
 
     fillval: float, optional
         The value of output pixels that did not have contributions from
-        input image' pixels.
+        input image' pixels. This includes output pixels whose ``pixmap``
+        entry maps outside the input image or contains NaN.
 
     iscale : float, optional
         A multiplicative factor used to rescale output image data by
