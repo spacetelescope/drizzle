@@ -10,7 +10,7 @@ Release Notes
 - Fixed ``blot_image`` "poly3" and "poly5" interpolation near the upper edge
   of the input image, where "poly3" read outside its coefficient array and
   "poly5" used unreflected data rows.  Blotted data values would have been
-  wrong before this fix for those top rows. [#XXX]
+  wrong before this fix for those top rows. [#238]
 
 
 3.0.0 (2026-09-23)
