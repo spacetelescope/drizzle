@@ -423,25 +423,25 @@ interpolate_poly3(
 
     lastrw = MIN(nterms - 1, isize[1] - ny);
     if (lastrw < nterms - 1) {
-        assert(lastrw >= 0 && lastrw < nterms);
+        assert(lastrw >= 1 && lastrw < nterms);
 
-        for (j = lastrw + 1; j <= nterms - 1; ++j) {
+        for (j = lastrw + 1; j <= nterms - 2; ++j) {
             assert(2 * lastrw - j >= 0 && 2 * lastrw - j < nterms);
-            assert(j >= 0 && j < 4);
 
             weighted_sum_vectors(
                 nterms, &coeff[lastrw][0], 2.0, &coeff[2 * lastrw - j][0], -1.0, &coeff[j][0]);
         }
-    } else if (lastrw == 1) {
-        assert(lastrw >= 0 && lastrw < nterms);
 
-        weighted_sum_vectors(nterms, &coeff[lastrw][0], 2.0, &coeff[3][0], -1.0, &coeff[3][0]);
-    } else {
-        assert(lastrw >= 0 && lastrw < nterms);
-        assert(2 * lastrw - 3 >= 0 && 2 * lastrw - 3 < nterms);
+        /* The last row reflects to a row beyond the coefficient array; that
+           data row (isize[1] - 3) was already loaded into coeff[3] above */
+        if (lastrw == 1) {
+            weighted_sum_vectors(nterms, &coeff[lastrw][0], 2.0, &coeff[3][0], -1.0, &coeff[3][0]);
+        } else {
+            assert(2 * lastrw - 3 >= 0 && 2 * lastrw - 3 < nterms);
 
-        weighted_sum_vectors(
-            nterms, &coeff[lastrw][0], 2.0, &coeff[2 * lastrw - 3][0], -1.0, &coeff[3][0]);
+            weighted_sum_vectors(
+                nterms, &coeff[lastrw][0], 2.0, &coeff[2 * lastrw - 3][0], -1.0, &coeff[3][0]);
+        }
     }
 
     xval = 2.0f + (x - (float) nx);
@@ -536,13 +536,17 @@ interpolate_poly5(
             weighted_sum_vectors(
                 nterms, &coeff[lastrw][0], 2.0, &coeff[2 * lastrw - j][0], -1.0, &coeff[j][0]);
         }
-    } else if (lastrw == 2) {
-        weighted_sum_vectors(nterms, &coeff[2][0], 2.0, &coeff[5][0], -1.0, &coeff[5][0]);
-    } else {
-        assert(2 * lastrw - 5 >= 0 && 2 * lastrw - 5 < nterms);
 
-        weighted_sum_vectors(
-            nterms, &coeff[lastrw][0], 2.0, &coeff[2 * lastrw - 5][0], -1.0, &coeff[5][0]);
+        /* The last row reflects to a row beyond the coefficient array; that
+           data row (isize[1] - 4) was already loaded into coeff[5] above */
+        if (lastrw == 2) {
+            weighted_sum_vectors(nterms, &coeff[2][0], 2.0, &coeff[5][0], -1.0, &coeff[5][0]);
+        } else {
+            assert(2 * lastrw - 5 >= 0 && 2 * lastrw - 5 < nterms);
+
+            weighted_sum_vectors(
+                nterms, &coeff[lastrw][0], 2.0, &coeff[2 * lastrw - 5][0], -1.0, &coeff[5][0]);
+        }
     }
 
     xval = 3.0f + (x - (float) nx);

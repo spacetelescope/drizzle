@@ -558,6 +558,22 @@ def test_blot_interpolation(tmpdir, interpolator, test_image_type):
     assert max_diff < 1.0e-5
 
 
+@pytest.mark.parametrize("interp", ["poly3", "poly5"])
+def test_blot_poly_ramp_edges(interp):
+    """Polynomial interpolators reproduce a linear ramp exactly, including
+    in the last rows of the input image where boundary reflection is used.
+    """
+    y, x = np.indices((10, 10), dtype=float)
+    data = (x + 10.0 * y).astype(np.float32)
+    # stretch y so the samples run from 0 to 9.5, well into the last input row
+    ys = y * 9.5 / 9.0
+    pixmap = np.dstack([x, ys])
+
+    blotted = resample.blot_image(data, pixmap=pixmap, interp=interp)
+
+    np.testing.assert_allclose(blotted, x + 10.0 * ys, atol=1e-4)
+
+
 def test_context_planes():
     """Reproduce error seen in issue #50"""
     shape = (10, 10)
