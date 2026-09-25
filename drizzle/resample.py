@@ -393,15 +393,15 @@ class Drizzle:
         shapes = set()
 
         if out_img is not None:
-            out_img = np.asarray(out_img, dtype=np.float32)
+            out_img = _as_output_array(out_img, np.float32)
             shapes.add(out_img.shape)
 
         if out_wht is not None:
-            out_wht = np.asarray(out_wht, dtype=np.float32)
+            out_wht = _as_output_array(out_wht, np.float32)
             shapes.add(out_wht.shape)
 
         if out_ctx is not None:
-            out_ctx = np.asarray(out_ctx, dtype=np.int32)
+            out_ctx = _as_output_array(out_ctx, np.int32)
             if out_ctx.ndim == 2:
                 out_ctx = out_ctx[None, :, :]
             elif out_ctx.ndim != 3:
@@ -414,7 +414,7 @@ class Drizzle:
                 raise TypeError(
                     "'out_dq' must be of an unsigned integer type with itemsize of 4 bytes or less."
                 )
-            out_dq = np.asarray(out_dq, dtype=np.uint32)
+            out_dq = _as_output_array(out_dq, np.uint32)
             shapes.add(out_dq.shape)
             self._out_dq = out_dq
 
@@ -589,7 +589,7 @@ class Drizzle:
                     shape = self._out_shape
                 arr = np.full(shape, fill_value=fv, dtype=np.float32)
             else:
-                arr = np.asarray(i2, dtype=np.float32)
+                arr = _as_output_array(i2, np.float32)
             self._out_img2.append(arr)
             del arr
 
@@ -1123,13 +1123,22 @@ def blot_image(
     if out_img is None:
         out_img = np.empty(output_shape, dtype=np.float32)
     else:
-        out_img = np.asarray(out_img, dtype=np.float32)
+        out_img = _as_output_array(out_img, np.float32)
         if out_img.shape != output_shape:
             raise ValueError("'output_image' shape is not consistent with 'pixmap' shape.")
 
     cdrizzle.tblot(data, pixmap, out_img, iscale=iscale, interp=interp, fillval=fillval)
 
     return out_img
+
+
+def _as_output_array(arr, dtype):
+    """
+    Return ``arr`` as an array of ``dtype`` that the C code can update in
+    place (C-contiguous, aligned, writeable, and in native byte order),
+    copying it only when needed.
+    """
+    return np.require(np.asarray(arr, dtype=dtype), requirements=["C", "A", "W"])
 
 
 def _process_fillval(out_img, fillval):

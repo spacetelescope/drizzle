@@ -2248,3 +2248,61 @@ def test_drizzle_ipscale_same_as_scale(kernel, pscale_ratio, use_var):
     ), "Resampled weight images are not identical."
 
     assert np.all(driz1.out_ctx == driz2.out_ctx), "Context images are not identical."
+
+
+def _not_updatable_in_place(arr, how):
+    if how == "non_contiguous":
+        return np.repeat(arr, 2, axis=1)[:, ::2]
+    if how == "read_only":
+        arr = arr.copy()
+        arr.flags.writeable = False
+        return arr
+    return arr.astype(arr.dtype.newbyteorder())
+
+
+@pytest.mark.parametrize("how", ["non_contiguous", "read_only", "byte_swapped"])
+def test_drizzle_output_arrays_not_updatable_in_place(how):
+    """Output arrays the C code cannot update in place are copied, and the
+    results are available from the Drizzle object.
+    """
+    shape = (10, 12)
+    y, x = np.indices(shape, dtype=np.float64)
+    data = (x + 10.0 * y).astype(np.float32)
+    pixmap = np.dstack([x, y]) + 0.25
+
+    def run(prepare):
+        driz = resample.Drizzle(
+            out_img=prepare(np.zeros(shape, dtype=np.float32)),
+            out_wht=prepare(np.zeros(shape, dtype=np.float32)),
+            out_ctx=prepare(np.zeros(shape, dtype=np.int32)),
+            out_img2=[prepare(np.zeros(shape, dtype=np.float32))],
+            out_dq=prepare(np.zeros(shape, dtype=np.uint32)),
+        )
+        driz.add_image(
+            data, exptime=1.0, pixmap=pixmap, data2=[data], dq=np.ones(shape, dtype=np.uint32)
+        )
+        return driz
+
+    expected = run(lambda arr: arr)
+    driz = run(lambda arr: _not_updatable_in_place(arr, how))
+
+    np.testing.assert_array_equal(driz.out_img, expected.out_img)
+    np.testing.assert_array_equal(driz.out_wht, expected.out_wht)
+    np.testing.assert_array_equal(driz.out_ctx, expected.out_ctx)
+    np.testing.assert_array_equal(driz.out_img2[0], expected.out_img2[0])
+    np.testing.assert_array_equal(driz.out_dq, expected.out_dq)
+    assert np.all(driz.out_img[1:, 1:] > 0)
+
+
+@pytest.mark.parametrize("how", ["non_contiguous", "read_only", "byte_swapped"])
+def test_blot_output_array_not_updatable_in_place(how):
+    shape = (10, 12)
+    y, x = np.indices(shape, dtype=np.float64)
+    data = (x + 10.0 * y).astype(np.float32)
+    pixmap = np.dstack([x, y]) + 0.25
+
+    expected = resample.blot_image(data, pixmap=pixmap, interp="linear")
+    out_img = _not_updatable_in_place(np.zeros(shape, dtype=np.float32), how)
+    blotted = resample.blot_image(data, pixmap=pixmap, out_img=out_img, interp="linear")
+
+    np.testing.assert_array_equal(blotted, expected)
