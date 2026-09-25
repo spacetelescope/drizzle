@@ -34,7 +34,6 @@
 #define strtof(str, endptr) ((float) strtod((str), (endptr)))
 #endif
 
-static PyObject *gl_Error;
 FILE *driz_log_handle = NULL;
 
 static PyArrayObject *
@@ -123,7 +122,9 @@ process_array_list(
         }
         *arr_list = arr;
         *nmax = 1;
-        *n_none = 0;
+        if (n_none) {
+            *n_none = 0;
+        }
         ndim = PyArray_DIMS(arr);
         *nx = (int) ndim[1];
         *ny = (int) ndim[0];
@@ -170,7 +171,9 @@ process_array_list(
                 Py_XDECREF(list_elem);
                 continue;
             } else {
-                *n_none = 1;
+                if (n_none) {
+                    *n_none = 1;
+                }
                 driz_error_set(
                     error, PyExc_ValueError,
                     "Element %d of '%s' list is None which is not allowed.", i, name);
@@ -1021,32 +1024,32 @@ test_cdrizzle(PyObject *self, PyObject *args)
 
     dat = ensure_array(data, NPY_FLOAT, 2, 2, &free_data);
     if (!dat) {
-        return PyErr_Format(gl_Error, "Invalid data array.");
+        return PyErr_Format(PyExc_ValueError, "Invalid data array.");
     }
 
     wei = ensure_array(weights, NPY_FLOAT, 2, 2, &free_wei);
     if (!wei) {
-        return PyErr_Format(gl_Error, "Invalid weghts array.");
+        return PyErr_Format(PyExc_ValueError, "Invalid weights array.");
     }
 
     map = ensure_array(pixmap, NPY_DOUBLE, 2, 4, &free_map);
     if (!map) {
-        return PyErr_Format(gl_Error, "Invalid pixmap.");
+        return PyErr_Format(PyExc_ValueError, "Invalid pixmap.");
     }
 
     odat = ensure_array(output_data, NPY_FLOAT, 2, 2, &free_odat);
     if (!odat) {
-        return PyErr_Format(gl_Error, "Invalid output data array.");
+        return PyErr_Format(PyExc_ValueError, "Invalid output data array.");
     }
 
     ocnt = ensure_array(output_counts, NPY_FLOAT, 2, 2, &free_ocnt);
     if (!ocnt) {
-        return PyErr_Format(gl_Error, "Invalid output counts array.");
+        return PyErr_Format(PyExc_ValueError, "Invalid output counts array.");
     }
 
     ocon = ensure_array(output_context, NPY_INT32, 2, 2, &free_ocon);
     if (!ocon) {
-        return PyErr_Format(gl_Error, "Invalid context array");
+        return PyErr_Format(PyExc_ValueError, "Invalid context array");
     }
 
     set_test_arrays(dat, wei, map, odat, ocnt, ocon);
@@ -1095,12 +1098,12 @@ invert_pixmap_wrap(PyObject *self, PyObject *args)
 
     xyout_arr = ensure_array(xyout, NPY_DOUBLE, 1, 1, &free_xyout);
     if (!xyout_arr) {
-        return PyErr_Format(gl_Error, "Invalid xyout array.");
+        return PyErr_Format(PyExc_ValueError, "Invalid xyout array.");
     }
 
     pixmap_arr = ensure_array(pixmap, NPY_DOUBLE, 3, 3, &free_pixmap);
     if (!pixmap_arr) {
-        return PyErr_Format(gl_Error, "Invalid pixmap.");
+        return PyErr_Format(PyExc_ValueError, "Invalid pixmap.");
     }
 
     par.pixmap = pixmap_arr;
@@ -1114,7 +1117,7 @@ invert_pixmap_wrap(PyObject *self, PyObject *args)
     } else {
         bbox_arr = ensure_array(bbox, NPY_DOUBLE, 2, 2, &free_bbox);
         if (!bbox_arr) {
-            return PyErr_Format(gl_Error, "Invalid input bounding box.");
+            return PyErr_Format(PyExc_ValueError, "Invalid input bounding box.");
         }
         par.xmin = (integer_t) (*(double *) PyArray_GETPTR2(bbox_arr, 0, 0) - half);
         par.xmax = (integer_t) (*(double *) PyArray_GETPTR2(bbox_arr, 0, 1) + half);
@@ -1170,12 +1173,12 @@ clip_polygon_wrap(PyObject *self, PyObject *args)
 
     pin_arr = ensure_array(pin, NPY_DOUBLE, 2, 2, &free_pin);
     if (!pin_arr) {
-        return PyErr_Format(gl_Error, "Invalid P.");
+        return PyErr_Format(PyExc_ValueError, "Invalid P.");
     }
 
     qin_arr = ensure_array(qin, NPY_DOUBLE, 2, 2, &free_qin);
     if (!qin_arr) {
-        return PyErr_Format(gl_Error, "Invalid Q.");
+        return PyErr_Format(PyExc_ValueError, "Invalid Q.");
     }
 
     p.npv = (int) PyArray_SHAPE(pin_arr)[0];

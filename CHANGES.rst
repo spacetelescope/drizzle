@@ -4,6 +4,16 @@
 Release Notes
 =============
 
+3.0.1 (unreleased)
+==================
+
+- Fixed a crash in ``cdrizzle.tdriz`` when ``output2`` is a single array
+  instead of a list of arrays, or a list that contains ``None``.
+
+- ``cdrizzle.invert_pixmap`` and ``cdrizzle.clip_polygon`` now raise
+  ``ValueError`` for invalid arguments instead of crashing.
+
+
 3.0.0 (2026-09-23)
 ==================
 
