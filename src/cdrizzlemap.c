@@ -65,7 +65,7 @@ rotate_polygon(struct polygon *p, int pos);
  * @param[in,out] int xmax - position of the right edge of the bounding box.
  * @param[in,out] int ymin - position of the bottom edge of the bounding box.
  * @param[in,out] int ymax - position of the top edge of the bounding box.
- * @return 0 if successul and 1 if there is only one or no valid pixel map
+ * @return 0 if successful and 1 if there is only one or no valid pixel map
  * values.
  *
  */
@@ -352,7 +352,7 @@ map_point(struct driz_param_t *par, double xin, double yin, double *xout, double
  * @param[in] double yref - y-coordinate of the initial point in the output
  *                   frame.
  * @param[out] double *dist2 - |(x', y') - (xref, yref)|**2.
- * @return 0 if successul and 1 if the forward interpolation fails.
+ * @return 0 if successful and 1 if the forward interpolation fails.
  *
  */
 static int
@@ -376,7 +376,7 @@ eval_inversion(
  *
  * Inverts input (xout, yout) (output image frame) coordinates iteratively
  * to the input image image frame (xin, yin) - the output of this function.
- * Ths function uses the method of Golden-section search - see
+ * This function uses the method of Golden-section search - see
  * https://en.wikipedia.org/wiki/Golden-section_search for the 1D case -
  * generalized to support planar data.
  *
@@ -385,7 +385,7 @@ eval_inversion(
  * @param[in] double yout - y-coordinate of a point in the output frame.
  * @param[out] double *xin - x-coordinate of the point in the input frame.
  * @param[out] double *yin - y-coordinate of the point in the input frame.
- * @return 0 if successul and 1 iterative process fails.
+ * @return 0 if successful and 1 iterative process fails.
  *
  */
 int
@@ -1070,7 +1070,7 @@ map_vertex_to_input(struct driz_param_t *par, struct vertex vout, struct vertex 
  *
  * This is a the main part of the computation of the bounding polygon in the
  * input frame. This function computes the bounding box of the input image,
- * maps it the ouput frame, intersects mapped input bounding box with the
+ * maps it the output frame, intersects mapped input bounding box with the
  * bounding box of the output image. It then maps this intersection polygon
  * back to the input frame and then sets up the scanner structure to be used
  * by the resampling kernel functions to determine the horizontal scan limits

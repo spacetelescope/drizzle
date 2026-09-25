@@ -332,7 +332,7 @@ compute_area(double is, double js, const double x[4], const double y[4])
     /* The area for a qadrilateral clipped to a square of unit length whose
      * sides are aligned with the axes. The area is computed by computing the
      * area under each line segment clipped to the boundary of three sides of
-     * the sqaure. Since the computed width is positive for two of the sides and
+     * the square. Since the computed width is positive for two of the sides and
      * negative for the other two, we subtract the area outside the
      * quadrilateral without any extra code.
      */
@@ -1061,7 +1061,7 @@ do_kernel_lanczos_var(struct driz_param_t *p)
 
 /** ---------------------------------------------------------------------------
  * This kernel assumes the input flux is evenly distributed over a rectangle
- * whose sides are aligned with the ouput pixel. Called turbo because it is
+ * whose sides are aligned with the output pixel. Called turbo because it is
  * fast, but approximate.
  *
  * p: structure containing options, input, and output
@@ -1367,7 +1367,7 @@ do_kernel_square_var(struct driz_param_t *p)
 
             /* Work out the area of the quadrilateral on the output
              * grid.  If the points are in clockwise order we get a
-             * postive area.  If they are in anticlockwise order, jaco
+             * positive area.  If they are in anticlockwise order, jaco
              * will be negative, but so will the areas computed by
              * boxer, so it doesn't actually matter once we divide it
              * out.
@@ -1831,7 +1831,7 @@ do_kernel_lanczos(struct driz_param_t *p)
 
 /** ---------------------------------------------------------------------------
  * This kernel assumes the input flux is evenly distributed over a rectangle
- * whose sides are aligned with the ouput pixel. Called turbo because it is
+ * whose sides are aligned with the output pixel. Called turbo because it is
  * fast, but approximate.
  *
  * p: structure containing options, input, and output
@@ -2067,7 +2067,7 @@ do_kernel_square(struct driz_param_t *p)
 
             /* Work out the area of the quadrilateral on the output
              * grid.  If the points are in clockwise order we get a
-             * postive area.  If they are in anticlockwise order, jaco
+             * positive area.  If they are in anticlockwise order, jaco
              * will be negative, but so will the areas computed by
              * boxer, so it doesn't actually matter once we divide it
              * out.

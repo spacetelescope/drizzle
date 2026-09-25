@@ -141,7 +141,7 @@ ii_bipoly3(
 
 /** ---------------------------------------------------------------------------
  * Procedure to evaluate a biquintic polynomial.  The array coeff contains the
- * coefficents of the 2D interpolant.  The routine assumes that 0 <= x <
+ * coefficients of the 2D interpolant.  The routine assumes that 0 <= x <
  * isize[0] and 0 <= y < isize[1]. The interpolant is evaluated using Everett's
  * central difference formula. (Was: IIBIP5)
  *
