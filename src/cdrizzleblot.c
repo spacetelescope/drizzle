@@ -273,7 +273,11 @@ interpolate_nearest_neighbor(
     assert(state == NULL);
     INTERPOLATION_ASSERTS;
 
-    *value = get_pixel(data, (integer_t) (x + 0.5), (integer_t) (y + 0.5));
+    /* Points in the outer half of the last row or column round up to one
+       past the end of the image, so clamp them to the last pixel. */
+    *value = get_pixel(
+        data, CLAMP_BELOW((integer_t) (x + 0.5), isize[0] - 1),
+        CLAMP_BELOW((integer_t) (y + 0.5), isize[1] - 1));
     return 0;
 }
 
