@@ -289,9 +289,9 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords)
     struct driz_error_t error;
     struct driz_param_t p;
     integer_t size[2];
-    integer_t nx, ny;   /* image dimensions */
-    integer_t inx, iny; /* input image dimensions */
-    integer_t onx, ony; /* output image dimensions */
+    integer_t nx, ny;         /* image dimensions */
+    integer_t in_nx, in_ny;   /* input image dimensions */
+    integer_t out_nx, out_ny; /* output image dimensions */
     npy_intp *ndim;
     char warn_msg[128];
 
@@ -457,19 +457,19 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords)
 
     /* Check input array dimensions */
     ndim = PyArray_DIMS(img);
-    inx = (integer_t) ndim[1];
-    iny = (integer_t) ndim[0];
+    in_nx = (integer_t) ndim[1];
+    in_ny = (integer_t) ndim[0];
 
     ndim = PyArray_DIMS(map);
     size[0] = (integer_t) ndim[1];
     size[1] = (integer_t) ndim[0];
 
-    if (size[0] != inx || size[1] != iny) {
+    if (size[0] != in_nx || size[1] != in_ny) {
         if (snprintf(
                 warn_msg, 128,
                 "Pixel map dimensions (%d, %d) != input dimensions "
                 "(%d, %d).",
-                size[0], size[1], inx, iny) < 1) {
+                size[0], size[1], in_nx, in_ny) < 1) {
             strcpy(warn_msg, "Pixel map dimensions != input dimensions.");
         }
         driz_error_set_message(&error, warn_msg);
@@ -482,12 +482,12 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords)
 
     if (wei) {
         get_dimensions(wei, size);
-        if (size[0] != inx || size[1] != iny) {
+        if (size[0] != in_nx || size[1] != in_ny) {
             if (snprintf(
                     warn_msg, 128,
                     "Weights array dimensions (%d, %d) != input "
                     "dimensions (%d, %d).",
-                    size[0], size[1], inx, iny) < 1) {
+                    size[0], size[1], in_nx, in_ny) < 1) {
                 strcpy(warn_msg, "Weights array dimensions != input dimensions.");
             }
             driz_error_set_message(&error, warn_msg);
@@ -497,16 +497,16 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords)
 
     /* Check output array dimensions */
     ndim = PyArray_DIMS(out);
-    onx = (integer_t) ndim[1];
-    ony = (integer_t) ndim[0];
+    out_nx = (integer_t) ndim[1];
+    out_ny = (integer_t) ndim[0];
 
     get_dimensions(wht, size);
-    if (size[0] != onx || size[1] != ony) {
+    if (size[0] != out_nx || size[1] != out_ny) {
         if (snprintf(
                 warn_msg, 128,
                 "Output weight dimensions (%d, %d) != output dimensions "
                 "(%d, %d).",
-                size[0], size[1], onx, ony) < 1) {
+                size[0], size[1], out_nx, out_ny) < 1) {
             strcpy(warn_msg, "Output weight dimensions != output dimensions.");
         }
 
@@ -516,12 +516,12 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords)
 
     if (con) {
         get_dimensions(con, size);
-        if (size[0] != onx || size[1] != ony) {
+        if (size[0] != out_nx || size[1] != out_ny) {
             if (snprintf(
                     warn_msg, 128,
                     "Context dimensions (%d, %d) != output dimensions "
                     "(%d, %d).",
-                    size[0], size[1], onx, ony) < 1) {
+                    size[0], size[1], out_nx, out_ny) < 1) {
                 strcpy(warn_msg, "Context dimensions != output dimensions.");
             }
             driz_error_set_message(&error, warn_msg);
@@ -534,8 +534,8 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords)
     nsq_args =
         ((int) (oimg2 != NULL && oimg2 != Py_None)) + ((int) (oout2 != NULL && oout2 != Py_None));
     if (nsq_args == 2) {
-        nx = inx;
-        ny = iny;
+        nx = in_nx;
+        ny = in_ny;
         if (process_array_list(
                 oimg2, &nx, &ny, "input2", &img2_list, &nsq_arr, 1, &n_none, &free_arrays2,
                 &error)) {
@@ -547,21 +547,21 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords)
         }
 
         if (nsq_arr) {
-            if (nx != inx || ny != iny) {
+            if (nx != in_nx || ny != in_ny) {
                 driz_error_set_message(
                     &error, "'input2' arrays must have the same "
                             "dimensions as the 'input' array.");
                 goto _exit;
             }
 
-            nx = onx;
-            ny = ony;
+            nx = out_nx;
+            ny = out_ny;
             if (process_array_list(
                     oout2, &nx, &ny, "output2", &out2_list, &nsq_arr_out, 0, NULL,
                     &free_out_arrays2, &error)) {
                 goto _exit;
             }
-            if (nx != onx || ny != ony) {
+            if (nx != out_nx || ny != out_ny) {
                 driz_error_set_message(
                     &error, "'output2' arrays must have the same "
                             "dimensions as the 'output' array.");
@@ -583,11 +583,11 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords)
     }
 
     /* Set the area to be processed */
-    if (xmax == 0 || xmax >= inx) {
-        xmax = inx - 1;
+    if (xmax == 0 || xmax >= in_nx) {
+        xmax = in_nx - 1;
     }
-    if (ymax == 0 || ymax >= iny) {
-        ymax = iny - 1;
+    if (ymax == 0 || ymax >= in_ny) {
+        ymax = in_ny - 1;
     }
 
     if (shrink_image_section(map, &xmin, &xmax, &ymin, &ymax)) {
@@ -650,10 +650,10 @@ tdriz(PyObject *self, PyObject *args, PyObject *keywords)
     p.weight_scale = wtscl;
     p.fill_value = fill_value;
     p.fill_value2 = fill_value2;
-    p.in_nx = inx;
-    p.in_ny = iny;
-    p.out_nx = onx;
-    p.out_ny = ony;
+    p.in_nx = in_nx;
+    p.in_ny = in_ny;
+    p.out_nx = out_nx;
+    p.out_ny = out_ny;
     p.data2 = img2_list;
     p.output_data2 = out2_list;
     p.ndata2 = nsq_arr;
