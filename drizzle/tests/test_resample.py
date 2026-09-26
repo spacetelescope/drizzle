@@ -558,6 +558,45 @@ def test_blot_interpolation(tmpdir, interpolator, test_image_type):
     assert max_diff < 1.0e-5
 
 
+@pytest.mark.parametrize("interp", ["poly3", "poly5"])
+def test_blot_poly_ramp_edges(interp):
+    """Polynomial interpolators reproduce a linear ramp exactly, including
+    in the last rows of the input image where boundary reflection is used.
+    """
+    y, x = np.indices((10, 10), dtype=float)
+    data = (x + 10.0 * y).astype(np.float32)
+    # stretch y so the samples run from 0 to 9.5, well into the last input row
+    ys = y * 9.5 / 9.0
+    pixmap = np.dstack([x, ys])
+
+    blotted = resample.blot_image(data, pixmap=pixmap, interp=interp)
+
+    np.testing.assert_allclose(blotted, x + 10.0 * ys, atol=1e-4)
+
+
+def test_blot_nearest_upper_edges():
+    """Samples in the outer half of the last input row and column take the
+    value of that row or column instead of reading past the end of the image.
+    """
+    # a sentinel row directly after the image in memory makes any read past
+    # the end of the image visible
+    buf = np.full((11, 10), -1.0e30, dtype=np.float32)
+    data = buf[:10]
+    y, x = np.indices((10, 10), dtype=float)
+    data[...] = x + 10.0 * y
+    # stretch both axes so the samples run from 0 to 9.7, into the outer half
+    # of the last row and column
+    xs = x * 9.7 / 9.0
+    ys = y * 9.7 / 9.0
+    pixmap = np.dstack([xs, ys])
+
+    blotted = resample.blot_image(data, pixmap=pixmap, interp="nearest")
+
+    ix = np.minimum(np.floor(xs + 0.5), 9).astype(int)
+    iy = np.minimum(np.floor(ys + 0.5), 9).astype(int)
+    np.testing.assert_array_equal(blotted, data[iy, ix])
+
+
 def test_context_planes():
     """Reproduce error seen in issue #50"""
     shape = (10, 10)

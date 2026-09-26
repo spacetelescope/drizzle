@@ -4,6 +4,17 @@
 Release Notes
 =============
 
+3.0.1 (unreleased)
+==================
+
+- Fixed ``blot_image`` "poly3" and "poly5" interpolation near the upper edge
+  of the input image, where "poly3" read outside its coefficient array and
+  "poly5" used unreflected data rows.  Blotted data values would have been
+  wrong before this fix for those top rows.  "nearest" interpolation read one
+  pixel past the end of the input image for points in the outer half of its
+  last row or column. [#238]
+
+
 3.0.0 (2026-09-23)
 ==================
 
