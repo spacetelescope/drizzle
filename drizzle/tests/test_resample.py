@@ -1,6 +1,5 @@
 import math
 import os
-from itertools import product
 
 import numpy as np
 import pytest
@@ -1567,29 +1566,24 @@ def test_drizzle_weights_squared(kernel, fc):
 
 @pytest.mark.filterwarnings("ignore:Kernel '")
 @pytest.mark.parametrize(
-    "kernel_fc, pscale, weights",
-    list(
-        product(
-            [
-                ("square", True),
-                ("turbo", True),
-                ("point", True),
-                ("gaussian", False),
-                # lanczos kernels do not support pscale != 1 or pixfrac != 1
-                # ('lanczos2', False),
-                # ('lanczos3', False),
-            ],
-            [0.25, 0.5, 1, 1.2, 1.5],
-            [(0.99, 0.01), (0.8, 0.2), (0.9, 1.5), (467, 733)],
-        )
-    ),
+    "kernel,fc",
+    [
+        ("square", True),
+        ("turbo", True),
+        ("point", True),
+        ("gaussian", False),
+        # lanczos kernels do not support pscale != 1 or pixfrac != 1
+        # ('lanczos2', False),
+        # ('lanczos3', False),
+    ],
 )
-def test_drizzle_weights_squared_pscale(kernel_fc, pscale, weights):
+@pytest.mark.parametrize("pscale", [0.25, 0.5, 1, 1.2, 1.5])
+@pytest.mark.parametrize("weights", [(0.99, 0.01), (0.8, 0.2), (0.9, 1.5), (467, 733)])
+def test_drizzle_kernel_pscale_weights(kernel, fc, pscale, weights):
+    """Co-adding weighted images conserves flux and propagates variance
+    correctly using squared weights."""
     n = 25
     shape = (n, n)
-
-    # unpack parameters:
-    kernel, fc = kernel_fc
 
     # pixel values in input data:
     dataval = [1.0, 7.0]
@@ -1656,7 +1650,7 @@ def test_drizzle_weights_squared_pscale(kernel_fc, pscale, weights):
     assert np.allclose(tflux2, ideal_output2, rtol=rtol, atol=0.0)
 
 
-def test_drizzle_weights_squared_bad_inputs():
+def test_drizzle_weights_squarekernel_bad_inputs():
     n = 21
     in_shape = (n, n)
     kernel = "square"
@@ -1870,29 +1864,21 @@ def test_drizzle_weights_squared_array_shape_mismatch():
 
 
 @pytest.mark.parametrize(
-    "kernel_fc, pscale_ratio, kscale_none",
-    list(
-        product(
-            [
-                ("square", True),
-                ("point", True),
-                ("turbo", True),
-                ("lanczos2", False),
-                ("lanczos3", False),
-                ("gaussian", False),
-            ],
-            [0.9, 1.0, 1.2],
-            [False, True],
-        )
-    ),
+    "kernel,fc",
+    [
+        ("square", True),
+        ("point", True),
+        ("turbo", True),
+        ("lanczos2", False),
+        ("lanczos3", False),
+        ("gaussian", False),
+    ],
 )
-def test_drizzle_var_identical_to_nonvar(kernel_fc, pscale_ratio, kscale_none):
-    """Test that the resampled science image using code with support for
-    variance-propagation is identical to the resampled science image
-    using code without support for variance-propagation (original code).
-    """
-    kernel, fc = kernel_fc
-
+@pytest.mark.parametrize("pscale_ratio", [0.9, 1.0, 1.2])
+@pytest.mark.parametrize("kscale_none", [False, True])
+def test_drizzle_var_identical_to_nonvar(kernel, fc, pscale_ratio, kscale_none):
+    """Resampling a variance image (``data2``) alongside the science image does
+    not change the resampled science, weight or context images."""
     if kscale_none:
         kscale = None
     else:
@@ -2202,22 +2188,18 @@ def test_drizzle_dq_propagation_wrong_type():
 
 
 @pytest.mark.parametrize(
-    "kernel, pscale_ratio, use_var",
-    list(
-        product(
-            [
-                "square",
-                "point",
-                "turbo",
-                "lanczos2",
-                "lanczos3",
-                "gaussian",
-            ],
-            [0.9, 1.2, 0.3],
-            [True, False],
-        )
-    ),
+    "kernel",
+    [
+        "square",
+        "point",
+        "turbo",
+        "lanczos2",
+        "lanczos3",
+        "gaussian",
+    ],
 )
+@pytest.mark.parametrize("pscale_ratio", [0.9, 1.2, 0.3])
+@pytest.mark.parametrize("use_var", [True, False])
 @pytest.mark.filterwarnings(r"ignore:Argument 'scale' has been deprecated.*:DeprecationWarning")
 @pytest.mark.filterwarnings(r"ignore:Kernel '.*' is not a flux-conserving kernel:Warning")
 def test_drizzle_ipscale_same_as_scale(kernel, pscale_ratio, use_var):
