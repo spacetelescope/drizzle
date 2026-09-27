@@ -10,6 +10,16 @@ from drizzle import cdrizzle, resample, utils
 
 from .helpers import wcs_from_file
 
+# Non-flux-conserving kernels warn on every use. The warning itself is checked in
+# test_non_flux_conserving_kernel_warns; other tests ignore it with this mark.
+ignore_not_flux_conserving = pytest.mark.filterwarnings(
+    r"ignore:Kernel '.*' is not a flux-conserving kernel:Warning"
+)
+xfail_not_flux_conserving = [
+    ignore_not_flux_conserving,
+    pytest.mark.xfail(reason="Not a flux-conserving kernel"),
+]
+
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, "data")
 
@@ -297,8 +307,8 @@ def test_drizzle_defaults():
         ("square", "grid", 1.0e-5),
         ("point", "grid", 1.0e-5),
         ("turbo", "grid", 1.0e-5),
-        ("lanczos3", "grid", 1.0e-5),
-        ("gaussian", "grid", 2.0e-5),
+        pytest.param("lanczos3", "grid", 1.0e-5, marks=ignore_not_flux_conserving),
+        pytest.param("gaussian", "grid", 2.0e-5, marks=ignore_not_flux_conserving),
     ],
 )
 def test_resample_kernel(tmpdir, kernel, test_image_type, max_diff_atol):
@@ -345,25 +355,14 @@ def test_resample_kernel(tmpdir, kernel, test_image_type, max_diff_atol):
         fillval=0.0,
     )
 
-    if kernel in ["square", "turbo", "point"]:
-        driz.add_image(
-            insci,
-            exptime=1.0,
-            pixmap=pixmap,
-            weight_map=inwht,
-            iscale=pscale_ratio**2,
-            pixel_scale_ratio=pscale_ratio,
-        )
-    else:
-        with pytest.warns(Warning, match=f"Kernel '{kernel}' is not a flux-conserving kernel"):
-            driz.add_image(
-                insci,
-                exptime=1.0,
-                pixmap=pixmap,
-                weight_map=inwht,
-                iscale=pscale_ratio**2,
-                pixel_scale_ratio=pscale_ratio,
-            )
+    driz.add_image(
+        insci,
+        exptime=1.0,
+        pixmap=pixmap,
+        weight_map=inwht,
+        iscale=pscale_ratio**2,
+        pixel_scale_ratio=pscale_ratio,
+    )
 
     _, med_diff, max_diff = centroid_statistics(
         f"{kernel} with {test_image_type}",
@@ -429,18 +428,28 @@ def test_resample_kernel_image(tmpdir, kernel, max_diff_atol):
     assert np.all(outctx[sl] == ref_ctx[sl])
 
 
+@pytest.mark.parametrize("kernel", ["lanczos2", "lanczos3", "gaussian"])
+def test_non_flux_conserving_kernel_warns(kernel):
+    """Resampling with a non-flux-conserving kernel emits a warning."""
+    y, x = np.indices((10, 10), dtype=np.float64)
+    driz = resample.Drizzle(kernel=kernel, out_shape=(10, 10))
+
+    with pytest.warns(Warning, match=f"Kernel '{kernel}' is not a flux-conserving kernel"):
+        driz.add_image(np.ones((10, 10), dtype=np.float32), exptime=1.0, pixmap=np.dstack([x, y]))
+
+
 @pytest.mark.parametrize(
-    "kernel,fc",
+    "kernel",
     [
-        ("square", True),
-        ("point", True),
-        ("turbo", True),
-        ("lanczos2", False),
-        ("lanczos3", False),
-        ("gaussian", False),
+        "square",
+        "point",
+        "turbo",
+        pytest.param("lanczos2", marks=ignore_not_flux_conserving),
+        pytest.param("lanczos3", marks=ignore_not_flux_conserving),
+        pytest.param("gaussian", marks=ignore_not_flux_conserving),
     ],
 )
-def test_zero_input_weight(kernel, fc):
+def test_zero_input_weight(kernel):
     """
     Test do_driz square kernel with grid
     """
@@ -458,48 +467,25 @@ def test_zero_input_weight(kernel, fc):
     pixmap = np.moveaxis(np.mgrid[1:201, 1:401][::-1], 0, -1)
 
     # resample:
-    if fc:
-        cdrizzle.tdriz(
-            insci,
-            inwht,
-            pixmap,
-            outsci,
-            outwht,
-            outctx,
-            uniqid=1,
-            xmin=0,
-            xmax=400,
-            ymin=0,
-            ymax=200,
-            pixfrac=1,
-            kernel=kernel,
-            in_units="cps",
-            expscale=1,
-            wtscale=1,
-            fillstr="INDEF",
-        )
-    else:
-        with pytest.warns(Warning, match=f"Kernel '{kernel}' is not a flux-conserving kernel"):
-            cdrizzle.tdriz(
-                insci,
-                inwht,
-                pixmap,
-                outsci,
-                outwht,
-                outctx,
-                uniqid=1,
-                xmin=0,
-                xmax=400,
-                ymin=0,
-                ymax=200,
-                pixfrac=1,
-                kernel=kernel,
-                in_units="cps",
-                expscale=1,
-                wtscale=1,
-                fillstr="INDEF",
-            )
-        # pytest.xfail("Not a flux-conserving kernel")
+    cdrizzle.tdriz(
+        insci,
+        inwht,
+        pixmap,
+        outsci,
+        outwht,
+        outctx,
+        uniqid=1,
+        xmin=0,
+        xmax=400,
+        ymin=0,
+        ymax=200,
+        pixfrac=1,
+        kernel=kernel,
+        in_units="cps",
+        expscale=1,
+        wtscale=1,
+        fillstr="INDEF",
+    )
 
     # check that no pixel with 0 weight has any counts:
     assert np.sum(np.abs(outsci[(outwht == 0)])) == 0.0
@@ -735,21 +721,21 @@ def test_context_agrees_with_weight():
 
 
 @pytest.mark.parametrize(
-    "kernel,fc,pixel_scale_ratio",
+    "kernel,pixel_scale_ratio",
     [
-        ("square", True, 1.0),
-        ("point", True, 1.0),
-        ("turbo", True, 1.0),
-        ("turbo", True, None),
-        ("lanczos2", False, 1.0),
-        ("lanczos2", False, None),
-        ("lanczos3", False, 1.0),
-        ("lanczos3", False, None),
-        ("gaussian", False, 1.0),
-        ("gaussian", False, None),
+        ("square", 1.0),
+        ("point", 1.0),
+        ("turbo", 1.0),
+        ("turbo", None),
+        pytest.param("lanczos2", 1.0, marks=xfail_not_flux_conserving),
+        pytest.param("lanczos2", None, marks=xfail_not_flux_conserving),
+        pytest.param("lanczos3", 1.0, marks=xfail_not_flux_conserving),
+        pytest.param("lanczos3", None, marks=xfail_not_flux_conserving),
+        pytest.param("gaussian", 1.0, marks=xfail_not_flux_conserving),
+        pytest.param("gaussian", None, marks=xfail_not_flux_conserving),
     ],
 )
-def test_flux_conservation_nondistorted(kernel, fc, pixel_scale_ratio):
+def test_flux_conservation_nondistorted(kernel, pixel_scale_ratio):
     n = 200
     in_shape = (n, n)
 
@@ -784,40 +770,20 @@ def test_flux_conservation_nondistorted(kernel, fc, pixel_scale_ratio):
     out_ctx = np.zeros(out_shape, dtype=np.int32)
     out_wht = np.zeros(out_shape, dtype=np.float32)
 
-    if fc:
-        cdrizzle.tdriz(
-            in_sci,
-            in_wht,
-            pixmap,
-            out_img,
-            out_wht,
-            out_ctx,
-            pixfrac=1.0,
-            pscale_ratio=pixel_scale_ratio,
-            kernel=kernel,
-            in_units="cps",
-            expscale=1.0,
-            wtscale=1.0,
-        )
-
-    else:
-        with pytest.warns(Warning, match=f"Kernel '{kernel}' is not a flux-conserving kernel"):
-            cdrizzle.tdriz(
-                in_sci,
-                in_wht,
-                pixmap,
-                out_img,
-                out_wht,
-                out_ctx,
-                pixfrac=1.0,
-                pscale_ratio=pixel_scale_ratio,
-                kernel=kernel,
-                in_units="cps",
-                expscale=1.0,
-                wtscale=1.0,
-            )
-
-        pytest.xfail("Not a flux-conserving kernel")
+    cdrizzle.tdriz(
+        in_sci,
+        in_wht,
+        pixmap,
+        out_img,
+        out_wht,
+        out_ctx,
+        pixfrac=1.0,
+        pscale_ratio=pixel_scale_ratio,
+        kernel=kernel,
+        in_units="cps",
+        expscale=1.0,
+        wtscale=1.0,
+    )
 
     assert np.allclose(
         np.sum(out_img * out_wht),
@@ -828,17 +794,17 @@ def test_flux_conservation_nondistorted(kernel, fc, pixel_scale_ratio):
 
 
 @pytest.mark.parametrize(
-    "kernel,fc",
+    "kernel",
     [
-        ("square", True),
-        ("point", True),
-        ("turbo", True),
-        ("lanczos2", False),
-        ("lanczos3", False),
-        ("gaussian", False),
+        "square",
+        "point",
+        "turbo",
+        pytest.param("lanczos2", marks=xfail_not_flux_conserving),
+        pytest.param("lanczos3", marks=xfail_not_flux_conserving),
+        pytest.param("gaussian", marks=xfail_not_flux_conserving),
     ],
 )
-def test_flux_conservation_distorted(kernel, fc):
+def test_flux_conservation_distorted(kernel):
     n = 200
     in_shape = (n, n)
 
@@ -876,38 +842,20 @@ def test_flux_conservation_distorted(kernel, fc):
     out_ctx = np.zeros(out_shape, dtype=np.int32)
     out_wht = np.zeros(out_shape, dtype=np.float32)
 
-    if fc:
-        cdrizzle.tdriz(
-            in_sci,
-            in_wht,
-            pixmap,
-            out_img,
-            out_wht,
-            out_ctx,
-            pixfrac=1.0,
-            pscale_ratio=1.0,
-            kernel=kernel,
-            in_units="cps",
-            expscale=1.0,
-            wtscale=1.0,
-        )
-    else:
-        with pytest.warns(Warning, match=f"Kernel '{kernel}' is not a flux-conserving kernel"):
-            cdrizzle.tdriz(
-                in_sci,
-                in_wht,
-                pixmap,
-                out_img,
-                out_wht,
-                out_ctx,
-                pixfrac=1.0,
-                pscale_ratio=1.0,
-                kernel=kernel,
-                in_units="cps",
-                expscale=1.0,
-                wtscale=1.0,
-            )
-        pytest.xfail("Not a flux-conserving kernel")
+    cdrizzle.tdriz(
+        in_sci,
+        in_wht,
+        pixmap,
+        out_img,
+        out_wht,
+        out_ctx,
+        pixfrac=1.0,
+        pscale_ratio=1.0,
+        kernel=kernel,
+        in_units="cps",
+        expscale=1.0,
+        wtscale=1.0,
+    )
 
     assert np.allclose(
         np.sum(out_img * out_wht),
@@ -1463,9 +1411,9 @@ def test_resample_corner_just_outside_output(delta):
         ("square", True),
         ("point", True),
         ("turbo", True),
-        ("lanczos2", False),
-        ("lanczos3", False),
-        ("gaussian", False),
+        pytest.param("lanczos2", False, marks=ignore_not_flux_conserving),
+        pytest.param("lanczos3", False, marks=ignore_not_flux_conserving),
+        pytest.param("gaussian", False, marks=ignore_not_flux_conserving),
     ],
 )
 def test_drizzle_weights_squared(kernel, fc):
@@ -1540,22 +1488,20 @@ def test_drizzle_weights_squared(kernel, fc):
         assert driz.out_img is None
         assert driz.total_exptime == 0.0
 
-        with pytest.warns(Warning, match=f"Kernel '{kernel}' is not a flux-conserving kernel"):
-            driz.add_image(
-                data=in_sci1,
-                exptime=1.0,
-                pixmap=pixmap,
-                weight_map=in_wht1,
-                data2=[in_sci1_sq],
-            )
-        with pytest.warns(Warning, match=f"Kernel '{kernel}' is not a flux-conserving kernel"):
-            driz.add_image(
-                data=in_sci2,
-                exptime=1.0,
-                pixmap=pixmap,
-                weight_map=in_wht2,
-                data2=[in_sci2_sq],
-            )
+        driz.add_image(
+            data=in_sci1,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=in_wht1,
+            data2=[in_sci1_sq],
+        )
+        driz.add_image(
+            data=in_sci2,
+            exptime=1.0,
+            pixmap=pixmap,
+            weight_map=in_wht2,
+            data2=[in_sci2_sq],
+        )
 
     assert np.allclose(np.max(driz.out_img2), 0.495050013, rtol=1.0e-6, atol=0.0)
 
@@ -1564,14 +1510,13 @@ def test_drizzle_weights_squared(kernel, fc):
     assert abs(float(driz.fillval2) + 99.0) < 1e-7
 
 
-@pytest.mark.filterwarnings("ignore:Kernel '")
 @pytest.mark.parametrize(
     "kernel,fc",
     [
         ("square", True),
         ("turbo", True),
         ("point", True),
-        ("gaussian", False),
+        pytest.param("gaussian", False, marks=ignore_not_flux_conserving),
         # lanczos kernels do not support pscale != 1 or pixfrac != 1
         # ('lanczos2', False),
         # ('lanczos3', False),
@@ -1864,19 +1809,19 @@ def test_drizzle_weights_squared_array_shape_mismatch():
 
 
 @pytest.mark.parametrize(
-    "kernel,fc",
+    "kernel",
     [
-        ("square", True),
-        ("point", True),
-        ("turbo", True),
-        ("lanczos2", False),
-        ("lanczos3", False),
-        ("gaussian", False),
+        "square",
+        "point",
+        "turbo",
+        pytest.param("lanczos2", marks=ignore_not_flux_conserving),
+        pytest.param("lanczos3", marks=ignore_not_flux_conserving),
+        pytest.param("gaussian", marks=ignore_not_flux_conserving),
     ],
 )
 @pytest.mark.parametrize("pscale_ratio", [0.9, 1.0, 1.2])
 @pytest.mark.parametrize("kscale_none", [False, True])
-def test_drizzle_var_identical_to_nonvar(kernel, fc, pscale_ratio, kscale_none):
+def test_drizzle_var_identical_to_nonvar(kernel, pscale_ratio, kscale_none):
     """Resampling a variance image (``data2``) alongside the science image does
     not change the resampled science, weight or context images."""
     if kscale_none:
@@ -1915,61 +1860,31 @@ def test_drizzle_var_identical_to_nonvar(kernel, fc, pscale_ratio, kscale_none):
         disable_ctx=False,
     )
 
-    if fc:
-        driz1.add_image(
-            insci,
-            exptime=13.0,
-            pixmap=pixmap,
-            weight_map=inwht,
-            iscale=pscale_ratio**2,
-            pixel_scale_ratio=kscale,
-            xmin=10,
-            ymin=10,
-            xmax=output_wcs.array_shape[0] - 10,
-            ymax=output_wcs.array_shape[1] - 10,
-        )
-        driz2.add_image(
-            insci,
-            data2=insci,
-            exptime=13.0,
-            pixmap=pixmap,
-            weight_map=inwht,
-            iscale=pscale_ratio**2,
-            pixel_scale_ratio=kscale,
-            xmin=10,
-            ymin=10,
-            xmax=output_wcs.array_shape[0] - 10,
-            ymax=output_wcs.array_shape[1] - 10,
-        )
-    else:
-        with pytest.warns(Warning, match=f"Kernel '{kernel}' is not a flux-conserving kernel"):
-            driz1.add_image(
-                insci,
-                exptime=13.0,
-                pixmap=pixmap,
-                weight_map=inwht,
-                iscale=pscale_ratio**2,
-                pixel_scale_ratio=kscale,
-                xmin=10,
-                ymin=10,
-                xmax=output_wcs.array_shape[0] - 10,
-                ymax=output_wcs.array_shape[1] - 10,
-            )
-
-        with pytest.warns(Warning, match=f"Kernel '{kernel}' is not a flux-conserving kernel"):
-            driz2.add_image(
-                insci,
-                data2=insci,
-                exptime=13.0,
-                pixmap=pixmap,
-                weight_map=inwht,
-                iscale=pscale_ratio**2,
-                pixel_scale_ratio=kscale,
-                xmin=10,
-                ymin=10,
-                xmax=output_wcs.array_shape[0] - 10,
-                ymax=output_wcs.array_shape[1] - 10,
-            )
+    driz1.add_image(
+        insci,
+        exptime=13.0,
+        pixmap=pixmap,
+        weight_map=inwht,
+        iscale=pscale_ratio**2,
+        pixel_scale_ratio=kscale,
+        xmin=10,
+        ymin=10,
+        xmax=output_wcs.array_shape[0] - 10,
+        ymax=output_wcs.array_shape[1] - 10,
+    )
+    driz2.add_image(
+        insci,
+        data2=insci,
+        exptime=13.0,
+        pixmap=pixmap,
+        weight_map=inwht,
+        iscale=pscale_ratio**2,
+        pixel_scale_ratio=kscale,
+        xmin=10,
+        ymin=10,
+        xmax=output_wcs.array_shape[0] - 10,
+        ymax=output_wcs.array_shape[1] - 10,
+    )
 
     assert np.allclose(
         driz1.out_img,
@@ -2193,15 +2108,14 @@ def test_drizzle_dq_propagation_wrong_type():
         "square",
         "point",
         "turbo",
-        "lanczos2",
-        "lanczos3",
-        "gaussian",
+        pytest.param("lanczos2", marks=ignore_not_flux_conserving),
+        pytest.param("lanczos3", marks=ignore_not_flux_conserving),
+        pytest.param("gaussian", marks=ignore_not_flux_conserving),
     ],
 )
 @pytest.mark.parametrize("pscale_ratio", [0.9, 1.2, 0.3])
 @pytest.mark.parametrize("use_var", [True, False])
 @pytest.mark.filterwarnings(r"ignore:Argument 'scale' has been deprecated.*:DeprecationWarning")
-@pytest.mark.filterwarnings(r"ignore:Kernel '.*' is not a flux-conserving kernel:Warning")
 def test_drizzle_ipscale_same_as_scale(kernel, pscale_ratio, use_var):
     """Test that the resampled science image using new "pixel_scale_ratio" and
     "iscale" parameters is identical to the resampled science image
