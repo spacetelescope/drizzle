@@ -2216,8 +2216,10 @@ def _not_updatable_in_place(arr, how):
 
 @pytest.mark.parametrize("how", ["non_contiguous", "read_only", "byte_swapped"])
 def test_drizzle_output_arrays_not_updatable_in_place(how):
-    """Output arrays the C code cannot update in place are copied, and the
-    results are available from the Drizzle object.
+    """
+    Drizzle gives the same results when all of its output arrays are ones
+    the C code cannot update in place (non-contiguous, read-only, or
+    byte-swapped) as when they are ordinary arrays, because it copies them.
     """
     shape = (10, 12)
     y, x = np.indices(shape, dtype=np.float64)
@@ -2250,6 +2252,11 @@ def test_drizzle_output_arrays_not_updatable_in_place(how):
 
 @pytest.mark.parametrize("how", ["non_contiguous", "read_only", "byte_swapped"])
 def test_blot_output_array_not_updatable_in_place(how):
+    """
+    blot_image gives the same result when 'out_img' is an array the C code
+    cannot update in place (non-contiguous, read-only, or byte-swapped) as
+    when it is an ordinary array, because it copies it.
+    """
     shape = (10, 12)
     y, x = np.indices(shape, dtype=np.float64)
     data = (x + 10.0 * y).astype(np.float32)

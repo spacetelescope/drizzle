@@ -12,7 +12,6 @@ Release Notes
 
 
 3.0.1 (unreleased)
-
 ==================
 
 - Fixed ``blot_image`` "poly3" and "poly5" interpolation near the upper edge
