@@ -89,16 +89,30 @@ def _float64(arr):
 
 
 @pytest.mark.parametrize("modify", [_non_contiguous, _read_only, _byte_swapped, _float64])
-@pytest.mark.parametrize("name", ["output", "counts", "context", "output2", "outdq"])
-def test_tdriz_rejects_outputs_not_updatable_in_place(name, modify):
+def test_tdriz_rejects_output_not_updatable_in_place(modify):
     """Results written to a copy of an output array would be lost."""
     outputs = _output_arrays(SHAPE)
-    if name == "output2":
-        outputs[name] = [modify(outputs[name][0])]
-    else:
-        outputs[name] = modify(outputs[name])
+    outputs["output"] = modify(outputs["output"])
+
+    with pytest.raises(ValueError, match="'output' must be a 2D"):
+        _tdriz(_input_arrays(SHAPE), outputs)
+
+
+@pytest.mark.parametrize("name", ["counts", "context", "outdq"])
+def test_tdriz_checks_all_output_arrays(name):
+    """Every output array is checked, not only 'output'."""
+    outputs = _output_arrays(SHAPE)
+    outputs[name] = _non_contiguous(outputs[name])
 
     with pytest.raises(ValueError, match=f"'{name}' must be a 2D"):
+        _tdriz(_input_arrays(SHAPE), outputs)
+
+
+def test_tdriz_rejects_non_contiguous_output2():
+    outputs = _output_arrays(SHAPE)
+    outputs["output2"] = [_non_contiguous(outputs["output2"][0])]
+
+    with pytest.raises(ValueError, match="'output2' must be a 2D"):
         _tdriz(_input_arrays(SHAPE), outputs)
 
 
@@ -169,21 +183,30 @@ def _pixmap():
     return _input_arrays(SHAPE)["pixmap"]
 
 
-@pytest.mark.parametrize(
-    "call,message",
-    [
-        (lambda: cdrizzle.invert_pixmap("not an array", np.zeros(2), None), "Invalid pixmap"),
-        (lambda: cdrizzle.invert_pixmap(_pixmap(), "not an array", None), "Invalid xyout"),
-        (
-            lambda: cdrizzle.invert_pixmap(_pixmap(), np.zeros(2), "not an array"),
-            "Invalid input bounding box",
-        ),
-        (lambda: cdrizzle.clip_polygon("not an array", _SQUARE), "Invalid P"),
-        (lambda: cdrizzle.clip_polygon(_SQUARE, "not an array"), "Invalid Q"),
-    ],
-    ids=["invert_pixmap-pixmap", "invert_pixmap-xyout", "invert_pixmap-bbox", "clip-p", "clip-q"],
-)
-def test_invalid_arguments_raise_value_error(call, message):
-    """Invalid arguments used to crash the interpreter instead of raising."""
-    with pytest.raises(ValueError, match=message):
-        call()
+# Invalid arguments to invert_pixmap and clip_polygon used to crash the
+# interpreter instead of raising an exception.
+
+
+def test_invert_pixmap_invalid_pixmap():
+    with pytest.raises(ValueError, match="Invalid pixmap"):
+        cdrizzle.invert_pixmap("not an array", np.zeros(2), None)
+
+
+def test_invert_pixmap_invalid_xyout():
+    with pytest.raises(ValueError, match="Invalid xyout"):
+        cdrizzle.invert_pixmap(_pixmap(), "not an array", None)
+
+
+def test_invert_pixmap_invalid_bounding_box():
+    with pytest.raises(ValueError, match="Invalid input bounding box"):
+        cdrizzle.invert_pixmap(_pixmap(), np.zeros(2), "not an array")
+
+
+def test_clip_polygon_invalid_first_polygon():
+    with pytest.raises(ValueError, match="Invalid P"):
+        cdrizzle.clip_polygon("not an array", _SQUARE)
+
+
+def test_clip_polygon_invalid_second_polygon():
+    with pytest.raises(ValueError, match="Invalid Q"):
+        cdrizzle.clip_polygon(_SQUARE, "not an array")
