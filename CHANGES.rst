@@ -4,7 +4,15 @@
 Release Notes
 =============
 
+3.1.0 (unreleased)
+==================
+
+- ``blot_image`` now fills output pixels whose ``pixmap`` entry contains NaN
+  with ``fillval`` instead of raising an error. [#224]
+
+
 3.0.1 (unreleased)
+
 ==================
 
 - Fixed ``blot_image`` "poly3" and "poly5" interpolation near the upper edge
@@ -13,9 +21,6 @@ Release Notes
   wrong before this fix for those top rows.  "nearest" interpolation read one
   pixel past the end of the input image for points in the outer half of its
   last row or column. [#238]
-
-- ``blot_image`` now fills output pixels whose ``pixmap`` entry contains NaN
-  with ``fillval`` instead of raising an error. [#224]
 
 
 3.0.0 (2026-09-23)
