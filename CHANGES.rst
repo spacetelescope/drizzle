@@ -4,7 +4,15 @@
 Release Notes
 =============
 
+3.1.0 (unreleased)
+==================
+
+- ``blot_image`` now fills output pixels whose ``pixmap`` entry contains NaN
+  with ``fillval`` instead of raising an error. [#224]
+
+
 3.0.1 (unreleased)
+
 ==================
 
 - Fixed ``blot_image`` "poly3" and "poly5" interpolation near the upper edge
