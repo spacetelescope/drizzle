@@ -12,7 +12,6 @@ Release Notes
 
 
 3.0.1 (unreleased)
-
 ==================
 
 - Fixed ``blot_image`` "poly3" and "poly5" interpolation near the upper edge
@@ -21,6 +20,23 @@ Release Notes
   wrong before this fix for those top rows.  "nearest" interpolation read one
   pixel past the end of the input image for points in the outer half of its
   last row or column. [#238]
+
+- ``cdrizzle.tdriz`` and ``cdrizzle.tblot`` now raise an error for output
+  arrays they cannot update in place (not C-contiguous, read-only, non-native
+  byte order, or the wrong type). Previously, results for non-contiguous
+  arrays were written to a temporary copy and lost, and read-only arrays were
+  written to. ``Drizzle`` and ``blot_image`` copy such arrays when needed.
+  [#243]
+
+- ``cdrizzle.tdriz`` and ``cdrizzle.tblot`` now read input arrays in
+  non-native byte order correctly instead of misinterpreting their values.
+  [#243]
+
+- Fixed a crash in ``cdrizzle.tdriz`` when ``output2`` is a single array
+  instead of a list of arrays, or a list that contains ``None``. [#243]
+
+- ``cdrizzle.invert_pixmap`` and ``cdrizzle.clip_polygon`` now raise
+  ``ValueError`` for invalid arguments instead of crashing. [#243]
 
 
 3.0.0 (2026-09-23)
