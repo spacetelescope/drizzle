@@ -7,6 +7,24 @@ __all__ = ["calc_pixmap", "decode_context", "estimate_pixel_scale_ratio"]
 _DEG2RAD = math.pi / 180.0
 
 
+def _get_bbox_intervals(wcs):
+    """Return the bounding box of ``wcs`` as a tuple of (min, max) intervals
+    in pixel-axis (Fortran) order, or None if there is no bounding box."""
+    if (bbox := getattr(wcs, "bounding_box", None)) is None:
+        return None
+
+    # to avoid dependency on astropy just to check whether the bounding box
+    # is an instance of modeling.bounding_box.ModelBoundingBox, we try to
+    # directly use bounding_box(order='F') and if it fails, fall back to
+    # converting the bounding box to a tuple (of intervals):
+    try:
+        bbox = bbox.bounding_box(order="F")
+    except AttributeError:
+        bbox = tuple(bbox)
+
+    return bbox
+
+
 def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to"):
     """
     Calculate a discretized on a grid mapping between the pixels of two images
@@ -65,55 +83,38 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to"):
     If ``bounding_box`` is not available, a `ValueError` will be raised.
 
     """
-    if (bbox_from := getattr(wcs_from, "bounding_box", None)) is not None:
-        try:
-            # to avoid dependency on astropy just to check whether
-            # the bounding box is an instance of
-            # modeling.bounding_box.ModelBoundingBox, we try to
-            # directly use and bounding_box(order='F') and if it fails,
-            # fall back to converting the bounding box to a tuple
-            # (of intervals):
-            bbox_from = bbox_from.bounding_box(order="F")
-        except AttributeError:
-            bbox_from = tuple(bbox_from)
-
-    if (bbox_to := getattr(wcs_to, "bounding_box", None)) is not None:
-        try:
-            # to avoid dependency on astropy just to check whether
-            # the bounding box is an instance of
-            # modeling.bounding_box.ModelBoundingBox, we try to
-            # directly use and bounding_box(order='F') and if it fails,
-            # fall back to converting the bounding box to a tuple
-            # (of intervals):
-            bbox_to = bbox_to.bounding_box(order="F")
-        except AttributeError:
-            bbox_to = tuple(bbox_to)
+    orig_bbox_from = getattr(wcs_from, "bounding_box", None)
+    orig_bbox_to = getattr(wcs_to, "bounding_box", None)
+    bbox_from = _get_bbox_intervals(wcs_from)
 
     if shape is None:
         shape = wcs_from.array_shape
-        if shape is None and bbox_from is not None:
-            if (ndim := np.ndim(bbox_from)) == 1:
-                bbox_from = (bbox_from,)
-            if ndim > 1:
-                shape = tuple(math.ceil(lim[1] + 0.5) for lim in bbox_from[::-1])
+        if shape is None and bbox_from is not None and np.ndim(bbox_from) > 1:
+            shape = tuple(math.ceil(lim[1] + 0.5) for lim in bbox_from[::-1])
 
     if shape is None:
-        raise ValueError('The "from" WCS must have pixel_shape property set.')
-
+        raise ValueError(
+            "Cannot determine pixel map shape: pass 'shape' or use a 'from' "
+            "WCS with 'array_shape' or 'bounding_box' set."
+        )
     y, x = np.indices(shape, dtype=np.float64)
 
-    # temporarily disable the bounding box for the "from" WCS:
-    if disable_bbox in ["from", "both"] and bbox_from is not None:
+    # temporarily disable bounding boxes as requested:
+    disable_from = disable_bbox in ("from", "both") and orig_bbox_from is not None
+    disable_to = disable_bbox in ("to", "both") and orig_bbox_to is not None
+    if disable_from:
         wcs_from.bounding_box = None
-    if disable_bbox in ["to", "both"] and bbox_to is not None:
+    if disable_to:
         wcs_to.bounding_box = None
+
     try:
         x, y = wcs_to.world_to_pixel_values(*wcs_from.pixel_to_world_values(x, y))
     finally:
-        if bbox_from is not None:
-            wcs_from.bounding_box = bbox_from
-        if bbox_to is not None:
-            wcs_to.bounding_box = bbox_to
+        # restore original bounding boxes if they were temporarily disabled
+        if disable_from:
+            wcs_from.bounding_box = orig_bbox_from
+        if disable_to:
+            wcs_to.bounding_box = orig_bbox_to
 
     pixmap = np.dstack([x, y])
     return pixmap
@@ -123,37 +124,36 @@ def estimate_pixel_scale_ratio(wcs_from, wcs_to, refpix_from=None, refpix_to=Non
     """
     Compute the ratio of the pixel scale of the "to" WCS at the ``refpix_to``
     position to the pixel scale of the "from" WCS at the ``refpix_from``
-    position. Pixel scale ratio,
-    when requested, is computed near the centers of the bounding box
-    (a property of the WCS object) or near ``refpix_*`` coordinates
-    if supplied.
+    position. The pixel scale ratio is computed near the centers of the
+    bounding box (a property of the WCS object) or near ``refpix_*``
+    coordinates if supplied.
 
-    Pixel scale is estimated as the square root of pixel's area, i.e.,
-    pixels are assumed to have a square shape at the reference
-    pixel position. If input reference pixel position for a WCS is `None`,
-    it will be taken as the center of the bounding box
-    if ``wcs_*`` has a bounding box defined, or as the center of the box
-    defined by the ``pixel_shape`` attribute of the input WCS if
-    ``pixel_shape`` is defined (not `None`), or at pixel coordinates
-    ``(0, 0)``.
+    Pixel scale is estimated as the square root of the pixel's area on the
+    sky, i.e., pixels are assumed to have a square shape at the reference
+    pixel position. If the reference pixel position for a WCS is `None`,
+    it will be taken as the center of the bounding box if ``wcs_*`` has a
+    bounding box defined, or as the center of the box defined by the
+    ``pixel_shape`` attribute of the input WCS if ``pixel_shape`` is defined
+    (not `None`), or at pixel coordinates ``(0, 0)``.
 
     Parameters
     ----------
     wcs_from : wcs
         A WCS object representing the coordinate system you are
-        converting from. This object *must* have ``pixel_shape`` property
-        defined.
+        converting from. Must be a 2D celestial WCS whose
+        ``pixel_to_world_values`` returns ``(longitude, latitude)`` in
+        **degrees** (see Notes).
 
     wcs_to : wcs
         A WCS object representing the coordinate system you are
-        converting to.
+        converting to. Same requirements as ``wcs_from``.
 
-    refpix_from : numpy.ndarray, tuple, list
+    refpix_from : numpy.ndarray, tuple, list, None, optional
         Image coordinates of the reference pixel near which pixel scale should
         be computed in the "from" image. In FITS WCS this could be, for example,
         the value of CRPIX of the ``wcs_from`` WCS.
 
-    refpix_to : numpy.ndarray, tuple, list
+    refpix_to : numpy.ndarray, tuple, list, None, optional
         Image coordinates of the reference pixel near which pixel scale should
         be computed in the "to" image. In FITS WCS this could be, for example,
         the value of CRPIX of the ``wcs_to`` WCS.
@@ -161,8 +161,28 @@ def estimate_pixel_scale_ratio(wcs_from, wcs_to, refpix_from=None, refpix_to=Non
     Returns
     -------
     pixel_scale_ratio : float
-        Estimate the ratio of "to" to "from" WCS pixel scales. This value is
-        returned only when ``estimate_pixel_scale_ratio`` is `True`.
+        Estimate of the ratio of "to" to "from" WCS pixel scales.
+
+    Raises
+    ------
+    ValueError
+        If either WCS is not two-dimensional, or if it reports world axis
+        units other than degrees.
+
+    Notes
+    -----
+    This function assumes that both WCS objects describe celestial
+    coordinates and that ``pixel_to_world_values`` returns longitude and
+    latitude **in degrees**. This is always the case for
+    `astropy.wcs.WCS` celestial axes and for `gwcs.WCS` objects whose output
+    frame is a `~gwcs.coordinate_frames.CelestialFrame` with default units
+    (as produced, for example, by the JWST and Roman pipelines). If a WCS
+    object exposes the ``world_axis_units`` attribute (APE 14) and reports
+    units other than degrees, a `ValueError` is raised.
+
+    For WCS objects that do not meet these requirements, compute the pixel
+    scale ratio by other means and pass it directly to
+    `drizzle.resample.Drizzle.add_image` via its ``scale`` argument.
 
     """
     pscale_ratio = _estimate_pixel_scale(wcs_to, refpix_to) / _estimate_pixel_scale(
@@ -172,31 +192,57 @@ def estimate_pixel_scale_ratio(wcs_from, wcs_to, refpix_from=None, refpix_to=Non
 
 
 def _estimate_pixel_scale(wcs, refpix):
-    # estimate pixel scale (in rad) using approximate algorithm
-    # from https://trs.jpl.nasa.gov/handle/2014/40409
+    # estimate pixel scale (in rad) using planar projection
     if refpix is None:
-        if hasattr(wcs, "bounding_box") and wcs.bounding_box is not None:
-            refpix = np.mean(wcs.bounding_box, axis=-1)
+        if (bbox := _get_bbox_intervals(wcs)) is not None:
+            refpix = np.mean(bbox, axis=-1, dtype=float)
+        elif getattr(wcs, "pixel_shape", None):
+            refpix = np.array([0.5 * (i - 1) for i in wcs.pixel_shape], dtype=float)
         else:
-            if wcs.pixel_shape:
-                refpix = np.array([(i - 1) // 2 for i in wcs.pixel_shape])
-            else:
-                refpix = np.zeros(wcs.pixel_n_dim)
+            refpix = np.zeros(wcs.pixel_n_dim, dtype=float)
+
+        if refpix.shape != (2,):
+            raise ValueError("Input WCS must be a 2D WCS")
 
     else:
-        refpix = np.asarray(refpix)
+        refpix = np.asarray(refpix, dtype=float)
+        if refpix.shape != (2,):
+            raise ValueError("'refpix' must be of length 2 for 2D WCS")
 
-    l1, phi1 = wcs.pixel_to_world_values(*(refpix - 0.5))
-    l2, phi2 = wcs.pixel_to_world_values(*(refpix + [-0.5, 0.5]))
-    l3, phi3 = wcs.pixel_to_world_values(*(refpix + 0.5))
-    l4, phi4 = wcs.pixel_to_world_values(*(refpix + [0.5, -0.5]))
-    area = _DEG2RAD * abs(
-        0.5
-        * (
-            (l4 - l2) * (math.sin(_DEG2RAD * phi1) - math.sin(_DEG2RAD * phi3))
-            + (l1 - l3) * (math.sin(_DEG2RAD * phi2) - math.sin(_DEG2RAD * phi4))
+    units = getattr(wcs, "world_axis_units", None)
+    if (units is not None and
+            any(str(unit).strip().lower() not in ("deg", "degree") for unit in units)):
+        raise ValueError(
+            f"World axis units {tuple(units)} are not supported; pixel scale "
+            "estimation assumes celestial coordinates in degrees."
         )
+    # else if units is None - assume they are in degrees
+
+    # project to a tangent plane near the pixel and compute planar area:
+    refx1 = refpix[0] - 0.5
+    refx2 = refpix[0] + 0.5
+    refy1 = refpix[1] - 0.5
+    refy2 = refpix[1] + 0.5
+
+    lon, lat = wcs.pixel_to_world_values(
+        [refx1, refx1, refx2, refx2],
+        [refy1, refy2, refy2, refy1],
     )
+    lon = _DEG2RAD * np.asarray(lon, dtype=float)
+    lat = _DEG2RAD * np.asarray(lat, dtype=float)
+
+    # unit vectors of the four pixel corners on the celestial sphere.
+    cs = np.cos(lat)
+    x = cs * np.cos(lon)
+    y = cs * np.sin(lon)
+    z = np.sin(lat)
+    v = np.stack([x, y, z], axis=1)
+
+    # area of the (tiny) spherical quadrilateral ~ area of the planar
+    # quadrilateral through its corners, from the cross product of its
+    # diagonals: A = |d1 x d2| / 2. The plane is defined by the two
+    # diagonals.
+    area = 0.5 * np.linalg.norm(np.cross(v[2] - v[0], v[3] - v[1]))
     return math.sqrt(area)
 
 
