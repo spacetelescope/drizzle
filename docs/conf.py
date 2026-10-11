@@ -76,6 +76,14 @@ extensions = [
     'sphinx_automodapi.smart_resolver',
 ]
 
+# Configuration for intersphinx: refer to the Python standard library.
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3/", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "astropy": ("https://docs.astropy.org/en/stable/", None),
+    "gwcs": ("https://gwcs.readthedocs.io/en/stable/", None),
+}
+
 # -- General configuration ----------------------------------------------------
 
 master_doc = 'index'

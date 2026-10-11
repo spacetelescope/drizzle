@@ -10,9 +10,27 @@ Release Notes
 - ``blot_image`` now fills output pixels whose ``pixmap`` entry contains NaN
   with ``fillval`` instead of raising an error. [#224]
 
+- Fixed a bug in ``utils.estimate_pixel_scale_ratio`` (and the internal
+  ``_estimate_pixel_scale``) due to which the pixel scale was grossly
+  overestimated when the reference pixel straddles the 0/360 degree
+  longitude discontinuity, because longitudes of the pixel corners were
+  differenced without unwrapping. We now compute the area on the celestial
+  sphere using a Cartesian unit-vector approximation for spherical-pixel
+  area. This method is free of the 0/360 degree discontinuity problem. [#246]
+
+- ``utils.estimate_pixel_scale_ratio`` now validates its inputs: both WCS
+  must be two-dimensional, and a ``ValueError`` is raised if a WCS reports
+  ``world_axis_units`` other than degrees. The default reference pixel
+  derived from ``pixel_shape`` is now the exact image centre
+  (``(n - 1) / 2``) rather than the floor-divided value. [#246]
+
+- ``utils.calc_pixmap`` no longer re-assigns the ``bounding_box`` attribute of
+  the input WCS objects unless it was temporarily disabled. The error
+  message when the pixel map shape cannot be determined now mentions all
+  ways of providing it. [#246]
+
 
 3.0.1 (unreleased)
-
 ==================
 
 - Fixed ``blot_image`` "poly3" and "poly5" interpolation near the upper edge
