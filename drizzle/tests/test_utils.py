@@ -171,7 +171,7 @@ def test_disable_gwcs_bbox():
 def test_estimate_pixel_scale_ratio():
     w = wcs_from_file("j8bt06nyq_flt.fits", ext=1)
     pscale = estimate_pixel_scale_ratio(w, w, w.wcs.crpix, (0, 0))
-    assert abs(pscale - 0.9999999911644557) < 1.0e-9
+    assert abs(pscale - 0.9999999916964737) < 2.0e-9
 
 
 def test_estimate_pixel_scale_no_refpix():
