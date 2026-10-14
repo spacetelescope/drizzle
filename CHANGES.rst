@@ -10,6 +10,12 @@ Release Notes
 - ``blot_image`` now fills output pixels whose ``pixmap`` entry contains NaN
   with ``fillval`` instead of raising an error. [#224]
 
+- ``drizzle.utils.calc_pixmap`` now accepts a ``frame_check`` option for
+  handling celestial frame compatibility between WCS objects. Depending on
+  the selected mode, mismatched or unverifiable frames can raise
+  ``FrameMismatchError``, emit ``FrameMismatchWarning``, or fall back to the
+  legacy unchecked behavior. [#249]
+
 
 3.0.1 (unreleased)
 
