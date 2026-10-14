@@ -4,7 +4,7 @@ import gwcs
 import numpy as np
 from gwcs.coordinate_frames import CelestialFrame, Frame2D
 
-from astropy import coordinates as coord
+from astropy.wcs.utils import wcs_to_celestial_frame
 from astropy import units
 from astropy import wcs as fits_wcs
 from astropy.io import fits
@@ -166,10 +166,11 @@ def _gwcs_from_hst_fits_wcs(w):
 
     detector_frame = Frame2D(name="detector", axes_names=("x", "y"), unit=(units.pix, units.pix))
     sky_frame = CelestialFrame(
-        reference_frame=getattr(coord, w.wcs.radesys).__call__(),
+        reference_frame=wcs_to_celestial_frame(w),
         name=w.wcs.radesys,
         unit=(units.deg, units.deg),
     )
+
     pipeline = [(detector_frame, det2sky), (sky_frame, None)]
     gw = gwcs.wcs.WCS(pipeline)
     gw.array_shape = w.array_shape

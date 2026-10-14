@@ -1,21 +1,205 @@
+"""
+Utility functions for computing inputs to the drizzle algorithm.
+
+The functions in this module, such as `calc_pixmap` and
+`estimate_pixel_scale_ratio`, are convenience helpers. They cover common
+cases, primarily 2D celestial images described by `astropy.wcs.WCS` or
+`gwcs.WCS` objects that follow the APE 14 shared WCS interface, and they
+also illustrate how drizzle's inputs can be derived from WCS information.
+
+They are not intended to handle every possible WCS. Coordinate systems,
+distortion models, projections, bounding-box conventions and frame
+definitions vary widely, and a general-purpose solution for all of them
+is outside the scope of this package. If these helpers do not support
+your WCS objects, or produce results that are inaccurate for your data,
+compute the required quantities yourself:
+
+- a pixel map can be computed by any means and passed directly to
+  `drizzle.resample.Drizzle.add_image`;
+- a pixel scale ratio can likewise be computed independently and passed
+  via the ``scale`` argument of `drizzle.resample.Drizzle.add_image`.
+
+The core resampling code does not depend on this module.
+
+"""
 import math
+import warnings
 
 import numpy as np
 
-__all__ = ["calc_pixmap", "decode_context", "estimate_pixel_scale_ratio"]
+__all__ = [
+    "FrameMismatchError",
+    "FrameMismatchWarning",
+    "calc_pixmap",
+    "decode_context",
+    "estimate_pixel_scale_ratio"
+]
 
 _DEG2RAD = math.pi / 180.0
+_FRAME_CHECK_MODES = ("strict", "warn", "ignore")
 
 
-def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to"):
+class FrameMismatchError(ValueError):
+    """
+    Raised by `calc_pixmap` when ``frame_check="strict"`` and frame
+    compatibility cannot be established, or frames differ and
+    cannot be converted.
+    """
+
+
+class FrameMismatchWarning(UserWarning):
+    """
+    Issued by `calc_pixmap` when ``frame_check="warn"`` under the same
+    conditions in which `FrameMismatchError` would be raised with
+    ``frame_check="strict"``, except when neither WCS provides frame
+    information. In that case the WCS objects are assumed to use the
+    same frame and no warning is issued.
+    """
+
+
+def _axes_compatible(wcs_from, wcs_to):
+    """
+    Check that `wcs_from` and `wcs_to` have the same world axis order
+    (physical types) and units for the fast path.
+
+    """
+    try:
+        return (
+            tuple(wcs_from.world_axis_physical_types)
+            == tuple(wcs_to.world_axis_physical_types)
+            and tuple(map(str, wcs_from.world_axis_units))
+            == tuple(map(str, wcs_to.world_axis_units))
+        )
+    except AttributeError:
+        # If either WCS object does not have the required attributes,
+        # assume they are compatible for the fast path.
+        return True
+
+
+def _process_frame_mismatch(msg, frame_check):
+    if frame_check == "strict":
+        raise FrameMismatchError(msg)
+    elif frame_check == "warn":
+        warnings.warn(
+            f"{msg}. World coordinate values are passed without frame "
+            "conversion; the pixel map may be inaccurate.",
+            FrameMismatchWarning,
+            stacklevel=3,
+        )
+
+
+def _get_celestial_frames(wcs):
+    """
+    Return a list of celestial frames declared via APE 14
+    ``world_axis_object_classes`` (one per ``SkyCoord`` world object;
+    `None` entries for celestial objects without a declared frame),
+    or `None` if the WCS does not provide ``world_axis_object_classes``.
+    """
+    classes = getattr(wcs, "world_axis_object_classes", None)
+    if classes is None:
+        return None
+
+    frames = []
+    for entry in classes.values():
+        cls = entry[0]
+        kwargs = entry[2] if len(entry) > 2 else None
+        name = cls if isinstance(cls, str) else getattr(cls, "__name__", "")
+        if name.rsplit(".", 1)[-1] != "SkyCoord":
+            continue  # non-celestial axes have no frame
+        frames.append(kwargs.get("frame") if isinstance(kwargs, dict) else None)
+    return frames
+
+
+def _compare_frames(wcs_from, wcs_to, strict=False):
+    """
+    Determine whether a frame conversion is needed.
+
+    Parameters
+    ----------
+    strict : bool, optional
+        If `True`, the case when neither WCS provides frame information is
+        reported as "cannot be determined" instead of being assumed
+        compatible (legacy behavior).
+
+    Returns
+    -------
+    convert : bool or None
+        `False` - frames are known to be equivalent (or, when ``strict`` is
+        `False`, neither WCS provides frame information), use the fast
+        numeric path;
+        `True` - frames (or world axis order/units) are known to differ,
+        conversion required;
+        `None` - compatibility cannot be determined.
+    reason : str or None
+        Explanation when ``convert`` is `None`.
+    """
+    f_from = _get_celestial_frames(wcs_from)
+    f_to = _get_celestial_frames(wcs_to)
+
+    if f_from is None and f_to is None:
+        if strict:
+            return None, (
+                "neither 'wcs_from' nor 'wcs_to' provides "
+                "'world_axis_object_classes', so their celestial frames "
+                "cannot be verified to be equivalent"
+            )
+        # legacy: assume same frame
+        return False, None
+
+    if f_from is None or f_to is None:
+        which = "wcs_from" if f_from is None else "wcs_to"
+        return None, (
+            f"'{which}' does not provide 'world_axis_object_classes', so its "
+            "celestial frame cannot be compared with that of the other WCS"
+        )
+
+    if len(f_from) != len(f_to):
+        return None, (
+            "'wcs_from' and 'wcs_to' have different numbers of celestial "
+            f"world axis objects ({len(f_from)} vs {len(f_to)})"
+        )
+
+    convert = False
+    for a, b in zip(f_from, f_to):
+        if a is None or b is None:
+            return None, "celestial frame is not defined for 'wcs_from' and/or 'wcs_to'"
+        if isinstance(a, str) and isinstance(b, str):
+            equivalent = a.lower() == b.lower()
+        else:
+            try:
+                equivalent = a.is_equivalent_frame(b)
+            except (AttributeError, TypeError):
+                return None, f"unable to compare celestial frames {a!r} and {b!r}"
+        if not equivalent:
+            convert = True
+
+    if not convert and not _axes_compatible(wcs_from, wcs_to):
+        # same frame, but axis order or units differ
+        convert = True
+
+    return convert, None
+
+
+def _get_bbox(wcs):
+    if (bbox := getattr(wcs, "bounding_box", None)) is not None:
+        try:
+            # to avoid dependency on astropy just to check whether
+            # the bounding box is an instance of
+            # modeling.bounding_box.ModelBoundingBox, we try to
+            # directly use and bounding_box(order='F') and if it fails,
+            # fall back to converting the bounding box to a tuple
+            # (of intervals):
+            bbox = bbox.bounding_box(order="F")
+        except AttributeError:
+            bbox = tuple(bbox)
+    return bbox
+
+
+def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to", frame_check="warn"):
     """
     Calculate a discretized on a grid mapping between the pixels of two images
     using provided WCS of the original ("from") image and the destination ("to")
     image.
-
-    .. note::
-       This function assumes that output frames of ``wcs_from`` and ``wcs_to``
-       WCS have the same units.
 
     Parameters
     ----------
@@ -43,19 +227,35 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to"):
         world coordinates to NaN when input pixel coordinates are outside of
         the bounding box.
 
+    frame_check : {"strict", "warn", "ignore"}, optional
+        Controls how celestial frame compatibility of ``wcs_from`` and
+        ``wcs_to`` is handled:
+
+        - ``"strict"``: frames must be verified equivalent or converted;
+          otherwise raise `FrameMismatchError`.
+        - ``"warn"``: convert when frames are known to differ; otherwise
+          issue a `FrameMismatchWarning` when compatibility cannot be verified.
+        - ``"ignore"``: no frame checks (legacy behavior).
+
+        See Notes for the full behavior table.
+
     Returns
     -------
     pixmap : numpy.ndarray
         A three dimensional array representing the transformation between
         the two. The last dimension is of length two and contains the x and
-        y coordinates of a pixel center, respectively. The other two coordinates
-        correspond to the two coordinates of the image the first WCS is from.
+        y coordinates of a pixel center, respectively. The other two
+        coordinates correspond to the two coordinates of the image the
+        first WCS is from.
 
     Raises
     ------
     ValueError
-        A `ValueError` is raised when output pixel map shape cannot be
-        determined from provided inputs.
+        If the pixel map shape cannot be determined, or if ``frame_check`` has
+        an invalid value.
+
+    FrameMismatchError
+        If ``frame_check="strict"`` and frame compatibility cannot be established.
 
     Notes
     -----
@@ -64,30 +264,87 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to"):
     shape from the ``bounding_box`` property of the input ``wcs_from`` object.
     If ``bounding_box`` is not available, a `ValueError` will be raised.
 
-    """
-    if (bbox_from := getattr(wcs_from, "bounding_box", None)) is not None:
-        try:
-            # to avoid dependency on astropy just to check whether
-            # the bounding box is an instance of
-            # modeling.bounding_box.ModelBoundingBox, we try to
-            # directly use and bounding_box(order='F') and if it fails,
-            # fall back to converting the bounding box to a tuple
-            # (of intervals):
-            bbox_from = bbox_from.bounding_box(order="F")
-        except AttributeError:
-            bbox_from = tuple(bbox_from)
+    **Frame handling.** Frames are determined from the APE 14
+    ``world_axis_object_classes`` property of the WCS objects. The
+    "fast path" passes world coordinate *values* computed by ``wcs_from``
+    directly to ``wcs_to`` (no frame conversion). "Convert" uses the
+    APE 14 high-level ``pixel_to_world``/``world_to_pixel`` methods, so
+    the WCS objects themselves perform the frame conversion.
 
-    if (bbox_to := getattr(wcs_to, "bounding_box", None)) is not None:
-        try:
-            # to avoid dependency on astropy just to check whether
-            # the bounding box is an instance of
-            # modeling.bounding_box.ModelBoundingBox, we try to
-            # directly use and bounding_box(order='F') and if it fails,
-            # fall back to converting the bounding box to a tuple
-            # (of intervals):
-            bbox_to = bbox_to.bounding_box(order="F")
-        except AttributeError:
-            bbox_to = tuple(bbox_to)
+    .. list-table::
+       :header-rows: 1
+       :widths: 45 20 20 15
+
+       * - Situation
+         - ``"strict"``
+         - ``"warn"``
+         - ``"ignore"``
+       * - Frames are known and equivalent (or neither WCS has
+           celestial axes), and world axis order and units match
+         - Fast path
+         - Fast path
+         - Fast path
+       * - Frames (or world axis order/units) are known to differ;
+           high-level API available
+         - Convert
+         - Convert
+         - Fast path (no conversion)
+       * - Frames differ; high-level API missing
+         - `FrameMismatchError`
+         - `FrameMismatchWarning`, then fast path
+         - Fast path
+       * - Frame compatibility cannot be determined: only one WCS
+           provides ``world_axis_object_classes``, a celestial axis
+           has no frame, frames cannot be compared, or the numbers
+           of celestial axes differ
+         - `FrameMismatchError`
+         - `FrameMismatchWarning`, then fast path
+         - Fast path
+       * - Neither WCS provides ``world_axis_object_classes``
+           (e.g., duck-typed WCS objects)
+         - `FrameMismatchError`
+         - Fast path (no warning)
+         - Fast path
+
+    Whenever the fast path is used, both WCS must use the same celestial
+    frame, world axis order, and units. A celestial world axis object
+    without a declared frame is treated as "cannot be determined"; it is
+    not assumed to be ICRS.
+
+    """
+    if frame_check not in _FRAME_CHECK_MODES:
+        raise ValueError(
+            f"'frame_check' must be one of {_FRAME_CHECK_MODES}; "
+            f"got {frame_check!r}"
+        )
+
+    # Frame check is done *before* bounding boxes are modified so that an
+    # exception cannot leave the WCS objects in an altered state.
+    convert = False
+    if frame_check != "ignore":
+        convert, reason = _compare_frames(
+            wcs_from, wcs_to, strict=(frame_check == "strict")
+        )
+
+        if convert is None:
+            # frames unknown / cannot be compared
+            _process_frame_mismatch(reason, frame_check)
+            convert = False
+
+        elif convert and not (
+            hasattr(wcs_from, "pixel_to_world") and hasattr(wcs_to, "world_to_pixel")
+        ):
+            # frames known to differ but cannot be converted
+            _process_frame_mismatch(
+                "celestial frames (or world axis order/units) of 'wcs_from' "
+                "and 'wcs_to' differ, but the WCS objects do not support the "
+                "APE 14 high-level API needed to convert between them",
+                frame_check,
+            )
+            convert = False
+
+    bbox_from = _get_bbox(wcs_from)
+    bbox_to = _get_bbox(wcs_to)
 
     if shape is None:
         shape = wcs_from.array_shape
@@ -108,7 +365,15 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to"):
     if disable_bbox in ["to", "both"] and bbox_to is not None:
         wcs_to.bounding_box = None
     try:
-        x, y = wcs_to.world_to_pixel_values(*wcs_from.pixel_to_world_values(x, y))
+        if convert:
+            # high-level APE 14 path: frame conversion is done by the
+            # WCS objects themselves (no astropy import in drizzle):
+            world = wcs_from.pixel_to_world(x, y)
+            if not isinstance(world, (list, tuple)):
+                world = (world,)
+            x, y = wcs_to.world_to_pixel(*world)
+        else:
+            x, y = wcs_to.world_to_pixel_values(*wcs_from.pixel_to_world_values(x, y))
     finally:
         if bbox_from is not None:
             wcs_from.bounding_box = bbox_from
