@@ -4,16 +4,12 @@
 Release Notes
 =============
 
+
 3.1.0 (unreleased)
 ==================
 
 - ``blot_image`` now fills output pixels whose ``pixmap`` entry contains NaN
   with ``fillval`` instead of raising an error. [#224]
-
-
-3.0.1 (unreleased)
-
-==================
 
 - Fixed ``blot_image`` "poly3" and "poly5" interpolation near the upper edge
   of the input image, where "poly3" read outside its coefficient array and
@@ -21,6 +17,16 @@ Release Notes
   wrong before this fix for those top rows.  "nearest" interpolation read one
   pixel past the end of the input image for points in the outer half of its
   last row or column. [#238]
+
+- Added a ``fillval_dq`` argument to the ``Drizzle`` initializer so that
+  output DQ (data quality) pixels corresponding to locations receiving no
+  input contribution are set to a user-specified fill value. [#250]
+
+- Fixed memory leaks in ``cdrizzleapi.c`` where allocated arrays and
+  Python object references were not released on error paths. [#250]
+
+- Fixed a bug in reporting memory allocation errors in the C-level drizzle
+  API. [#250]
 
 
 3.0.0 (2026-09-23)

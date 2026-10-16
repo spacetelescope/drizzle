@@ -3,6 +3,7 @@ The `drizzle` module defines the `Drizzle` class, for combining input
 images into a single output image using the drizzle algorithm.
 """
 
+import numbers
 import warnings
 
 import numpy as np
@@ -226,6 +227,7 @@ class Drizzle:
         kernel="square",
         fillval=None,
         fillval2=None,
+        fillval_dq=None,
         out_shape=None,
         out_img=None,
         out_wht=None,
@@ -238,7 +240,7 @@ class Drizzle:
         disable_ctx=False,
     ):
         """
-        kernel: str, optional
+        kernel : str, optional
             The name of the kernel used to combine the input. The choice of
             kernel controls the distribution of flux over the kernel. The kernel
             names are: "square", "gaussian", "point", "turbo",
@@ -254,7 +256,7 @@ class Drizzle:
             of input images). This parameter is helpful when neither
             ``out_img``, ``out_wht``, nor ``out_ctx`` images are provided.
 
-        fillval: float, None, str, optional
+        fillval : float, None, str, optional
             The value of output pixels that did not have contributions from
             input images' pixels. When ``fillval`` is either `None` or
             ``"INDEF"`` and ``out_img`` is provided, the values of ``out_img``
@@ -265,8 +267,20 @@ class Drizzle:
             pixels with no contributions from input images will be set to this
             ``fillval`` value.
 
-        fillval2: float, None, str, optional
+        fillval2 : float, None, str, optional
             Same as ``fillval`` but applies to ``out_img2``.
+
+        fillval_dq : int, None, optional
+            The value assigned to output DQ pixels that received no
+            contributions from any input image (pixels with zero output
+            weight). It must be an integer in the range ``[0, 2**32 - 1]``
+            and is typically a bit flag indicating "no data" or "do not use".
+            The fill value replaces the existing DQ value of such pixels
+            rather than being combined with it using bitwise-OR.
+
+            If `None`, these pixels are left unchanged when ``out_dq`` is
+            provided. When ``out_dq`` is also `None`, they keep the initial
+            value of the DQ array created by `add_image`, which is zero.
 
         out_img : 2D array of float32, None, optional
             A 2D numpy array containing the output image produced by
@@ -387,6 +401,11 @@ class Drizzle:
 
         self._fillval = _process_fillval(out_img, fillval)
         self._fillval2 = _process_fillval(out_img2, fillval2)
+        if fillval_dq is not None:
+            if not isinstance(fillval_dq, numbers.Integral):
+                raise TypeError("'fillval_dq' must be an int or None.")
+            fillval_dq = int(fillval_dq)
+        self._fillval_dq = fillval_dq
 
         # shapes will collect user specified 'out_shape' and shapes of
         # out_* arrays (if provided) in order to check all shapes are the same.
@@ -474,6 +493,14 @@ class Drizzle:
 
         """
         return self._fillval2
+
+    @property
+    def fillval_dq(self):
+        """Fill value for output pixels in ``out_dq`` without contributions
+        from input images.
+
+        """
+        return self._fillval_dq
 
     @property
     def kernel(self):
@@ -958,8 +985,7 @@ class Drizzle:
             xmax=xmax,
             ymin=ymin,
             ymax=ymax,
-            iscale=iscale,  # scales image intensity. usually equal to 1 or
-            # (pixel scale ratio)**2
+            iscale=iscale,  # scales image intensity. usually equal to 1 or (pixel scale ratio)**2
             pscale_ratio=pixel_scale_ratio,  # scales kernel size. usually equal to pixel scale ratio
             pixfrac=pixfrac,
             kernel=self._kernel,
@@ -968,6 +994,7 @@ class Drizzle:
             wtscale=wht_scale,
             fillstr=self._fillval,
             fillstr2=self._fillval2,
+            filldq=self._fillval_dq,
         )
         self._ncoadds += 1
 

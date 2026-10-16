@@ -23,6 +23,8 @@ xfail_not_flux_conserving = [
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(TEST_DIR, "data")
 
+FILL_DQ = 1<<31  # bit 31 set: needs the full uint32 range
+
 
 def bound_image(image):
     """
@@ -1923,7 +1925,8 @@ def test_drizzle_dq_propagation(create_out_dq, shift, add_non_dq_image):
     # use uint32 to test up to 32 bits and unsigned integers (default type)
     in_dq2 = np.zeros(in_shape, dtype=np.uint32)
     if create_out_dq:
-        out_dq = np.zeros(in_shape, dtype=np.uint32)
+        dn = math.ceil(shift)
+        out_dq = np.zeros(tuple(ni + dn for ni in in_shape), dtype=np.uint32)
     else:
         out_dq = None
 
@@ -1941,6 +1944,7 @@ def test_drizzle_dq_propagation(create_out_dq, shift, add_non_dq_image):
     driz = resample.Drizzle(
         kernel="square",
         out_dq=out_dq,
+        fillval_dq=FILL_DQ,
     )
 
     pixmap = np.dstack([x, y])
@@ -2202,3 +2206,144 @@ def test_drizzle_ipscale_same_as_scale(kernel, pscale_ratio, use_var):
     ), "Resampled weight images are not identical."
 
     assert np.all(driz1.out_ctx == driz2.out_ctx), "Context images are not identical."
+
+
+@pytest.mark.parametrize(
+    "fillval_dq", [None, FILL_DQ, np.uint32(FILL_DQ), np.int64(7), 0]
+)
+@pytest.mark.parametrize("in_dq", [4, None])
+def test_drizzle_fillval_dq(fillval_dq, in_dq):
+    in_shape = (8, 8)
+    out_shape = (15, 15)
+    init_dq = 123
+
+    driz = resample.Drizzle(
+        kernel="square",
+        out_dq=np.full(out_shape, init_dq, dtype=np.uint32),
+        fillval="NaN",
+        fillval_dq=fillval_dq,
+    )
+
+    pixmap = np.dstack(np.indices(in_shape)[::-1]).astype(np.float64)
+    dq = None if in_dq is None else np.full(in_shape, in_dq, dtype=np.uint32)
+    weight = np.ones(in_shape, dtype=np.float32)
+    weight[2:6, 3:5] = 0.0
+
+    driz.add_image(
+        np.ones(in_shape, dtype=np.float32),
+        exptime=1.0,
+        pixmap=pixmap,
+        weight_map=weight,
+        dq=dq,
+    )
+
+    check_mask = np.zeros(out_shape, dtype=bool)
+    check_mask[np.where(weight > 0)] = True
+
+    # check that weights are as expected:
+    assert np.all(driz.out_wht[check_mask] > 0)
+    assert np.all(driz.out_wht[~check_mask] == 0)
+    # check that output image has NaN fillval where it should:
+    assert np.all(np.isnan(driz.out_img[~check_mask]))
+    expected_covered = init_dq if in_dq is None else in_dq
+    assert np.all(driz.out_dq[check_mask] == expected_covered)
+    expected_fill = init_dq if fillval_dq is None else int(fillval_dq)
+    assert np.all(driz.out_dq[~check_mask] == expected_fill)
+
+
+def test_drizzle_fillval_dq_replaced_by_later_input():
+    """A filled pixel later covered by another image gets that image's DQ,
+    not the fill value combined with it."""
+    in_shape = (8, 5)
+    out_shape = (15, 12)
+    driz = resample.Drizzle(
+        kernel="square",
+        out_dq=np.zeros(out_shape, dtype=np.uint32),
+        fillval_dq=FILL_DQ,
+    )
+
+    y, x = np.indices(in_shape)
+    weight = np.ones(in_shape, dtype=np.float32)
+    weight[2:6, 3:5] = 0.0
+
+    dq = np.full(in_shape, 4, dtype=np.uint32)
+    driz.add_image(
+        np.ones(in_shape, dtype=np.float32),
+        exptime=1.0,
+        pixmap=np.dstack([x, y]).astype(np.float64),
+        weight_map=weight,
+        dq=dq,
+    )
+
+    shift = 5
+    dq = np.full(in_shape, 2, dtype=np.uint32)
+    driz.add_image(
+        np.ones(in_shape, dtype=np.float32),
+        exptime=1.0,
+        pixmap=np.dstack([x + shift, y]).astype(np.float64),
+        weight_map=weight,
+        dq=dq,
+    )
+
+    mask = np.zeros(out_shape, dtype=bool)
+    mask[np.where(weight > 0)] = True
+
+    positive_weight = np.where(weight > 0)
+    smask = np.zeros(out_shape, dtype=bool)
+    smask[positive_weight[0], positive_weight[1] + shift] = True
+
+    assert np.all(driz.out_dq[mask] == 4)
+    assert np.all(driz.out_dq[smask] == 2)
+    assert np.all(driz.out_dq[~(mask | smask)] == FILL_DQ)
+
+
+@pytest.mark.parametrize(
+    "filldq",
+    [-1, 1<<32, 1<<64, 1.5, "1"],
+)
+def test_tdriz_invalid_fillval(filldq):
+    in_shape = (7, 9)
+    out_shape = (13, 17)
+    in_img = np.ones(in_shape, dtype=np.float32)
+    pixmap = np.dstack(np.indices(in_shape)[::-1]).astype(np.float64)
+
+    with pytest.raises(ValueError, match="filldq"):
+        cdrizzle.tdriz(
+            input = in_img,
+            weights = in_img,
+            pixmap = pixmap,
+            dq = np.zeros(in_shape, dtype=np.uint32),
+            output = np.zeros(out_shape, dtype=np.float32),
+            counts = np.zeros(out_shape, dtype=np.float32),
+            context = None,
+            outdq = np.zeros(out_shape, dtype=np.uint32),
+            filldq = filldq,
+        )
+
+
+@pytest.mark.parametrize(
+    "shape_mismatch",
+    ["Input", "Output"],
+)
+def test_tdriz_shape_mismatch(shape_mismatch):
+    ny, nx = in_shape = (4, 7)
+    ony, onx = out_shape = (7, 12)
+    pixmap = np.dstack(np.indices(in_shape)[::-1]).astype(np.float64)
+    counts = np.zeros(out_shape, dtype=np.float32)
+    in_img = np.ones(in_shape, dtype=np.float32)
+
+    in_dq = np.zeros((ny + 1 if shape_mismatch == "Input" else ny, nx), dtype=np.uint32)
+    out_dq = np.zeros((ony - 1 if shape_mismatch == "Output" else ony, onx), dtype=np.uint32)
+
+    with pytest.raises(ValueError, match=f"{shape_mismatch} DQ dimensions"):
+        cdrizzle.tdriz(
+            input = in_img,
+            weights = in_img,
+            pixmap = pixmap,
+            dq = in_dq,
+            output = np.zeros(out_shape, dtype=np.float32),
+            counts = counts,
+            context = None,
+            outdq = out_dq,
+            filldq = 0,
+        )
