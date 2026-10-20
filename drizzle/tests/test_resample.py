@@ -2307,7 +2307,7 @@ def test_tdriz_invalid_fillval(filldq):
     in_img = np.ones(in_shape, dtype=np.float32)
     pixmap = np.dstack(np.indices(in_shape)[::-1]).astype(np.float64)
 
-    with pytest.raises(ValueError, match="filldq"):
+    with pytest.raises(ValueError, match="Argument 'filldq' must be"):
         cdrizzle.tdriz(
             input = in_img,
             weights = in_img,
@@ -2318,6 +2318,16 @@ def test_tdriz_invalid_fillval(filldq):
             context = None,
             outdq = np.zeros(out_shape, dtype=np.uint32),
             filldq = filldq,
+        )
+
+    with pytest.raises(ValueError, match="Argument 'fillval_dq' must be"):
+        resample.Drizzle(
+            kernel="square",
+            fillval_dq=filldq,
+            out_img = np.zeros(out_shape, dtype=np.float32),
+            out_wht = np.zeros(out_shape, dtype=np.float32),
+            out_ctx = None,
+            out_dq = np.zeros(out_shape, dtype=np.uint32),
         )
 
 

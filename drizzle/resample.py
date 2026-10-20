@@ -403,7 +403,16 @@ class Drizzle:
         self._fillval2 = _process_fillval(out_img2, fillval2)
         if fillval_dq is not None:
             if not isinstance(fillval_dq, numbers.Integral):
-                raise TypeError("'fillval_dq' must be an int or None.")
+                raise ValueError(
+                    "Argument 'fillval_dq' must be an int or None."
+                )
+            try:
+                np.uint32(fillval_dq)
+            except (ValueError, OverflowError):
+                raise ValueError(
+                    "Argument 'fillval_dq' must be an integer in the uint32 "
+                    "range or None."
+                )
             fillval_dq = int(fillval_dq)
         self._fillval_dq = fillval_dq
 
