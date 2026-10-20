@@ -131,8 +131,10 @@ struct driz_param_t {
     float weight_scale;
     float fill_value;
     float fill_value2;
+    unsigned int fill_value_dq;
     bool_t do_fill;
     bool_t do_fill2;
+    bool_t do_fill_dq;
     enum e_unit_t in_units;
     enum e_unit_t out_units;
     integer_t uuid;
@@ -434,7 +436,7 @@ create_lanczos_lut(
     const int kernel_order, const size_t npix, const double del, double *lanczos_lut);
 
 void
-put_fill(struct driz_param_t *p, int fill, int fill2);
+put_fill(struct driz_param_t *p);
 
 /**
  Calculate the refractive index of MgF2 for a given C wavelength (in

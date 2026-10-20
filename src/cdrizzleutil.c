@@ -220,8 +220,10 @@ driz_param_init(struct driz_param_t *p)
     /* Filling */
     p->fill_value = 0.0f;
     p->fill_value2 = 0.0f;
+    p->fill_value_dq = 0u;
     p->do_fill = 0;
     p->do_fill2 = 0;
+    p->do_fill_dq = 0;
 
     /* CPS / Counts */
     p->in_units = unit_counts;
@@ -380,70 +382,57 @@ create_lanczos_lut(const int kernel_order, const size_t npix, const double del, 
 }
 
 void
-put_fill(struct driz_param_t *p, int fill, int fill2)
+put_fill(struct driz_param_t *p)
 {
-    integer_t i, j, k, osize[2], osize2[2], csize[2];
+    integer_t k, osize[2];
+    npy_intp i, n;
+    bool_t fill, fill2, fill_dq;
+    float fill_value, fill_value2, *out;
+    unsigned int fill_value_dq, *outdq;
+    const float *weights;
 
     assert(p);
-    if (!p->output_data2) {
-        fill2 = 0;
-    }
-    if (!fill && !fill2) {
+
+    fill = p->do_fill && p->output_data && p->output_counts;
+    fill2 = p->do_fill2 && p->output_data2 && p->ndata2 > 0;
+    fill_dq = p->do_fill_dq && p->output_dq;
+
+    if (!fill && !fill2 && !fill_dq) {
         return;
     }
 
-    get_dimensions(p->output_data, osize);
-    get_dimensions(p->output_counts, csize);
-    if (osize[0] != csize[0] || osize[1] != csize[1]) {
+    if (!p->output_data || !p->output_counts) {
         driz_error_set(
-            p->error, PyExc_ValueError,
-            "Mismatch between output_data and output_counts "
-            "array size.");
+            p->error, PyExc_ValueError, "put_fill: output_data or output_counts is not set.");
         return;
     }
 
-    if (fill2) {
-        for (k = 0; k < p->ndata2; ++k) {
-            get_dimensions(p->output_data2[k], osize2);
-            if ((osize2[0] != osize[0]) || (osize2[1] != osize[1])) {
-                driz_error_set(
-                    p->error, PyExc_ValueError,
-                    "Mismatch between output_data and output_data2 "
-                    "array size.");
-                return;
-            }
-        }
-    }
+    fill_value = p->fill_value;
+    fill_value2 = p->fill_value2;
+    fill_value_dq = p->fill_value_dq;
 
-    if (fill && !fill2) {
-        for (j = 0; j < osize[1]; ++j) {
-            for (i = 0; i < osize[0]; ++i) {
-                if (get_pixel(p->output_counts, i, j) == 0.0) {
-                    set_pixel(p->output_data, i, j, p->fill_value);
-                }
-            }
+    // Get the dimensions of the output data array. All output arrays must have
+    // the same shape as output_data; validated by the caller.
+    get_dimensions(p->output_data, osize);
+    n = osize[0] * osize[1];
+
+    weights = (const float *) PyArray_DATA(p->output_counts);
+    out = (float *) PyArray_DATA(p->output_data);
+    outdq = fill_dq ? (unsigned int *) PyArray_DATA(p->output_dq) : NULL;
+
+    for (i = 0; i < n; ++i) {
+        if (weights[i] != 0.0f) {
+            continue;
         }
-    } else if (!fill && fill2) {
-        for (j = 0; j < osize[1]; ++j) {
-            for (i = 0; i < osize[0]; ++i) {
-                if (get_pixel(p->output_counts, i, j) == 0.0) {
-                    for (k = 0; k < p->ndata2; ++k) {
-                        set_pixel(p->output_data2[k], i, j, p->fill_value2);
-                    }
-                }
-            }
+        if (fill) {
+            out[i] = fill_value;
         }
-    } else { /* fill && fill2 */
-        for (j = 0; j < osize[1]; ++j) {
-            for (i = 0; i < osize[0]; ++i) {
-                if (get_pixel(p->output_counts, i, j) == 0.0) {
-                    set_pixel(p->output_data, i, j, p->fill_value);
-                    if (p->output_data2) {
-                        for (k = 0; k < p->ndata2; ++k) {
-                            set_pixel(p->output_data2[k], i, j, p->fill_value2);
-                        }
-                    }
-                }
+        if (fill_dq) {
+            outdq[i] = fill_value_dq;
+        }
+        if (fill2) {
+            for (k = 0; k < p->ndata2; ++k) {
+                ((float *) PyArray_DATA(p->output_data2[k]))[i] = fill_value2;
             }
         }
     }
