@@ -13,6 +13,9 @@ MANIFEST
 .coverage*
 docs/api/
 .pytest_cache
+.ruff_cache
+.mypy_cache
+.claude
 
 # Test output
 drizzle/tests/data/difference_*

@@ -1,8 +1,10 @@
+#include <Python.h>
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <Python.h>
+
 #ifndef NPY_NO_DEPRECATED_API
 #define NPY_NO_DEPRECATED_API NPY_1_21_API_VERSION
 #endif
