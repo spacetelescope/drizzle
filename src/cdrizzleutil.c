@@ -1,5 +1,8 @@
-#include <assert.h>
 #define _USE_MATH_DEFINES /* needed for MS Windows to define M_PI */
+
+#include <Python.h>
+
+#include <assert.h>
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>

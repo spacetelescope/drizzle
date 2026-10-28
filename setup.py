@@ -34,7 +34,7 @@ def get_extensions():
 
     if not FREE_THREADED_PYTHON:
         cfg["py_limited_api"] = True
-        cfg["define_macros"].append(("Py_LIMITED_API", 0x030A0000))  # PY_VERSION_HEX for 3.10
+        cfg["define_macros"].append(("Py_LIMITED_API", 0x030B0000))  # PY_VERSION_HEX for 3.11
 
     if sys.platform == "win32":
         cfg["define_macros"].extend(
@@ -48,20 +48,22 @@ def get_extensions():
         cfg["libraries"].append("m")
         cfg["extra_compile_args"] = [
             "-O3",
+            "-DNDEBUG",
             "-Wall",
             "-Wextra",
+            "-Werror",
             "-Wpedantic",
             "-Wno-unused-parameter",
             "-Wincompatible-pointer-types",
         ]
+
     # importing these extension modules is tested in `.github/workflows/build.yml`;
     # when adding new modules here, make sure to add them to the `test_command` entry there
     return [Extension(str("drizzle.cdrizzle"), sources, **cfg)]
 
-
 SETUPTOOLS_OPTIONS = {}
 if not FREE_THREADED_PYTHON:
-    SETUPTOOLS_OPTIONS["bdist_wheel"] = {"py_limited_api": "cp310"}
+    SETUPTOOLS_OPTIONS["bdist_wheel"] = {"py_limited_api": "cp311"}
 
 setup(
     ext_modules=get_extensions(),

@@ -1,0 +1,24 @@
+{
+  "template": "https://github.com/spacetelescope/stsci-package-template",
+  "commit": "9d1515679d243805f399ca9c085d8b9d67281435",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "project_name": "drizzle",
+      "package_name": "drizzle",
+      "repository_url": "https://github.com/spacetelescope/drizzle",
+      "git_username": "spacetelescope/drizzle-maintainers",
+      "project_description": "A package for combining dithered images into a single image",
+      "manage_changelog_with_towncrier": false,
+      "publish_docs_to": "readthedocs.io",
+      "task_runner": "tox",
+      "python_version": ">=3.12",
+      "python_c_extensions": false,
+      "python_build_backend": "setuptools",
+      "crds_observatory": "hst",
+      "_template": "https://github.com/spacetelescope/stsci-package-template",
+      "_commit": "9d1515679d243805f399ca9c085d8b9d67281435"
+    }
+  },
+  "directory": "python-package"
+}
