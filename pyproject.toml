@@ -26,6 +26,7 @@ Documentation = "http://spacetelescope.github.io/drizzle/"
 [project.optional-dependencies]
 test = [
     "astropy",
+    "coverage",
     "gwcs",
     "pytest>=9.0",
     "pytest-cov",
