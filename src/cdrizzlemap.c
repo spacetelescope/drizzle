@@ -1,10 +1,12 @@
+#define _USE_MATH_DEFINES /* needed for MS Windows to define M_PI */
+
+#include <Python.h>
+
 #include <assert.h>
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
-
-#include <Python.h>
 
 #ifndef NPY_NO_DEPRECATED_API
 #define NPY_NO_DEPRECATED_API NPY_1_21_API_VERSION

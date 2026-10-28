@@ -1,7 +1,8 @@
-#define NO_IMPORT_ARRAY
+#define _USE_MATH_DEFINES /* needed for MS Windows to define M_PI */
+
+#include <Python.h>
 
 #include <assert.h>
-#define _USE_MATH_DEFINES /* needed for MS Windows to define M_PI */
 #include <math.h>
 #include <stdlib.h>
 

@@ -226,7 +226,7 @@ _exit_on_err:
     if (arr_list) {
         for (i = 0; i < *nmax; ++i) {
             if (free_arrays && (*free_arrays)[i]) {
-                Py_XDECREF(arr_list[i]);
+                Py_XDECREF((PyObject *) arr_list[i]);
             }
         }
         free(arr_list);
@@ -753,34 +753,34 @@ _exit:
     driz_log_message("ending tdriz");
     driz_log_close(driz_log_handle);
     if (free_con) {
-        Py_XDECREF(con);
+        Py_XDECREF((PyObject *) con);
     }
     if (free_img) {
-        Py_XDECREF(img);
+        Py_XDECREF((PyObject *) img);
     }
     if (free_wei) {
-        Py_XDECREF(wei);
+        Py_XDECREF((PyObject *) wei);
     }
     if (free_out) {
-        Py_XDECREF(out);
+        Py_XDECREF((PyObject *) out);
     }
     if (free_wht) {
-        Py_XDECREF(wht);
+        Py_XDECREF((PyObject *) wht);
     }
     if (free_map) {
-        Py_XDECREF(map);
+        Py_XDECREF((PyObject *) map);
     }
     if (free_dq) {
-        Py_XDECREF(dq);
+        Py_XDECREF((PyObject *) dq);
     }
     if (free_outdq) {
-        Py_XDECREF(outdq);
+        Py_XDECREF((PyObject *) outdq);
     }
 
     if (nsq_arr > 0 && img2_list) {
         for (i = 0; i < nsq_arr; ++i) {
             if (free_arrays2[i]) {
-                Py_XDECREF(img2_list[i]);
+                Py_XDECREF((PyObject *) img2_list[i]);
             }
         }
         free(img2_list);
@@ -790,7 +790,7 @@ _exit:
     if (nsq_arr_out > 0 && out2_list) {
         for (i = 0; i < nsq_arr_out; ++i) {
             if (free_out_arrays2[i]) {
-                Py_XDECREF(out2_list[i]);
+                Py_XDECREF((PyObject *) out2_list[i]);
             }
         }
         free(out2_list);
@@ -1039,13 +1039,13 @@ _exit:
     driz_log_message("ending tblot");
     driz_log_close(driz_log_handle);
     if (free_img) {
-        Py_XDECREF(img);
+        Py_XDECREF((PyObject *) img);
     }
     if (free_out) {
-        Py_XDECREF(out);
+        Py_XDECREF((PyObject *) out);
     }
     if (free_map) {
-        Py_XDECREF(map);
+        Py_XDECREF((PyObject *) map);
     }
 
     if (driz_error_is_set(&error)) {
@@ -1114,22 +1114,22 @@ test_cdrizzle(PyObject *self, PyObject *args)
     utest_cdrizzle(argc, argv);
 
     if (free_data) {
-        Py_XDECREF(dat);
+        Py_XDECREF((PyObject *) dat);
     }
     if (free_wei) {
-        Py_XDECREF(wei);
+        Py_XDECREF((PyObject *) wei);
     }
     if (free_map) {
-        Py_XDECREF(map);
+        Py_XDECREF((PyObject *) map);
     }
     if (free_odat) {
-        Py_XDECREF(odat);
+        Py_XDECREF((PyObject *) odat);
     }
     if (free_ocnt) {
-        Py_XDECREF(ocnt);
+        Py_XDECREF((PyObject *) ocnt);
     }
     if (free_ocon) {
-        Py_XDECREF(ocon);
+        Py_XDECREF((PyObject *) ocon);
     }
 
     return Py_BuildValue("");
@@ -1141,7 +1141,7 @@ invert_pixmap_wrap(PyObject *self, PyObject *args)
     (void) self;
 
     PyObject *pixmap, *xyout, *bbox;
-    PyArrayObject *xyout_arr, *pixmap_arr, *bbox_arr;
+    PyArrayObject *xyout_arr = NULL, *pixmap_arr = NULL, *bbox_arr = NULL;
     struct driz_param_t par;
     double *xy, *xyin;
     npy_intp *ndim, xyin_dim = 2;
@@ -1201,13 +1201,13 @@ invert_pixmap_wrap(PyObject *self, PyObject *args)
 
     PyArray_ENABLEFLAGS(arr, NPY_ARRAY_OWNDATA);
     if (free_xyout) {
-        Py_XDECREF(xyout_arr);
+        Py_XDECREF((PyObject *) xyout_arr);
     }
     if (free_pixmap) {
-        Py_XDECREF(pixmap_arr);
+        Py_XDECREF((PyObject *) pixmap_arr);
     }
     if (free_bbox) {
-        Py_XDECREF(bbox_arr);
+        Py_XDECREF((PyObject *) bbox_arr);
     }
 
     return Py_BuildValue("N", arr);
@@ -1262,10 +1262,10 @@ clip_polygon_wrap(PyObject *self, PyObject *args)
         PyList_SetItem(list, k, tuple);
     }
     if (free_pin) {
-        Py_XDECREF(pin_arr);
+        Py_XDECREF((PyObject *) pin_arr);
     }
     if (free_qin) {
-        Py_XDECREF(qin_arr);
+        Py_XDECREF((PyObject *) qin_arr);
     }
 
     return Py_BuildValue("N", list);

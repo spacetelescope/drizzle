@@ -28,6 +28,8 @@ Release Notes
 - Fixed a bug in reporting memory allocation errors in the C-level drizzle
   API. [#250]
 
+- Dropped support for Python 3.10 and ``numpy < 2.0.1``. [#250]
+
 
 3.0.0 (2026-09-23)
 ==================

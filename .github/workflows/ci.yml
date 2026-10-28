@@ -24,7 +24,6 @@ jobs:
       envs: |
         - linux: check-style
         - linux: check-security
-        - linux: py310-xdist
         - linux: py311-xdist
         - linux: py312-xdist
         - linux: py313-xdist
@@ -33,6 +32,8 @@ jobs:
           coverage: codecov-oidc
         # Cannot use Python 3.13.4, see https://github.com/python/cpython/issues/135151
         - macos: py313-xdist
+        - macos: py315-xdist
         - windows: py313-xdist
+        - windows: py315-xdist
         - linux: py315-devdeps-xdist
       toxdeps: tox-uv
