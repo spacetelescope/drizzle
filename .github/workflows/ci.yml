@@ -17,7 +17,9 @@ concurrency:
 
 jobs:
   test:
-    uses: OpenAstronomy/github-actions-workflows/.github/workflows/tox.yml@e5af21e4ae37af089a73bb032e10b78b0e746174  # v3.0.1
+    uses: OpenAstronomy/github-actions-workflows/.github/workflows/tox.yml@3a3dcf3ba6828dac29eba10334948ef38364ed14  # v3.1.0
+    permissions:
+      id-token: write
     with:
       envs: |
         - linux: check-style
@@ -26,14 +28,11 @@ jobs:
         - linux: py311-xdist
         - linux: py312-xdist
         - linux: py313-xdist
-        # `tox` does not currently respect `requires-python` versions when creating testing environments;
-        # if this breaks, add an upper pin to `requires-python` and revert this py3 to the latest working version
-        - linux: py3-cov-xdist
-          coverage: codecov
+        - linux: py314-xdist
+        - linux: py315-cov-xdist
+          coverage: codecov-oidc
         # Cannot use Python 3.13.4, see https://github.com/python/cpython/issues/135151
         - macos: py313-xdist
         - windows: py313-xdist
-        - linux: py3-devdeps-xdist
+        - linux: py315-devdeps-xdist
       toxdeps: tox-uv
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
