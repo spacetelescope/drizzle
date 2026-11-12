@@ -5,7 +5,7 @@ Release Notes
 =============
 
 
-3.1.0 (unreleased)
+3.1.0 (2026-11-12)
 ==================
 
 - ``blot_image`` now fills output pixels whose ``pixmap`` entry contains NaN
