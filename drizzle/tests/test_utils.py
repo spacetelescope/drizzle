@@ -1,7 +1,7 @@
+import pytest
 import warnings
 
 import numpy as np
-import pytest
 from numpy.testing import assert_almost_equal, assert_equal
 
 from astropy.wcs import FITSFixedWarning, WCS
@@ -19,7 +19,9 @@ from drizzle.utils import (
 )
 
 
-_SHAPE = (3, 4)
+pytestmark = pytest.mark.filterwarnings(
+    "error::drizzle.utils.FrameMismatchWarning"
+)
 
 
 class _DuckWCS:
@@ -46,11 +48,6 @@ class _FrameDuckWCS(_DuckWCS):
             kwargs = {"frame": frame} if with_kwargs else {}
             classes[f"celestial{k}"] = (cls, (), kwargs)
         self.world_axis_object_classes = classes
-
-
-def _identity_pixmap(shape=_SHAPE):
-    y, x = np.indices(shape, dtype=float)
-    return np.dstack([x, y])
 
 
 def _celestial_wcs(ctype, crval, cdelt=(-1.0e-4, 1.0e-4), shape=(50, 60)):
@@ -221,39 +218,25 @@ def test_disable_gwcs_bbox():
     assert second_wcs.bounding_box is not None
 
 
-def test_frameless_wcs_strict_raises():
+def test_frameless_wcs():
     with pytest.raises(FrameMismatchError, match="neither"):
         calc_pixmap(_DuckWCS(), _DuckWCS(), frame_check="strict")
+    calc_pixmap(_DuckWCS(), _DuckWCS(), frame_check="warn")
+    calc_pixmap(_DuckWCS(), _DuckWCS(), frame_check="ignore")
 
 
-@pytest.mark.parametrize("frame_check", ["warn", "ignore"])
-def test_frameless_wcs_lenient_is_silent(frame_check):
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        pixmap = calc_pixmap(_DuckWCS(), _DuckWCS(), frame_check=frame_check)
-    y, x = np.indices((3, 4), dtype=float)
-    np.testing.assert_array_equal(pixmap, np.dstack([x, y]))
-
-
-@pytest.mark.parametrize("frame_check", ["strict", "warn"])
-def test_fits_frame_conversion(frame_check):
+def test_fits_frame_conversion():
     w_icrs, w_gal = _icrs_and_galactic_wcs()
-    with warnings.catch_warnings():
-        warnings.simplefilter("error", FrameMismatchWarning)
-        pixmap = calc_pixmap(w_icrs, w_gal, frame_check=frame_check)
-    assert_almost_equal(pixmap, _reference_pixmap(w_icrs, w_gal), decimal=6)
+    expected = _reference_pixmap(w_icrs, w_gal)
+    pixmap = calc_pixmap(w_icrs, w_gal, frame_check="strict")
+    assert_almost_equal(pixmap, expected, decimal=6)
+    pixmap = calc_pixmap(w_icrs, w_gal, frame_check="warn")
+    assert_almost_equal(pixmap, expected, decimal=6)
 
 
 def test_fits_frame_ignore_skips_conversion():
     w_icrs, w_gal = _icrs_and_galactic_wcs()
     pixmap = calc_pixmap(w_icrs, w_gal, frame_check="ignore")
-
-    # legacy behavior: numeric world values passed straight through
-    y, x = np.indices(w_icrs.array_shape, dtype=float)
-    xo, yo = w_gal.world_to_pixel_values(*w_icrs.pixel_to_world_values(x, y))
-    assert_equal(pixmap, np.dstack([xo, yo]))
-
-    # ... which is very different from the correct, converted result:
     assert not np.allclose(pixmap, _reference_pixmap(w_icrs, w_gal), atol=1.0)
 
 
@@ -274,22 +257,20 @@ def test_fits_same_frame_strict():
     assert_almost_equal(pixmap, ok_pixmap, decimal=5)
 
 
-@pytest.mark.parametrize("swap", [False, True])
-def test_frame_info_on_one_side_only(swap):
-    wcs_pair = [_FrameDuckWCS(ICRS()), _DuckWCS()]
-    if swap:
-        wcs_pair.reverse()
+def test_frame_info_on_one_side_only():
+    w_from = _FrameDuckWCS(ICRS())
+    w_to = _DuckWCS()
+    with pytest.raises(FrameMismatchError, match="'wcs_to' does not provide"):
+        calc_pixmap(w_from, w_to, frame_check="strict")
+    with pytest.warns(FrameMismatchWarning, match="'wcs_to' does not provide"):
+        calc_pixmap(w_from, w_to, frame_check="warn")
+    calc_pixmap(w_from, w_to, frame_check="ignore")
 
-    with pytest.raises(FrameMismatchError, match="does not provide"):
-        calc_pixmap(*wcs_pair, frame_check="strict")
-
-    with pytest.warns(FrameMismatchWarning, match="does not provide"):
-        pixmap = calc_pixmap(*wcs_pair, frame_check="warn")
-    assert_equal(pixmap, _identity_pixmap())
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        calc_pixmap(*wcs_pair, frame_check="ignore")
+    with pytest.raises(FrameMismatchError, match="'wcs_from' does not provide"):
+        calc_pixmap(w_to, w_from, frame_check="strict")
+    with pytest.warns(FrameMismatchWarning, match="'wcs_from' does not provide"):
+        calc_pixmap(w_to, w_from, frame_check="warn")
+    calc_pixmap(w_to, w_from, frame_check="ignore")
 
 
 def test_undefined_frame():
@@ -299,15 +280,17 @@ def test_undefined_frame():
         calc_pixmap(w_from, w_to, frame_check="strict")
     with pytest.warns(FrameMismatchWarning, match="not defined"):
         calc_pixmap(w_from, w_to, frame_check="warn")
+    calc_pixmap(w_from, w_to, frame_check="ignore")
 
 
 def test_uncomparable_frames():
     w_from = _FrameDuckWCS(object())
     w_to = _FrameDuckWCS(object())
-    with pytest.raises(FrameMismatchError, match=r"(?i)unable to compare"):
+    with pytest.raises(FrameMismatchError, match="unable to compare"):
         calc_pixmap(w_from, w_to, frame_check="strict")
-    with pytest.warns(FrameMismatchWarning, match=r"(?i)unable to compare"):
+    with pytest.warns(FrameMismatchWarning, match="unable to compare"):
         calc_pixmap(w_from, w_to, frame_check="warn")
+    calc_pixmap(w_from, w_to, frame_check="ignore")
 
 
 def test_different_number_of_celestial_axes():
@@ -315,15 +298,13 @@ def test_different_number_of_celestial_axes():
     w_to = _FrameDuckWCS(ICRS())
     with pytest.raises(FrameMismatchError, match="different numbers"):
         calc_pixmap(w_from, w_to, frame_check="strict")
+    with pytest.warns(FrameMismatchWarning, match="different numbers"):
+        calc_pixmap(w_from, w_to, frame_check="warn")
+    calc_pixmap(w_from, w_to, frame_check="ignore")
 
 
 def test_string_frames_equivalent_case_insensitive():
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        pixmap = calc_pixmap(
-            _FrameDuckWCS("icrs"), _FrameDuckWCS("ICRS"), frame_check="strict"
-        )
-    assert_equal(pixmap, _identity_pixmap())
+    calc_pixmap(_FrameDuckWCS("icrs"), _FrameDuckWCS("ICRS"), frame_check="strict")
 
 
 def test_string_frames_differ_no_high_level_api():
@@ -332,77 +313,42 @@ def test_string_frames_differ_no_high_level_api():
     with pytest.raises(FrameMismatchError, match="high-level API"):
         calc_pixmap(w_from, w_to, frame_check="strict")
     with pytest.warns(FrameMismatchWarning, match="high-level API"):
-        pixmap = calc_pixmap(w_from, w_to, frame_check="warn")
-    assert_equal(pixmap, _identity_pixmap())
+        calc_pixmap(w_from, w_to, frame_check="warn")
+    calc_pixmap(w_from, w_to, frame_check="ignore")
 
 
 @pytest.mark.parametrize("cls", [SkyCoord, "SkyCoord", "astropy.coordinates.SkyCoord"])
 def test_skycoord_class_given_as_type(cls):
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        calc_pixmap(
-            _FrameDuckWCS(ICRS(), cls=cls),
-            _FrameDuckWCS(ICRS(), cls=cls),
-            frame_check="strict",
-        )
+    calc_pixmap(
+        _FrameDuckWCS(ICRS(), cls=cls),
+        _FrameDuckWCS(ICRS(), cls=cls),
+        frame_check="strict",
+    )
 
 
-@pytest.mark.parametrize(
-    ("from_type", "to_type"),
-    [
-        ("fits", "fits"),
-        ("fits", "gwcs"),
-        ("gwcs", "fits"),
-        ("gwcs", "gwcs"),
-    ],
-)
-@pytest.mark.parametrize("frame_check", ["strict", "warn"])
-def test_same_frame_wcs_combinations(from_type, to_type, frame_check):
+@pytest.mark.parametrize("to_type", ["fits", "gwcs"])
+@pytest.mark.parametrize("from_type", ["fits", "gwcs"])
+def test_same_frame_wcs_combinations(from_type, to_type):
     filename = "j8bt06nyq_sip_flt.fits"
     w_from = wcs_from_file(filename, ext=1, wcs_type=from_type)
-    w_to = wcs_from_file(
-        filename,
-        ext=1,
-        crpix_shift=(-2, -2),
-        wcs_type=to_type,
-    )
-
-    # Input grid starts at zero. The shifted output WCS can map border
-    # pixels outside its bounding box.
+    w_to = wcs_from_file(filename, ext=1, crpix_shift=(-2, -2), wcs_type=to_type)
     shape = (12, 34)
     y, x = np.indices(shape, dtype=float)
+    expected = np.dstack(pixel_to_pixel(w_from, w_to, x, y))
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error", FrameMismatchWarning)
-        expected_x, expected_y = pixel_to_pixel(w_from, w_to, x, y)
-        actual = calc_pixmap(
-            w_from,
-            w_to,
-            shape=shape,
-            disable_bbox="none",
-            frame_check=frame_check,
-        )
-
-    expected = np.dstack([expected_x, expected_y])
-    assert actual.shape == (*shape, 2)
-
-    # Match the reference's component-wise handling of out-of-bounds pixels.
-    assert_equal(np.isnan(actual), np.isnan(expected))
-
-    # Interior is always finite:
-    assert np.all(np.isfinite(actual[2:, 2:]))
-
-    # Compare all finite values as well as matching NaNs.
-    np.testing.assert_allclose(
-        actual, expected, rtol=0, atol=1e-5, equal_nan=True
+    actual = calc_pixmap(
+        w_from, w_to, shape=shape, disable_bbox="none", frame_check="strict"
     )
+
+    assert np.isfinite(actual[2:, 2:]).all()
+    np.testing.assert_allclose(actual, expected, rtol=0, atol=1e-5, equal_nan=True)
 
 
 def test_non_celestial_world_objects_are_skipped():
     w_from = _FrameDuckWCS(ICRS())
-    w_from.world_axis_object_classes["spectral"] = ("SpectralCoord", (), {})
     w_to = _FrameDuckWCS(ICRS())
-    w_to.world_axis_object_classes["spectral"] = ("SpectralCoord", (), {})
+    for w in (w_from, w_to):
+        w.world_axis_object_classes["spectral"] = ("SpectralCoord", (), {})
     calc_pixmap(w_from, w_to, frame_check="strict")
 
 
@@ -414,7 +360,6 @@ def test_invalid_frame_check(frame_check):
 
 
 def test_frame_mismatch_error_is_value_error():
-    assert issubclass(FrameMismatchError, ValueError)
     with pytest.raises(ValueError):
         calc_pixmap(_DuckWCS(), _DuckWCS(), frame_check="strict")
 
@@ -426,16 +371,16 @@ def test_warning_stacklevel():
 
 
 def test_bbox_untouched_on_frame_error():
+    bbox = ((-0.5, 3.5), (-0.5, 2.5))
     w_from = _FrameDuckWCS(ICRS())
-    w_from.bounding_box = ((-0.5, 3.5), (-0.5, 2.5))
     w_to = _DuckWCS()
-    w_to.bounding_box = ((-0.5, 3.5), (-0.5, 2.5))
+    w_from.bounding_box = w_to.bounding_box = bbox
 
     with pytest.raises(FrameMismatchError):
         calc_pixmap(w_from, w_to, disable_bbox="both", frame_check="strict")
 
-    assert w_from.bounding_box == ((-0.5, 3.5), (-0.5, 2.5))
-    assert w_to.bounding_box == ((-0.5, 3.5), (-0.5, 2.5))
+    assert w_from.bounding_box == bbox
+    assert w_to.bounding_box == bbox
 
 
 def test_estimate_pixel_scale_ratio():

@@ -49,11 +49,10 @@ class FrameMismatchError(ValueError):
 
 class FrameMismatchWarning(UserWarning):
     """
-    Issued by `calc_pixmap` when ``frame_check="warn"`` under the same
-    conditions in which `FrameMismatchError` would be raised with
-    ``frame_check="strict"``, except when neither WCS provides frame
-    information. In that case the WCS objects are assumed to use the
-    same frame and no warning is issued.
+    Issued when ``frame_check="warn"`` and frame compatibility cannot be
+    established or the required conversion cannot be performed. No warning is
+    issued when neither WCS provides frame information; see the frame-handling
+    table in `calc_pixmap`.
     """
 
 
@@ -74,18 +73,6 @@ def _axes_compatible(wcs_from, wcs_to):
         # If either WCS object does not have the required attributes,
         # assume they are compatible for the fast path.
         return True
-
-
-def _process_frame_mismatch(msg, frame_check):
-    if frame_check == "strict":
-        raise FrameMismatchError(msg)
-    elif frame_check == "warn":
-        warnings.warn(
-            f"{msg}. World coordinate values are passed without frame "
-            "conversion; the pixel map may be inaccurate.",
-            FrameMismatchWarning,
-            stacklevel=3,
-        )
 
 
 def _get_celestial_frames(wcs):
@@ -116,45 +103,51 @@ def _compare_frames(wcs_from, wcs_to, strict=False):
 
     Parameters
     ----------
+    wcs_from, wcs_to : wcs
+        WCS objects whose celestial frames are compared.
+
     strict : bool, optional
-        If `True`, the case when neither WCS provides frame information is
-        reported as "cannot be determined" instead of being assumed
-        compatible (legacy behavior).
+        If `True`, raise `FrameMismatchError` when neither WCS provides
+        frame information. Otherwise, assume that both use the same frame
+        (legacy behavior).
 
     Returns
     -------
-    convert : bool or None
-        `False` - frames are known to be equivalent (or, when ``strict`` is
-        `False`, neither WCS provides frame information), use the fast
-        numeric path;
-        `True` - frames (or world axis order/units) are known to differ,
-        conversion required;
-        `None` - compatibility cannot be determined.
-    reason : str or None
-        Explanation when ``convert`` is `None`.
+    convert : bool
+        `False` if the frames are known to be equivalent (or, when ``strict``
+        is `False`, neither WCS provides frame information) and the world
+        axis order and units match, so the fast numeric path can be used.
+        `True` if the frames, world axis order, or units differ and a
+        conversion is required.
+
+    Raises
+    ------
+    FrameMismatchError
+        If frame compatibility cannot be determined.
+
     """
     f_from = _get_celestial_frames(wcs_from)
     f_to = _get_celestial_frames(wcs_to)
 
     if f_from is None and f_to is None:
         if strict:
-            return None, (
+            raise FrameMismatchError(
                 "neither 'wcs_from' nor 'wcs_to' provides "
                 "'world_axis_object_classes', so their celestial frames "
                 "cannot be verified to be equivalent"
             )
         # legacy: assume same frame
-        return False, None
+        return False
 
     if f_from is None or f_to is None:
         which = "wcs_from" if f_from is None else "wcs_to"
-        return None, (
+        raise FrameMismatchError(
             f"'{which}' does not provide 'world_axis_object_classes', so its "
             "celestial frame cannot be compared with that of the other WCS"
         )
 
     if len(f_from) != len(f_to):
-        return None, (
+        raise FrameMismatchError(
             "'wcs_from' and 'wcs_to' have different numbers of celestial "
             f"world axis objects ({len(f_from)} vs {len(f_to)})"
         )
@@ -162,14 +155,18 @@ def _compare_frames(wcs_from, wcs_to, strict=False):
     convert = False
     for a, b in zip(f_from, f_to):
         if a is None or b is None:
-            return None, "celestial frame is not defined for 'wcs_from' and/or 'wcs_to'"
+            raise FrameMismatchError(
+                "celestial frame is not defined for 'wcs_from' and/or 'wcs_to'"
+            )
         if isinstance(a, str) and isinstance(b, str):
             equivalent = a.lower() == b.lower()
         else:
             try:
                 equivalent = a.is_equivalent_frame(b)
-            except (AttributeError, TypeError):
-                return None, f"unable to compare celestial frames {a!r} and {b!r}"
+            except (AttributeError, TypeError) as err:
+                raise FrameMismatchError(
+                    f"unable to compare celestial frames {a!r} and {b!r}"
+                ) from err
         if not equivalent:
             convert = True
 
@@ -177,7 +174,7 @@ def _compare_frames(wcs_from, wcs_to, strict=False):
         # same frame, but axis order or units differ
         convert = True
 
-    return convert, None
+    return convert
 
 
 def _get_bbox(wcs):
@@ -322,24 +319,28 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to", frame_check="wa
     # exception cannot leave the WCS objects in an altered state.
     convert = False
     if frame_check != "ignore":
-        convert, reason = _compare_frames(
-            wcs_from, wcs_to, strict=(frame_check == "strict")
-        )
-
-        if convert is None:
-            # frames unknown / cannot be compared
-            _process_frame_mismatch(reason, frame_check)
-            convert = False
-
-        elif convert and not (
-            hasattr(wcs_from, "pixel_to_world") and hasattr(wcs_to, "world_to_pixel")
-        ):
-            # frames known to differ but cannot be converted
-            _process_frame_mismatch(
-                "celestial frames (or world axis order/units) of 'wcs_from' "
-                "and 'wcs_to' differ, but the WCS objects do not support the "
-                "APE 14 high-level API needed to convert between them",
-                frame_check,
+        try:
+            convert = _compare_frames(
+                wcs_from, wcs_to, strict=(frame_check == "strict")
+            )
+            if convert and not (
+                hasattr(wcs_from, "pixel_to_world")
+                and hasattr(wcs_to, "world_to_pixel")
+            ):
+                raise FrameMismatchError(
+                    "celestial frames (or world axis order/units) of "
+                    "'wcs_from' and 'wcs_to' differ, but the WCS objects do "
+                    "not support the APE 14 high-level API needed to convert "
+                    "between them"
+                )
+        except FrameMismatchError as e:
+            if frame_check == "strict":
+                raise
+            warnings.warn(
+                f"{e}. World coordinate values are passed without frame "
+                "conversion; the pixel map may be inaccurate.",
+                FrameMismatchWarning,
+                stacklevel=2,
             )
             convert = False
 
