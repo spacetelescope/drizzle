@@ -58,21 +58,24 @@ class FrameMismatchWarning(UserWarning):
 
 def _axes_compatible(wcs_from, wcs_to):
     """
-    Check that `wcs_from` and `wcs_to` have the same world axis order
+    Check that ``wcs_from`` and ``wcs_to`` have the same world axis order
     (physical types) and units for the fast path.
 
+    Raises `FrameMismatchError` if either WCS does not provide
+    ``world_axis_physical_types`` or ``world_axis_units``.
     """
     try:
-        return (
-            tuple(wcs_from.world_axis_physical_types)
-            == tuple(wcs_to.world_axis_physical_types)
-            and tuple(map(str, wcs_from.world_axis_units))
-            == tuple(map(str, wcs_to.world_axis_units))
-        )
-    except AttributeError:
-        # If either WCS object does not have the required attributes,
-        # assume they are compatible for the fast path.
-        return True
+        types_from = tuple(wcs_from.world_axis_physical_types)
+        types_to = tuple(wcs_to.world_axis_physical_types)
+        units_from = tuple(map(str, wcs_from.world_axis_units))
+        units_to = tuple(map(str, wcs_to.world_axis_units))
+    except AttributeError as err:
+        raise FrameMismatchError(
+            "unable to verify that 'wcs_from' and 'wcs_to' have the same "
+            "world axis order and units"
+        ) from err
+
+    return types_from == types_to and units_from == units_to
 
 
 def _get_celestial_frames(wcs):
@@ -97,7 +100,7 @@ def _get_celestial_frames(wcs):
     return frames
 
 
-def _compare_frames(wcs_from, wcs_to, strict=False):
+def _compare_frames(wcs_from, wcs_to, strict):
     """
     Determine whether a frame conversion is needed.
 
@@ -107,9 +110,9 @@ def _compare_frames(wcs_from, wcs_to, strict=False):
         WCS objects whose celestial frames are compared.
 
     strict : bool, optional
-        If `True`, raise `FrameMismatchError` when neither WCS provides
-        frame information. Otherwise, assume that both use the same frame
-        (legacy behavior).
+        Only affects the case when neither WCS provides frame information.
+        If `True`, a `FrameMismatchError` is raised; if `False`, the WCS
+        objects are assumed to use the same frame (legacy behavior).
 
     Returns
     -------
@@ -292,8 +295,9 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to", frame_check="wa
          - Fast path
        * - Frame compatibility cannot be determined: only one WCS
            provides ``world_axis_object_classes``, a celestial axis
-           has no frame, frames cannot be compared, or the numbers
-           of celestial axes differ
+           has no frame, frames cannot be compared, the numbers of
+           celestial axes differ, or world axis physical types or
+           units are unavailable
          - `FrameMismatchError`
          - `FrameMismatchWarning`, then fast path
          - Fast path
@@ -318,11 +322,10 @@ def calc_pixmap(wcs_from, wcs_to, shape=None, disable_bbox="to", frame_check="wa
     # Frame check is done *before* bounding boxes are modified so that an
     # exception cannot leave the WCS objects in an altered state.
     convert = False
+    strict = (frame_check == "strict")
     if frame_check != "ignore":
         try:
-            convert = _compare_frames(
-                wcs_from, wcs_to, strict=(frame_check == "strict")
-            )
+            convert = _compare_frames(wcs_from, wcs_to, strict)
             if convert and not (
                 hasattr(wcs_from, "pixel_to_world")
                 and hasattr(wcs_to, "world_to_pixel")

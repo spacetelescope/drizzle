@@ -5,7 +5,7 @@ import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
 from astropy.wcs import FITSFixedWarning, WCS
-from astropy.coordinates import ICRS, SkyCoord
+from astropy.coordinates import FK5, ICRS, SkyCoord
 from astropy.wcs.utils import pixel_to_pixel
 
 from drizzle.tests.helpers import wcs_from_file
@@ -48,9 +48,12 @@ class _FrameDuckWCS(_DuckWCS):
             kwargs = {"frame": frame} if with_kwargs else {}
             classes[f"celestial{k}"] = (cls, (), kwargs)
         self.world_axis_object_classes = classes
+        self.world_axis_physical_types = ("pos.eq.ra", "pos.eq.dec")
+        self.world_axis_units = ("deg", "deg")
 
 
-def _celestial_wcs(ctype, crval, cdelt=(-1.0e-4, 1.0e-4), shape=(50, 60)):
+def _celestial_wcs(ctype, crval, cdelt=(-1.0e-4, 1.0e-4), shape=(50, 60),
+                   radesys="ICRS", equinox=None):
     w = WCS(naxis=2)
     w.wcs.ctype = list(ctype)
     w.wcs.crval = list(crval)
@@ -58,7 +61,9 @@ def _celestial_wcs(ctype, crval, cdelt=(-1.0e-4, 1.0e-4), shape=(50, 60)):
     w.wcs.cdelt = list(cdelt)
     w.wcs.cunit = ["deg", "deg"]
     if ctype[0].startswith(("RA", "DEC")):
-        w.wcs.radesys = "ICRS"
+        w.wcs.radesys = radesys
+        if equinox is not None:
+            w.wcs.equinox = equinox
     w.wcs.set()
     w.array_shape = shape
     return w
@@ -219,7 +224,9 @@ def test_disable_gwcs_bbox():
 
 
 def test_frameless_wcs():
-    with pytest.raises(FrameMismatchError, match="neither"):
+    # we are testing explicitly for ValueError and not FrameMismatchError
+    # to test that FrameMismatchError is a subclass of ValueError.
+    with pytest.raises(ValueError, match="neither"):
         calc_pixmap(_DuckWCS(), _DuckWCS(), frame_check="strict")
     calc_pixmap(_DuckWCS(), _DuckWCS(), frame_check="warn")
     calc_pixmap(_DuckWCS(), _DuckWCS(), frame_check="ignore")
@@ -293,6 +300,18 @@ def test_uncomparable_frames():
     calc_pixmap(w_from, w_to, frame_check="ignore")
 
 
+def test_unverifiable_world_axes():
+    w_from = _FrameDuckWCS(ICRS())
+    w_to = _FrameDuckWCS(ICRS())
+    del w_from.world_axis_physical_types
+    del w_from.world_axis_units
+    with pytest.raises(FrameMismatchError, match="world axis order and units"):
+        calc_pixmap(w_from, w_to, frame_check="strict")
+    with pytest.warns(FrameMismatchWarning, match="world axis order and units"):
+        calc_pixmap(w_from, w_to, frame_check="warn")
+    calc_pixmap(w_from, w_to, frame_check="ignore")
+
+
 def test_different_number_of_celestial_axes():
     w_from = _FrameDuckWCS()  # world_axis_object_classes == {}
     w_to = _FrameDuckWCS(ICRS())
@@ -304,7 +323,41 @@ def test_different_number_of_celestial_axes():
 
 
 def test_string_frames_equivalent_case_insensitive():
+    """
+    _FrameDuckWCS has no high-level API, so under "strict" any result other
+    than "frames equivalent" raises FrameMismatchError. Completing without
+    an exception means "icrs" and "ICRS" compared equal.
+    """
     calc_pixmap(_FrameDuckWCS("icrs"), _FrameDuckWCS("ICRS"), frame_check="strict")
+
+
+def test_fits_frame_attributes_differ():
+    """
+    Both WCS use FK5, so world axis physical types and units are identical;
+    only the celestial frame comparison (equinox) can detect the difference.
+    """
+    ra = 150.0
+    dec = 2.0
+    c1975 = SkyCoord(ra, dec, unit="deg", frame=FK5(equinox="J2000"))
+    c1975 = c1975.transform_to(FK5(equinox="J1975"))
+
+    w_j2000 = _celestial_wcs(
+        ("RA---TAN", "DEC--TAN"), (ra, dec), radesys="FK5", equinox=2000.0
+    )
+    # offset slightly so the mapping is not a trivial identity:
+    w_j1975 = _celestial_wcs(
+        ("RA---TAN", "DEC--TAN"),
+        (c1975.ra.deg + 1.0e-3, c1975.dec.deg - 1.0e-3),
+        radesys="FK5",
+        equinox=1975.0,
+    )
+    expected = _reference_pixmap(w_j2000, w_j1975)
+
+    pixmap = calc_pixmap(w_j2000, w_j1975, frame_check="strict")
+    assert_almost_equal(pixmap, expected, decimal=6)
+
+    pixmap = calc_pixmap(w_j2000, w_j1975, frame_check="ignore")
+    assert not np.allclose(pixmap, expected, atol=1.0)
 
 
 def test_string_frames_differ_no_high_level_api():
