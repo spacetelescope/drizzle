@@ -1,17 +1,91 @@
+import pytest
 import warnings
 
 import numpy as np
-import pytest
 from numpy.testing import assert_almost_equal, assert_equal
 
-from astropy.wcs import FITSFixedWarning
+from astropy.wcs import FITSFixedWarning, WCS
+from astropy.coordinates import FK5, ICRS, SkyCoord
+from astropy.wcs.utils import pixel_to_pixel
+
 from drizzle.tests.helpers import wcs_from_file
 from drizzle.utils import (
+    FrameMismatchError,
+    FrameMismatchWarning,
     _estimate_pixel_scale,
     calc_pixmap,
     decode_context,
     estimate_pixel_scale_ratio,
 )
+
+
+pytestmark = pytest.mark.filterwarnings(
+    "error::drizzle.utils.FrameMismatchWarning"
+)
+
+
+class _DuckWCS:
+    """Low-level APE 14 only; no world_axis_object_classes."""
+
+    array_shape = (3, 4)
+
+    def pixel_to_world_values(self, x, y):
+        return x, y
+
+    def world_to_pixel_values(self, a, b):
+        return a, b
+
+
+class _FrameDuckWCS(_DuckWCS):
+    """
+    Low-level-only duck WCS that declares celestial frame(s) via
+    ``world_axis_object_classes`` but has no high-level API.
+    """
+
+    def __init__(self, *frames, cls="SkyCoord", with_kwargs=True):
+        classes = {}
+        for k, frame in enumerate(frames):
+            kwargs = {"frame": frame} if with_kwargs else {}
+            classes[f"celestial{k}"] = (cls, (), kwargs)
+        self.world_axis_object_classes = classes
+        self.world_axis_physical_types = ("pos.eq.ra", "pos.eq.dec")
+        self.world_axis_units = ("deg", "deg")
+
+
+def _celestial_wcs(ctype, crval, cdelt=(-1.0e-4, 1.0e-4), shape=(50, 60),
+                   radesys="ICRS", equinox=None):
+    w = WCS(naxis=2)
+    w.wcs.ctype = list(ctype)
+    w.wcs.crval = list(crval)
+    w.wcs.crpix = [shape[1] / 2 + 0.5, shape[0] / 2 + 0.5]
+    w.wcs.cdelt = list(cdelt)
+    w.wcs.cunit = ["deg", "deg"]
+    if ctype[0].startswith(("RA", "DEC")):
+        w.wcs.radesys = radesys
+        if equinox is not None:
+            w.wcs.equinox = equinox
+    w.wcs.set()
+    w.array_shape = shape
+    return w
+
+
+def _icrs_and_galactic_wcs():
+    ra, dec = 150.0, 2.0
+    gal = SkyCoord(ra, dec, unit="deg", frame="icrs").galactic
+    w_icrs = _celestial_wcs(("RA---TAN", "DEC--TAN"), (ra, dec))
+    # slightly offset so the mapping is not a trivial identity:
+    w_gal = _celestial_wcs(
+        ("GLON-TAN", "GLAT-TAN"),
+        (gal.l.deg + 1.0e-3, gal.b.deg - 1.0e-3),
+        cdelt=(-1.2e-4, 1.2e-4),
+    )
+    return w_icrs, w_gal
+
+
+def _reference_pixmap(wcs_from, wcs_to):
+    y, x = np.indices(wcs_from.array_shape, dtype=float)
+    xo, yo = pixel_to_pixel(wcs_from, wcs_to, x, y)
+    return np.dstack([xo, yo])
 
 
 def test_map_rectangular():
@@ -147,6 +221,219 @@ def test_disable_gwcs_bbox():
     # check bbox was restored
     assert first_wcs.bounding_box is not None
     assert second_wcs.bounding_box is not None
+
+
+def test_frameless_wcs():
+    # we are testing explicitly for ValueError and not FrameMismatchError
+    # to test that FrameMismatchError is a subclass of ValueError.
+    with pytest.raises(ValueError, match="neither"):
+        calc_pixmap(_DuckWCS(), _DuckWCS(), frame_check="strict")
+    calc_pixmap(_DuckWCS(), _DuckWCS(), frame_check="warn")
+    calc_pixmap(_DuckWCS(), _DuckWCS(), frame_check="ignore")
+
+
+def test_fits_frame_conversion():
+    w_icrs, w_gal = _icrs_and_galactic_wcs()
+    expected = _reference_pixmap(w_icrs, w_gal)
+    pixmap = calc_pixmap(w_icrs, w_gal, frame_check="strict")
+    assert_almost_equal(pixmap, expected, decimal=6)
+    pixmap = calc_pixmap(w_icrs, w_gal, frame_check="warn")
+    assert_almost_equal(pixmap, expected, decimal=6)
+
+
+def test_fits_frame_ignore_skips_conversion():
+    w_icrs, w_gal = _icrs_and_galactic_wcs()
+    pixmap = calc_pixmap(w_icrs, w_gal, frame_check="ignore")
+    assert not np.allclose(pixmap, _reference_pixmap(w_icrs, w_gal), atol=1.0)
+
+
+def test_fits_swapped_axes_converts():
+    ra, dec = 150.0, 2.0
+    w_normal = _celestial_wcs(("RA---TAN", "DEC--TAN"), (ra, dec))
+    w_swapped = _celestial_wcs(
+        ("DEC--TAN", "RA---TAN"), (dec, ra), cdelt=(1.0e-4, -1.0e-4)
+    )
+    pixmap = calc_pixmap(w_normal, w_swapped, frame_check="strict")
+    assert_almost_equal(pixmap, _reference_pixmap(w_normal, w_swapped), decimal=6)
+
+
+def test_fits_same_frame_strict():
+    w = wcs_from_file("j8bt06nyq_sip_flt.fits", ext=1, wcs_type="fits")
+    pixmap = calc_pixmap(w, w, frame_check="strict")
+    ok_pixmap = np.indices(w.array_shape, dtype="float64").transpose()
+    assert_almost_equal(pixmap, ok_pixmap, decimal=5)
+
+
+def test_frame_info_on_one_side_only():
+    w_from = _FrameDuckWCS(ICRS())
+    w_to = _DuckWCS()
+    with pytest.raises(FrameMismatchError, match="'wcs_to' does not provide"):
+        calc_pixmap(w_from, w_to, frame_check="strict")
+    with pytest.warns(FrameMismatchWarning, match="'wcs_to' does not provide"):
+        calc_pixmap(w_from, w_to, frame_check="warn")
+    calc_pixmap(w_from, w_to, frame_check="ignore")
+
+    with pytest.raises(FrameMismatchError, match="'wcs_from' does not provide"):
+        calc_pixmap(w_to, w_from, frame_check="strict")
+    with pytest.warns(FrameMismatchWarning, match="'wcs_from' does not provide"):
+        calc_pixmap(w_to, w_from, frame_check="warn")
+    calc_pixmap(w_to, w_from, frame_check="ignore")
+
+
+def test_undefined_frame():
+    w_from = _FrameDuckWCS(ICRS(), with_kwargs=False)
+    w_to = _FrameDuckWCS(ICRS())
+    with pytest.raises(FrameMismatchError, match="not defined"):
+        calc_pixmap(w_from, w_to, frame_check="strict")
+    with pytest.warns(FrameMismatchWarning, match="not defined"):
+        calc_pixmap(w_from, w_to, frame_check="warn")
+    calc_pixmap(w_from, w_to, frame_check="ignore")
+
+
+def test_uncomparable_frames():
+    w_from = _FrameDuckWCS(object())
+    w_to = _FrameDuckWCS(object())
+    with pytest.raises(FrameMismatchError, match="unable to compare"):
+        calc_pixmap(w_from, w_to, frame_check="strict")
+    with pytest.warns(FrameMismatchWarning, match="unable to compare"):
+        calc_pixmap(w_from, w_to, frame_check="warn")
+    calc_pixmap(w_from, w_to, frame_check="ignore")
+
+
+def test_unverifiable_world_axes():
+    w_from = _FrameDuckWCS(ICRS())
+    w_to = _FrameDuckWCS(ICRS())
+    del w_from.world_axis_physical_types
+    del w_from.world_axis_units
+    with pytest.raises(FrameMismatchError, match="world axis order and units"):
+        calc_pixmap(w_from, w_to, frame_check="strict")
+    with pytest.warns(FrameMismatchWarning, match="world axis order and units"):
+        calc_pixmap(w_from, w_to, frame_check="warn")
+    calc_pixmap(w_from, w_to, frame_check="ignore")
+
+
+def test_different_number_of_celestial_axes():
+    w_from = _FrameDuckWCS()  # world_axis_object_classes == {}
+    w_to = _FrameDuckWCS(ICRS())
+    with pytest.raises(FrameMismatchError, match="different numbers"):
+        calc_pixmap(w_from, w_to, frame_check="strict")
+    with pytest.warns(FrameMismatchWarning, match="different numbers"):
+        calc_pixmap(w_from, w_to, frame_check="warn")
+    calc_pixmap(w_from, w_to, frame_check="ignore")
+
+
+def test_string_frames_equivalent_case_insensitive():
+    """
+    _FrameDuckWCS has no high-level API, so under "strict" any result other
+    than "frames equivalent" raises FrameMismatchError. Completing without
+    an exception means "icrs" and "ICRS" compared equal.
+    """
+    calc_pixmap(_FrameDuckWCS("icrs"), _FrameDuckWCS("ICRS"), frame_check="strict")
+
+
+def test_fits_frame_attributes_differ():
+    """
+    Both WCS use FK5, so world axis physical types and units are identical;
+    only the celestial frame comparison (equinox) can detect the difference.
+    """
+    ra = 150.0
+    dec = 2.0
+    c1975 = SkyCoord(ra, dec, unit="deg", frame=FK5(equinox="J2000"))
+    c1975 = c1975.transform_to(FK5(equinox="J1975"))
+
+    w_j2000 = _celestial_wcs(
+        ("RA---TAN", "DEC--TAN"), (ra, dec), radesys="FK5", equinox=2000.0
+    )
+    # offset slightly so the mapping is not a trivial identity:
+    w_j1975 = _celestial_wcs(
+        ("RA---TAN", "DEC--TAN"),
+        (c1975.ra.deg + 1.0e-3, c1975.dec.deg - 1.0e-3),
+        radesys="FK5",
+        equinox=1975.0,
+    )
+    expected = _reference_pixmap(w_j2000, w_j1975)
+
+    pixmap = calc_pixmap(w_j2000, w_j1975, frame_check="strict")
+    assert_almost_equal(pixmap, expected, decimal=6)
+
+    pixmap = calc_pixmap(w_j2000, w_j1975, frame_check="ignore")
+    assert not np.allclose(pixmap, expected, atol=1.0)
+
+
+def test_string_frames_differ_no_high_level_api():
+    w_from = _FrameDuckWCS("icrs")
+    w_to = _FrameDuckWCS("galactic")
+    with pytest.raises(FrameMismatchError, match="high-level API"):
+        calc_pixmap(w_from, w_to, frame_check="strict")
+    with pytest.warns(FrameMismatchWarning, match="high-level API"):
+        calc_pixmap(w_from, w_to, frame_check="warn")
+    calc_pixmap(w_from, w_to, frame_check="ignore")
+
+
+@pytest.mark.parametrize("cls", [SkyCoord, "SkyCoord", "astropy.coordinates.SkyCoord"])
+def test_skycoord_class_given_as_type(cls):
+    calc_pixmap(
+        _FrameDuckWCS(ICRS(), cls=cls),
+        _FrameDuckWCS(ICRS(), cls=cls),
+        frame_check="strict",
+    )
+
+
+@pytest.mark.parametrize("to_type", ["fits", "gwcs"])
+@pytest.mark.parametrize("from_type", ["fits", "gwcs"])
+def test_same_frame_wcs_combinations(from_type, to_type):
+    filename = "j8bt06nyq_sip_flt.fits"
+    w_from = wcs_from_file(filename, ext=1, wcs_type=from_type)
+    w_to = wcs_from_file(filename, ext=1, crpix_shift=(-2, -2), wcs_type=to_type)
+    shape = (12, 34)
+    y, x = np.indices(shape, dtype=float)
+    expected = np.dstack(pixel_to_pixel(w_from, w_to, x, y))
+
+    actual = calc_pixmap(
+        w_from, w_to, shape=shape, disable_bbox="none", frame_check="strict"
+    )
+
+    assert np.isfinite(actual[2:, 2:]).all()
+    np.testing.assert_allclose(actual, expected, rtol=0, atol=1e-5, equal_nan=True)
+
+
+def test_non_celestial_world_objects_are_skipped():
+    w_from = _FrameDuckWCS(ICRS())
+    w_to = _FrameDuckWCS(ICRS())
+    for w in (w_from, w_to):
+        w.world_axis_object_classes["spectral"] = ("SpectralCoord", (), {})
+    calc_pixmap(w_from, w_to, frame_check="strict")
+
+
+@pytest.mark.parametrize("frame_check", ["raise", "STRICT", None, ""])
+def test_invalid_frame_check(frame_check):
+    with pytest.raises(ValueError, match="frame_check") as excinfo:
+        calc_pixmap(_DuckWCS(), _DuckWCS(), frame_check=frame_check)
+    assert not isinstance(excinfo.value, FrameMismatchError)
+
+
+def test_frame_mismatch_error_is_value_error():
+    with pytest.raises(ValueError):
+        calc_pixmap(_DuckWCS(), _DuckWCS(), frame_check="strict")
+
+
+def test_warning_stacklevel():
+    with pytest.warns(FrameMismatchWarning) as record:
+        calc_pixmap(_FrameDuckWCS(ICRS()), _DuckWCS(), frame_check="warn")
+    assert record[0].filename == __file__
+
+
+def test_bbox_untouched_on_frame_error():
+    bbox = ((-0.5, 3.5), (-0.5, 2.5))
+    w_from = _FrameDuckWCS(ICRS())
+    w_to = _DuckWCS()
+    w_from.bounding_box = w_to.bounding_box = bbox
+
+    with pytest.raises(FrameMismatchError):
+        calc_pixmap(w_from, w_to, disable_bbox="both", frame_check="strict")
+
+    assert w_from.bounding_box == bbox
+    assert w_to.bounding_box == bbox
 
 
 def test_estimate_pixel_scale_ratio():

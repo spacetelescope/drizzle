@@ -5,6 +5,16 @@ Release Notes
 =============
 
 
+3.2.0 (unreleased)
+==================
+
+- ``drizzle.utils.calc_pixmap`` now accepts a ``frame_check`` option for
+  handling celestial frame compatibility between WCS objects. Depending on
+  the selected mode, mismatched or unverifiable frames can raise
+  ``FrameMismatchError``, emit ``FrameMismatchWarning``, or fall back to the
+  legacy unchecked behavior. [#249]
+
+
 3.1.0 (2026-11-12)
 ==================
 
