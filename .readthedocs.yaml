@@ -6,12 +6,11 @@ sphinx:
   fail_on_warning: true
 
 build:
-  os: ubuntu-24.04
+  os: ubuntu-lts-latest
+  apt_packages:
+    - graphviz
   tools:
-    python: mambaforge-latest
-
-conda:
-  environment: docs/rtd_environment.yaml
+    python: latest
 
 python:
   install:
