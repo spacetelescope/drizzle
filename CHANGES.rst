@@ -13,6 +13,7 @@ Release Notes
   the selected mode, mismatched or unverifiable frames can raise
   ``FrameMismatchError``, emit ``FrameMismatchWarning``, or fall back to the
   legacy unchecked behavior. [#249]
+- build wheels for Linux ARM64 [#260]
 
 
 3.1.0 (2026-11-12)

@@ -36,4 +36,6 @@ jobs:
         - windows: py313-xdist
         - windows: py315-xdist
         - linux: py315-devdeps-xdist
+        - linux: py3-xdist
+          runs-on: ubuntu-26.04-arm
       toxdeps: tox-uv
