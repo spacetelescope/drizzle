@@ -50,8 +50,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.cibuildwheel]
 build = [
-    "cp311-*",  # build for CPython 3.11 Stable API
-    "cp3*t-*"  # also build free-threaded wheels
+    "cp311-*", # ABI3
+    "cp314t-*",
+    "cp315t-*", # ABI3t
 ]
 test-command = 'python -c "from drizzle import cdrizzle"'
 
